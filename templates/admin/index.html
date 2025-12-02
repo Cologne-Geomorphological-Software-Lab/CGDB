@@ -1,0 +1,79 @@
+{% extends 'admin/base.html' %}
+
+{% load i18n unfold %}
+{% block breadcrumbs %}{% endblock %}
+
+{% block title %}
+    {% trans 'Dashboard' %} | {{ site_title|default:_('CGDB') }}
+{% endblock %}
+
+{% block extrahead %}
+    {% if plausible_domain %}
+        <script defer data-domain="{{ plausible_domain }}" src="https://plausible.io/js/script.js"></script>
+    {% endif %}
+{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+    {% include "unfold/helpers/messages.html" %}
+
+    {% component "unfold/components/container.html" %}
+        <div class="flex flex-col gap-8 mb-8">
+            <div class="flex flex-col gap-4 sm:flex-row">
+                {% component "unfold/components/navigation.html" with items=navigation %}{% endcomponent %}
+
+                {% component "unfold/components/navigation.html" with class="sm:ml-auto" items=filters %}{% endcomponent %}
+            </div>
+            <div class="flex flex-col gap-8 lg:flex-row">
+                {% for stats in project %}
+                    {% component "unfold/components/card.html" with class="lg:w-1/3" label=_("Total") footer=stats.footer %}
+                        {% component "unfold/components/text.html" %}
+                            {{ stats.title }}
+                        {% endcomponent %}
+
+                        {% component "unfold/components/title.html" %}
+                            {{ stats.metric }}
+                        {% endcomponent %}
+                    {% endcomponent %}
+                {% endfor %}
+            </div>
+        </div>
+    {% endcomponent %}
+
+    {% component "unfold/components/container.html" %}
+        <div class="flex flex-row items-center gap-8 mb-8">
+        {% for stats in performance %}
+            {% component "unfold/components/card.html" with class="basis-1/2" %}
+                {% component "unfold/components/text.html" %}
+                    {{ stats.title }}
+                {% endcomponent %}
+
+                {% component "unfold/components/title.html" with class="mb-8" %}
+                    {{ stats.metric }}
+                {% endcomponent %}
+
+                {% component "unfold/components/chart/line.html" with data=stats.chart %}{% endcomponent %}
+            {% endcomponent %}
+        {% endfor %}
+        </div>
+    {% endcomponent %}
+    
+    {% component "unfold/components/container.html" %}
+    <div class="flex flex-col gap-8 mb-12">
+        
+ 
+        {% component "unfold/components/card.html"  %}
+        The Cologne Geomorphological Database System (CGDB) is a comprehensive platform designed to manage, analyze, and share geomorphological data. It supports research projects by providing tools for data collection, processing, and visualization across various domains, including sedimentology, geochronology, paleobotany, and field data management.
+        {% endcomponent %}
+
+
+    </div>
+    {% endcomponent %}
+
+
+        
+   
+{% endblock %}

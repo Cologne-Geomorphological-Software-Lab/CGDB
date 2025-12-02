@@ -1,0 +1,10 @@
+Django
+django_crispy_forms
+django-import-export
+django-unfold
+django-guardian
+numpy
+matplotlib
+pillow
+psycopg
+python-decouple
