@@ -669,7 +669,6 @@ class Location(BaseModel):
                     "Literature data source requires a reference assignment."
                 )
 
-
     def save(self, *args, **kwargs):
         if self.easting is not None and self.northing is not None:
             self.location = Point(
