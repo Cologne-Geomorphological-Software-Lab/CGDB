@@ -368,7 +368,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         "location__identifier",
     ]
 
-    conditional_fields = {"project": "location == false"}
+    conditional_fields = {"project": "location == False"}
 
     filter_horizontal = ["tags"]
     list_display = [
