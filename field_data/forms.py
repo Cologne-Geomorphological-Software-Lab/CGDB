@@ -55,7 +55,7 @@ class CampaignForm(forms.ModelForm):
                 project = Project.objects.get(id=project_id)
                 self.initial["project"] = project
             except Project.DoesNotExist:
-                pass
+                pass  # It is acceptable if no matching Project exists; field will be left unset
         self.helper = FormHelper()
         self.helper.add_input(Submit("submit", "Submit"))
 
