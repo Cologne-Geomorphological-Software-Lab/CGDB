@@ -7,7 +7,7 @@ from unfold.contrib.filters.admin import (
 )
 
 from analysis.models import GenericMeasurement
-from prototype.admin import PermissionBasedModelAdmin
+
 from prototype.mixins import (
     HybridProjectPermissionMixin,
     NestedProjectPermissionMixin,
