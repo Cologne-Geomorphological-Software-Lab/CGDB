@@ -16,7 +16,7 @@ from pathlib import Path
 
 from django.templatetags.static import static
 
-from .unfold_settings import UNFOLD
+from .unfold_settings import UNFOLD as unfold_settings
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -179,6 +179,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Unfold Admin Interface
+UNFOLD = unfold_settings
 UNFOLD["STYLES"] = [lambda request: static("/css/dj_map.css")]
 
 
