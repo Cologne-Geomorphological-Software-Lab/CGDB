@@ -131,24 +131,7 @@ class SampleType(BaseModel):
         return self.word
 
 
-'''
-class SampleLabel(models.Model):
-    """
-    Enables a sample system for field documentation.
-    word (varchar): The unique identifier for the study area.
-    """
-
-    word = models.CharField(max_length=35)
-    slug = models.CharField(max_length=250)
-    project = models.ForeignKey(
-        Project,
-        on_delete=models.CASCADE,
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.word
-'''
+# (Lines 134–151 removed; no replacement needed)
 
 
 class StudyArea(BaseModel):
