@@ -307,6 +307,19 @@ class Site(BaseModel):
 
 
 class Campaign(BaseModel):
+    """Represents a Campaign model.
+
+    Attributes:
+        label (CharField): The label of the campaign, with a maximum length of 20 characters and must be unique.
+        project (ForeignKey): A foreign key to the Project model, with a restrict delete option.
+        date_start (DateField): The starting date of the campaign (nullable).
+        date_end (DateField): The ending date of the campaign (nullable).
+        destination_country (ForeignKey): Foreign key to the Country model, represents country of destination.
+        study_areas (ManyToManyField): Many-to-many relationship with StudyArea model.
+        season (CharField): The season code, with predefined choices relating to climate seasonality.
+    Methods:
+        __str__(): Returns the string representation of the campaign, which is its label.
+    """
     label = models.CharField(
         max_length=20,
         unique=True,
