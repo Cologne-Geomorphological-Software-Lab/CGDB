@@ -228,8 +228,6 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
             },
         ),
     )
-    search_fields = ["identifier"]
-
 
 class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_display = [
