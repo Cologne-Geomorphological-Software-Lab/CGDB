@@ -9,11 +9,11 @@ import logging
 
 ALLOWED_HOSTS = []
 
-# SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = True  # Set to False for local development without HTTPS
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_PRELOAD = True
-SECURE_HSTS_SECONDS = 3600  # 1 hour
+SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 DATABASES = {
@@ -39,7 +39,8 @@ MEDIA_URL = ""
 MEDIA_ROOT = ""
 
 
-DEBUG = True
+# SECURITY WARNING: Do not set DEBUG = True in production!
+DEBUG = False
 
 
 def get_secret_key():
@@ -51,5 +52,5 @@ def get_secret_key():
 try:
     SECRET_KEY = get_secret_key()
 except Exception as e:
-    logging.error(f"Error while loading SECRET_KEY: {e}")
+    logging.error("Error while loading SECRET_KEY.")
     raise
