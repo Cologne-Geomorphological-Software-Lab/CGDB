@@ -1,5 +1,5 @@
 from django.contrib.gis import admin
-from unfold.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.admin import ModelAdmin, StackedInline, TabularInline, ExportMixin
 from unfold.contrib.filters.admin import (
     ChoicesDropdownFilter,
     RangeDateFilter,
@@ -27,6 +27,7 @@ from .models import (
 )
 from .resources import LocationResource
 
+from import_export.admin import ExportMixin
 
 class MeasurementInline(admin.TabularInline):
     model = GenericMeasurement
