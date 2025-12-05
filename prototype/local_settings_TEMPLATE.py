@@ -1,4 +1,5 @@
 import os
+import logging
 
 # ==============================================================================
 # SECURITY SETTINGS
@@ -49,5 +50,5 @@ def get_secret_key():
 try:
     SECRET_KEY = get_secret_key()
 except Exception as e:
-    print(f"Fehler beim Laden des SECRET_KEY: {e}")
+    logging.error(f"Error while loading SECRET_KEY: {e}")
     raise
