@@ -39,7 +39,8 @@ MEDIA_URL = ""
 MEDIA_ROOT = ""
 
 
-DEBUG = True
+# SECURITY WARNING: Do not set DEBUG = True in production!
+DEBUG = False
 
 
 def get_secret_key():
