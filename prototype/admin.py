@@ -10,7 +10,6 @@ class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
     """The base class inherits object-level permissions for data objects via Guardian.
     """
 
-    pass
 
     def has_add_permission(self, request, obj=None):
 
