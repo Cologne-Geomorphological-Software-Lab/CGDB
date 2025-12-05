@@ -51,5 +51,5 @@ def get_secret_key():
 try:
     SECRET_KEY = get_secret_key()
 except Exception as e:
-    logging.error(f"Error while loading SECRET_KEY: {e}")
+    logging.error("Error while loading SECRET_KEY.")
     raise
