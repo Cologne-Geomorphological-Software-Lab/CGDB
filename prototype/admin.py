@@ -7,10 +7,7 @@ from .models import Project, ProjectUserObjectPermission, Researcher, ResearchGr
 
 
 class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
-    """Base admin class with Guardian object-level permissions.
-
-    This class now uses the GuardianPermissionMixin to eliminate code duplication
-    and ensure consistent permission handling across all admin interfaces.
+    """The base class inherits object-level permissions for data objects via Guardian.
     """
 
     pass
