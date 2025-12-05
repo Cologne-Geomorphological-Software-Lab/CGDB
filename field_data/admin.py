@@ -28,6 +28,7 @@ from .models import (
 from .resources import LocationResource
 
 from import_export.admin import ExportMixin
+from guardian.shortcuts import get_objects_for_user
 
 class MeasurementInline(admin.TabularInline):
     model = GenericMeasurement
@@ -368,7 +369,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         "location__identifier",
     ]
 
-    conditional_fields = {"project": "location == false"}
+    conditional_fields = {"project": "location == False"}
 
     filter_horizontal = ["tags"]
     list_display = [
