@@ -24,7 +24,6 @@ from .models import (
     SampleType,
     Site,
     StudyArea,
-    Tag,
 )
 from .resources import LocationResource
 
