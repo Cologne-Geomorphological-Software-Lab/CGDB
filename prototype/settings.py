@@ -206,4 +206,3 @@ try:
     )
 except ImportError:
     print("local_settings.py not imported.")
-    pass
