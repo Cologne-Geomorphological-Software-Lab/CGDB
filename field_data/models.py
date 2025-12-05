@@ -11,7 +11,6 @@ from django.core.validators import (
 from prototype.models import BaseModel, Project, Researcher
 
 
-
 class Country(models.Model):
     """Simplified Country model for basic country information."""
 
@@ -131,24 +130,7 @@ class SampleType(BaseModel):
         return self.word
 
 
-'''
-class SampleLabel(models.Model):
-    """
-    Enables a sample system for field documentation.
-    word (varchar): The unique identifier for the study area.
-    """
-
-    word = models.CharField(max_length=35)
-    slug = models.CharField(max_length=250)
-    project = models.ForeignKey(
-        Project,
-        on_delete=models.CASCADE,
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.word
-'''
+# (Lines 134–151 removed; no replacement needed)
 
 
 class StudyArea(BaseModel):
@@ -307,6 +289,19 @@ class Site(BaseModel):
 
 
 class Campaign(BaseModel):
+    """Represents a Campaign model.
+
+    Attributes:
+        label (CharField): The label of the campaign, with a maximum length of 20 characters and must be unique.
+        project (ForeignKey): A foreign key to the Project model, with a restrict delete option.
+        date_start (DateField): The starting date of the campaign (nullable).
+        date_end (DateField): The ending date of the campaign (nullable).
+        destination_country (ForeignKey): Foreign key to the Country model, represents country of destination.
+        study_areas (ManyToManyField): Many-to-many relationship with StudyArea model.
+        season (CharField): The season code, with predefined choices relating to climate seasonality.
+    Methods:
+        __str__(): Returns the string representation of the campaign, which is its label.
+    """
     label = models.CharField(
         max_length=20,
         unique=True,
@@ -668,7 +663,6 @@ class Location(BaseModel):
                 raise ValidationError(
                     "Literature data source requires a reference assignment."
                 )
-
 
     def save(self, *args, **kwargs):
         if self.easting is not None and self.northing is not None:
