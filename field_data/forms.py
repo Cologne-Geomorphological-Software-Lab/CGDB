@@ -2,7 +2,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Layout, Row, Submit
 from django.contrib.gis import forms
 
-from .models import Campaign, Layer, Location, Project, Sample, Site, StudyArea, Tag
+from .models import Campaign, Layer, Location, Project, Sample, StudyArea, Tag
 
 
 class CampaignForm(forms.ModelForm):
