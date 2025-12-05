@@ -1077,17 +1077,17 @@ class GrainSize(BaseModel):
         for index, (item, data) in enumerate(zip(self.classes, self.measured_data)):
             if item < 2:
                 self.clay += data
-            elif 2 <= item < 6.3:
+            elif item < 6.3:
                 self.fine_silt += data
-            elif 6.3 <= item < 20:
+            elif item < 20:
                 self.medium_silt += data
-            elif 20 <= item < 63:
+            elif item < 63:
                 self.coarse_silt += data
-            elif 63 <= item < 200:
+            elif item < 200:
                 self.fine_sand += data
-            elif 200 <= item < 630:
+            elif item < 630:
                 self.medium_sand += data
-            elif 630 <= item < 2000:
+            elif item < 2000:
                 self.coarse_sand += data
 
         total = sum(self.measured_data)
