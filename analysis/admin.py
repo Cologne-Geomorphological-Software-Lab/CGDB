@@ -16,7 +16,7 @@ from import_export.admin import ExportMixin, ImportExportMixin
 from PIL import Image
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
-
+from .mixins import NestedProjectPermissionMixin
 
 from .models import (
     Algorithm,
