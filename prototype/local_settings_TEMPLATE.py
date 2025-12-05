@@ -43,7 +43,9 @@ DEBUG = True
 
 
 def get_secret_key():
-    pass
+    raise NotImplementedError(
+        "You must implement get_secret_key(), for example loading from an environment variable, a file, or another secure source."
+    )
 
 
 try:
