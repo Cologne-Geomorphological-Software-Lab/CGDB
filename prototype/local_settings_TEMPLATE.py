@@ -9,7 +9,7 @@ import logging
 
 ALLOWED_HOSTS = []
 
-# SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = True  # Set to False for local development without HTTPS
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_PRELOAD = True
