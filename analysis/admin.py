@@ -17,7 +17,6 @@ from PIL import Image
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
 
-from prototype.admin import PermissionBasedModelAdmin
 from prototype.mixins import NestedProjectPermissionMixin, ProjectBasedPermissionMixin
 from prototype.models import Project
 
