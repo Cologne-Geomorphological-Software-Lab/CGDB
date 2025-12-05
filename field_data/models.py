@@ -11,7 +11,6 @@ from django.core.validators import (
 from prototype.models import BaseModel, Project, Researcher
 
 
-
 class Country(models.Model):
     """Simplified Country model for basic country information."""
 
