@@ -27,6 +27,7 @@ from .models import (
 )
 from .resources import LocationResource
 
+from import_export.admin import ExportMixin
 
 class MeasurementInline(admin.TabularInline):
     model = GenericMeasurement
