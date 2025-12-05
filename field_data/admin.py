@@ -1,5 +1,4 @@
 from django.contrib.gis import admin
-from guardian.shortcuts import get_objects_for_user
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import (
