@@ -34,9 +34,6 @@ from .models import (
     RawProcessing,
 )
 
-# Import the required mixin for admin permissions
-from .mixins import NestedProjectPermissionMixin  # Ensure the location is correct
-
 matplotlib.use("Agg")
 
 # ======================
