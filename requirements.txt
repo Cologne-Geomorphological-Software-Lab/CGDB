@@ -4,6 +4,7 @@ django-import-export
 django-unfold
 django-guardian
 django-filter
+djangorestframework
 numpy
 matplotlib
 pillow
