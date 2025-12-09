@@ -188,7 +188,7 @@ UNFOLD["STYLES"] = [lambda request: static("/css/dj_map.css")]
 # ==============================================================================
 
 try:
-    from .local_settings_TEMPLATE import (
+    from .local_settings import (
         ALLOWED_HOSTS,
         DATABASES,
         DEBUG,
