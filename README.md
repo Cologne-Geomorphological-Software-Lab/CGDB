@@ -56,3 +56,7 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
+Start the local development server:
+```
+python manage.py runserver
+```
