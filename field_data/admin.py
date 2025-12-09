@@ -1,4 +1,5 @@
 from django.contrib.gis import admin
+from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline, ExportMixin
 from unfold.contrib.filters.admin import (
     ChoicesDropdownFilter,
