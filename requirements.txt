@@ -3,6 +3,7 @@ django_crispy_forms
 django-import-export
 django-unfold
 django-guardian
+django-filter
 numpy
 matplotlib
 pillow
