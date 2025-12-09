@@ -64,8 +64,6 @@ INSTALLED_APPS = [
     "import_export",
     "django_filters",
     "crispy_forms",
-    "zero_migrations",
-    "sphinxcontrib_django",
     # CGDB Apps
     "prototype",  
     "field_data",  
