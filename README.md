@@ -2,6 +2,8 @@ The Cologne Geomorphological Database System (CGDB)  is a comprehensive informat
 
 ![admin_samples](admin_samples.png)
 
+The CGDB was essentially implemented with [Django]([https://pages.github.com/](https://github.com/django/django)) and [Django Unfold]([https://pages.github.com/](https://github.com/unfoldadmin/django-unfold)).
+
 ## Installation for local development
 To set up the framework for local development, navigate to the desired folder and clone the repository.
 
@@ -65,3 +67,5 @@ python manage.py runserver
 
 
 ![admin_luminescence](admin_luminescence.png)
+
+> Handy, D., Van der Meij, W. M., Zickel, M., and Reimann, T.: A database-driven research data framework for integrating and processing high-dimensional geoscientific data, EGUsphere [preprint], https://doi.org/10.5194/egusphere-2025-4832, 2025.
