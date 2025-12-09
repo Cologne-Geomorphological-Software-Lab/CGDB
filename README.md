@@ -49,3 +49,10 @@ def get_secret_key():
     return "YOUR SECRET KEY"
 
 ```
+
+Migrate the database and create a super user:
+```
+python manage.py migrate
+python manage.py createsuperuser
+```
+
