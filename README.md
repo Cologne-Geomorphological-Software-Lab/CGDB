@@ -25,7 +25,7 @@ Create a copy of prototype *local_settings_TEMPLATE.py* as *local_settings.py*:
 cp prototype/local_settings_TEMPLATE.py prototype/local_settings.py
 ```
 
-Edit local_settings.py with a text editor or an IDE according to the official Django documentation, especially the section on Geodjango: https://docs.djangoproject.com/en/5.2/ref/contrib/gis/install/ It is advisable to use SpatialLite initially for development:
+For local development, edit local_settings.py with a text editor or an IDE according to the official Django documentation, especially the section on Geodjango: https://docs.djangoproject.com/en/5.2/ref/contrib/gis/install/ It is advisable to use SpatialLite initially for development. Also set the locations for STATIC_URL and MEDIA_URL. Set DEBUG = True:
 
 ```
 DATABASES = {
