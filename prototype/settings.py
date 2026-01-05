@@ -18,7 +18,6 @@ from django.templatetags.static import static
 
 from .unfold_settings import UNFOLD as unfold_settings
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -65,11 +64,12 @@ INSTALLED_APPS = [
     "django_filters",
     "crispy_forms",
     # CGDB Apps
-    "prototype",  
-    "field_data",  
-    "analysis",  
-    "bibliography", 
-    "laboratory",  
+    "prototype",
+    "field_data",
+    "analysis",
+    "bibliography",
+    "laboratory",
+    "orchestration",
 ]
 
 # ==============================================================================
@@ -172,6 +172,10 @@ USE_TZ = True
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# File Upload Settings
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB in bytes
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB in bytes
+
 # Crispy Forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
@@ -188,19 +192,26 @@ UNFOLD["STYLES"] = [lambda request: static("/css/dj_map.css")]
 try:
     from .local_settings import (
         ALLOWED_HOSTS,
+        CSRF_COOKIE_SECURE,
         DATABASES,
         DEBUG,
+        MEDIA_ROOT,
+        MEDIA_URL,
         SECRET_KEY,
-        SESSION_COOKIE_SECURE,
-        CSRF_COOKIE_SECURE,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS,
         SECURE_HSTS_PRELOAD,
         SECURE_HSTS_SECONDS,
-        SECURE_HSTS_INCLUDE_SUBDOMAINS,
-        STATIC_URL,
+        SECURE_SSL_REDIRECT,
+        SESSION_COOKIE_SECURE,
         STATIC_ROOT,
+        STATIC_URL,
         STATICFILES_DIRS,
-        MEDIA_URL,
-        MEDIA_ROOT,
     )
+
+    try:
+        from .local_settings import DAGSTER_URL
+    except ImportError:
+        DAGSTER_URL = None
 except ImportError:
-    print("local_settings.py not imported.")
+    import logging
+    logging.warning("local_settings.py not imported.")

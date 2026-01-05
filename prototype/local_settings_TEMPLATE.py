@@ -38,6 +38,15 @@ STATICFILES_DIRS = []
 MEDIA_URL = ""
 MEDIA_ROOT = ""
 
+# ==============================================================================
+# DATA ORCHESTRATION (OPTIONAL)
+# ==============================================================================
+
+# Dagster Web UI URL (uncomment to enable Dagster link in admin sidebar)
+DAGSTER_URL = None  # Disabled by default
+# DAGSTER_URL = "http://localhost:3000"  # Development
+# DAGSTER_URL = "https://dagster.your-domain.com"  # Production
+
 
 # SECURITY WARNING: Do not set DEBUG = True in production!
 DEBUG = False
@@ -48,6 +57,8 @@ def get_secret_key():
         "You must implement get_secret_key(), for example loading from an environment variable, a file, or another secure source."
     )
 
+
+# Example: SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 try:
     SECRET_KEY = get_secret_key()

@@ -1,0 +1,24 @@
+# Dagster configuration
+# Configuration inherits from Django settings
+
+# Production: Use PostgreSQL
+# storage:
+#   postgres:
+#     postgres_db:
+#       username: { env: DAGSTER_PG_USER }
+#       password: { env: DAGSTER_PG_PASSWORD }
+#       hostname: { env: DAGSTER_PG_HOST }
+#       db_name: { env: DAGSTER_PG_DB }
+#       port: 5432
+
+# Development: SQLite file storage
+storage:
+  sqlite:
+    base_dir: .
+
+run_launcher:
+  module: dagster.core.launcher
+  class: DefaultRunLauncher
+
+telemetry:
+  enabled: false

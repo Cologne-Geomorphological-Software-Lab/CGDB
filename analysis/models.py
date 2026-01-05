@@ -206,8 +206,6 @@ class PollenCount(BaseModel):
 # ======================
 
 
-
-
 def current_year():
     return datetime.date.today().year
 
@@ -679,6 +677,7 @@ class RadiocarbonDating(BaseModel):
 
     def __str__(self):
         return f"{self.lab_id} ({self.age} ka)"
+
 
 CLASSES = [
     0.040,
@@ -1266,7 +1265,6 @@ class MicroXRFElementMap(BaseModel):
         related_name="element_maps",
     )
     ELEMENT_CHOICES = [
-
         ("Al", "Aluminium (Al)"),
         ("As", "Arsenic (As)"),
         ("Ba", "Barium (Ba)"),
@@ -1296,7 +1294,6 @@ class MicroXRFElementMap(BaseModel):
         ("V", "Vanadium (V)"),
         ("Zn", "Zinc (Zn)"),
         ("Zr", "Zirconium (Zr)"),
-
         ("Al2O3", "Aluminium Oxide (Al2O3)"),
         ("As2O3", "Arsenic Trioxide (As2O3)"),
         ("BaSO4", "Barium Sulfate (BaSO4)"),

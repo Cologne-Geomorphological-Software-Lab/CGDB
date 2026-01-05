@@ -18,7 +18,7 @@ class ProjectBasedPermissionMixin:
 
         accessible_projects = get_objects_for_user(
             request.user,
-            "prototype.view_project", 
+            "prototype.view_project",
             klass=Project,
             use_groups=True,
             any_perm=False,
@@ -168,7 +168,7 @@ class NestedProjectPermissionMixin:
 
         accessible_projects = get_objects_for_user(
             request.user,
-            "prototype.view_project",  
+            "prototype.view_project",
             klass=Project,
             use_groups=True,
             any_perm=False,
@@ -231,7 +231,7 @@ class HybridProjectPermissionMixin:
 
         accessible_projects = get_objects_for_user(
             request.user,
-            "prototype.view_project",  
+            "prototype.view_project",
             klass=Project,
             use_groups=True,
             any_perm=False,

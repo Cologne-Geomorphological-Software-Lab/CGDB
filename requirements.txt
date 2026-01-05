@@ -1,13 +1,25 @@
-Django
-Django[Argon2]
-django_crispy_forms
-django-import-export
-django-unfold
-django-guardian
-django-filter
-djangorestframework
-numpy
-matplotlib
-pillow
-psycopg
-python-decouple
+# Core Django & Database
+Django==6.0
+psycopg==3.3.2
+python-decouple==3.8
+
+# Django Extensions & Security
+argon2-cffi==25.1.0
+django-crispy-forms==2.5
+django-filter==25.2
+django-guardian==3.2.0
+django-import-export==4.3.14
+django-unfold==0.75.0
+djangorestframework==3.16.1
+
+# Data Processing & Visualization
+matplotlib==3.10.8
+numpy==2.4.0
+pillow==12.1.0
+
+# Optional: Data Orchestration with Dagster
+dagster==1.12.8
+dagster-webserver==1.12.8
+dagster-postgres==0.28.8
+duckdb==1.4.3
+honcho==2.0.0

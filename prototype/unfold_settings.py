@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.templatetags.static import static
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
@@ -51,6 +52,11 @@ UNFOLD = {
             "icon": "diamond",
             "title": _("Home"),
             "link": reverse_lazy("admin:index"),
+        },
+        {
+            "icon": "diamond",
+            "title": _("Data Orchestration"),
+            "link": getattr(settings, "DAGSTER_URL", None),
         },
     ],
     "EXTENSIONS": {
@@ -251,7 +257,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 def environment_callback(request):
     """Callback has to return a list of two values represeting text value and the color type of the label
     displayed in top right corner."""
-    return ["Production", "danger"]  
+    return ["Production", "danger"]
 
 
 def badge_callback(request):

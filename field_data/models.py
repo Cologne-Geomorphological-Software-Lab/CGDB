@@ -130,9 +130,6 @@ class SampleType(BaseModel):
         return self.word
 
 
-# (Lines 134–151 removed; no replacement needed)
-
-
 class StudyArea(BaseModel):
     """Model representing a study area with various attributes such as label, project, province, geometry, and
     climate classifications.
@@ -302,6 +299,7 @@ class Campaign(BaseModel):
     Methods:
         __str__(): Returns the string representation of the campaign, which is its label.
     """
+
     label = models.CharField(
         max_length=20,
         unique=True,
@@ -952,7 +950,6 @@ class Sample(BaseModel):
                 raise ValidationError(
                     "Sample must have either a project or a location."
                 )
-
 
             if self.project and self.location and self.location.project:
                 if self.location.project != self.project:

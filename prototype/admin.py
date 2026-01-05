@@ -7,9 +7,7 @@ from .models import Project, ProjectUserObjectPermission, Researcher, ResearchGr
 
 
 class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
-    """The base class inherits object-level permissions for data objects via Guardian.
-    """
-
+    """The base class inherits object-level permissions for data objects via Guardian."""
 
     def has_add_permission(self, request, obj=None):
 

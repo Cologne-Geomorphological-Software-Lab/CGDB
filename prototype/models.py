@@ -177,7 +177,6 @@ class Project(BaseModel):
         null=True,
     )
 
-
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),
         ("COMPLETED", "Completed"),

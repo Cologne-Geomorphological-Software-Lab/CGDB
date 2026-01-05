@@ -1,4 +1,5 @@
 from django.contrib.gis import admin
+from guardian.shortcuts import get_objects_for_user
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import (
@@ -8,7 +9,6 @@ from unfold.contrib.filters.admin import (
 )
 
 from analysis.models import GenericMeasurement
-
 from prototype.mixins import (
     HybridProjectPermissionMixin,
     NestedProjectPermissionMixin,
@@ -28,8 +28,6 @@ from .models import (
 )
 from .resources import LocationResource
 
-from import_export.admin import ExportMixin
-from guardian.shortcuts import get_objects_for_user
 
 class MeasurementInline(admin.TabularInline):
     model = GenericMeasurement
@@ -227,6 +225,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
             },
         ),
     )
+
 
 class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_display = [

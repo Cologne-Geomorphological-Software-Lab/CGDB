@@ -16,6 +16,7 @@ from import_export.admin import ExportMixin, ImportExportMixin
 from PIL import Image
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
+
 from prototype.mixins import NestedProjectPermissionMixin
 
 from .models import (
@@ -50,7 +51,7 @@ class AlgorithmAdmin(ExportMixin, ModelAdmin):
 
 
 class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project"  # Define the path to project
+    project_path = "sample__location__project"  
     list_display = [
         "device",
         "accessories",
@@ -101,7 +102,7 @@ class PollenCountInline(TabularInline):
 
 
 class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project"  # Define the path to project
+    project_path = "sample__location__project" 
     inlines = [PollenCountInline]
     list_display = [
         "project",
@@ -299,7 +300,7 @@ class LuminescenceDatingAdmin(ImportExportMixin, ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:  # Nur bei neuer Erstellung
+        if not obj.pk:  
             obj.created_by = request.user
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
@@ -308,7 +309,7 @@ class LuminescenceDatingAdmin(ImportExportMixin, ModelAdmin):
 class RadiocarbonDatingAdmin(
     ImportExportMixin, ModelAdmin, NestedProjectPermissionMixin
 ):
-    project_path = "sample__location__project"  # Define the path to project
+    project_path = "sample__location__project" 
     raw_id_fields = ["sample"]
     list_filter = [
         (
@@ -354,8 +355,31 @@ class GrainSizeImportForm(forms.ModelForm):
 
     def clean_file(self):
         file = self.cleaned_data.get("file")
-        if file and not file.name.endswith(".$av"):
+
+        if not file:
+            return file
+
+        if not file.name.endswith(".$av"):
             raise ValidationError(_("Invalid file type. Only .$av files are allowed."))
+
+        max_size_mb = 10
+        if file.size > max_size_mb * 1024 * 1024:
+            raise ValidationError(
+                _(
+                    f"File size ({file.size / (1024 * 1024):.1f}MB) exceeds maximum allowed size of {max_size_mb}MB."
+                )
+            )
+
+        try:
+            file.seek(0)
+            first_chunk = file.read(1024)
+            file.seek(0)
+
+            if len(first_chunk) == 0:
+                raise ValidationError(_("File is empty or corrupted."))
+        except Exception as e:
+            raise ValidationError(_(f"Unable to read file: {str(e)}"))
+
         return file
 
     class Meta:
@@ -364,7 +388,7 @@ class GrainSizeImportForm(forms.ModelForm):
 
 
 class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project"  # Define the path to project
+    project_path = "sample__location__project" 
     form = GrainSizeImportForm
 
     list_display = [
@@ -548,7 +572,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
                 x=x,
                 y=-0.1,
                 s=str(x),
-                fontsize=21,  # Erhöht auf 14
+                fontsize=21,  
                 verticalalignment="top",
                 horizontalalignment="center",
                 transform=ax.get_xaxis_transform(),
@@ -565,7 +589,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class GenericMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project"  # Define the path to project
+    project_path = "sample__location__project"  
     resource_classes = [GenericMeasurementResource]
     list_display = [
         "sample__location__project__label",
