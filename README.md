@@ -1,4 +1,4 @@
-The Cologne Geomorphological Database System (CGDB)  is a comprehensive information system for managing complex geoscientific research data. It is specifically designed to support small research projects that must adhere to strict data management requirements set by funding bodies but often lack the financial and human resources to do so. The framework supports the transformation of raw research data into scientific knowledge. It addresses critical challenges, such as the rapid increase in the volume, variety, and complexity of geoscientific datasets, data heterogeneity, spatial complexity, and the need to comply with the FAIR (Findable, Accessible, Interoperable, and Reusable) principles. The approach optimises the research management process by enhancing scalability and enabling interdisciplinary integration. It is adaptable to evolving research requirements and supports various data types and methodological approaches, such as machine learning and deep learning, that place high demands on the data and their formats. 
+The Cologne Geomorphological Database System (CGDB)  is a comprehensive information system for managing complex geoscientific research data. It is specifically designed to support small research projects that must adhere to strict data management requirements set by funding bodies but often lack the financial and human resources to do so. The framework supports the transformation of raw research data into scientific knowledge. It addresses critical challenges, such as the rapid increase in the volume, variety, and complexity of geoscientific datasets, data heterogeneity, spatial complexity, and the need to comply with the FAIR (Findable, Accessible, Interoperable, and Reusable) principles. The approach optimizes the research management process by enhancing scalability and enabling interdisciplinary integration. It is adaptable to evolving research requirements and supports various data types and methodological approaches, such as machine learning and deep learning, that place high demands on the data and their formats. 
 
 ![admin_samples](admin_samples.png)
 
@@ -40,7 +40,7 @@ Create a copy of prototype *local_settings_TEMPLATE.py* as *local_settings.py*:
 cp prototype/local_settings_TEMPLATE.py prototype/local_settings.py
 ```
 
-For local development, edit local_settings.py with a text editor or an IDE according to the official Django documentation, especially the section on Geodjango: https://docs.djangoproject.com/en/5.2/ref/contrib/gis/install/ It is advisable to use SpatialLite initially for development. Also set the locations for STATIC_URL and MEDIA_URL. Set DEBUG = True:
+For local development, edit local_settings.py with a text editor or an IDE according to the official Django documentation (especially Geodjango: https://docs.djangoproject.com/en/5.2/ref/contrib/gis/install/). It is advisable to use SpatialLite initially for development. Set DEBUG = True. Also, set STATIC_URL and MEDIA_URL to suitable values (for example, "/static/" and "/media/") as shown below:
 
 ```
 DATABASES = {
@@ -49,6 +49,8 @@ DATABASES = {
         "NAME": "db.sqlite3",
     }
 }
+STATIC_URL = "/static/"
+MEDIA_URL = "/media/"
 ```
 
 Install the geospatial libraries and SpatialLite:
@@ -57,11 +59,14 @@ Install the geospatial libraries and SpatialLite:
 sudo apt-get install binutils libproj-dev gdal-bin libsqlite3-mod-spatialite
 ```
 
-Implement get_secret_key(). For local development, allocate a static key to SECRET_KEY:
+Implement get_secret_key(). Only for local development you can allocate a static key to SECRET_KEY:
 
-```python
+```
+# WARNING: Do NOT use a static or hardcoded secret key in production!
+# Generate a cryptographically secure, random value and NEVER commit real secrets to version control.
+# For development only, you can use a placeholder, but be sure to change this for deployment.
 def get_secret_key():
-    return "YOUR SECRET KEY"
+    return "!! REPLACE WITH A SECURE RANDOM SECRET KEY !!"
 
 SECRET_KEY = get_secret_key()
 ```
