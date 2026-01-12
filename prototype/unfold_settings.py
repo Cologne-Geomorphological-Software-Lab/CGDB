@@ -255,7 +255,7 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 
 
 def environment_callback(request):
-    """Callback has to return a list of two values represeting text value and the color type of the label
+    """Callback has to return a list of two values representing text value and the color type of the label
     displayed in top right corner."""
     label = getattr(settings, "UNFOLD_ENVIRONMENT_LABEL", "Production")
     color = getattr(settings, "UNFOLD_ENVIRONMENT_COLOR", "danger")
