@@ -237,7 +237,7 @@ UNFOLD = {
                         "title": _("Groups"),
                         "icon": "group",
                         "link": reverse_lazy("admin:auth_group_changelist"),
-                        "permissions": ["auth.view_user"],
+                        "permissions": ["auth.view_group"],
                     },
                 ],
             },
@@ -255,14 +255,25 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 
 
 def environment_callback(request):
-    """Callback has to return a list of two values represeting text value and the color type of the label
+    """Callback has to return a list of two values representing text value and the color type of the label
     displayed in top right corner."""
-    return ["Production", "danger"]
+    label = getattr(settings, "UNFOLD_ENVIRONMENT_LABEL", "Production")
+    color = getattr(settings, "UNFOLD_ENVIRONMENT_COLOR", "danger")
+    return [label, color]
 
 
 def badge_callback(request):
-    return 3
+    """
+    Return an integer badge value based on the current user.
+
+    Currently this returns the number of permissions for authenticated users,
+    or 0 for anonymous users.
+    """
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        return 0
+    return len(user.get_all_permissions())
 
 
 def permission_callback(request):
-    return request.user.has_perm("sample_app.change_model")
+    return request.user.has_perm("prototype.change_project")

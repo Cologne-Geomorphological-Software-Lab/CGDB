@@ -1,5 +1,5 @@
 # Core Django & Database
-Django==6.0
+Django[Argon2]>=4.2,<5.0
 psycopg==3.3.2
 python-decouple==3.8
 
