@@ -18,11 +18,11 @@ numpy==2.4.0
 pillow==12.1.0
 
 # Optional: Data Orchestration with Dagster
-dagster==1.12.8
-dagster-webserver==1.12.8
-dagster-postgres==0.28.8
-duckdb==1.4.3
-honcho==2.0.0
+# dagster==1.12.8
+# dagster-webserver==1.12.8
+# dagster-postgres==0.28.8
+# duckdb==1.4.3
+# honcho==2.0.0
 
 # Code Quality
 pre-commit
