@@ -62,6 +62,6 @@ def get_secret_key():
 
 try:
     SECRET_KEY = get_secret_key()
-except Exception as e:
+except Exception:
     logging.error("Error while loading SECRET_KEY.")
     raise

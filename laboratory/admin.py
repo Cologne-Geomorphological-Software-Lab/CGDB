@@ -2,15 +2,7 @@ from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
 
-from .models import (
-    Accessory,
-    AccessoryParameter,
-    Calibration,
-    Device,
-    Firmware,
-    Manufacturer,
-    Method,
-)
+from .models import Accessory, AccessoryParameter, Calibration, Device, Firmware, Manufacturer, Method
 
 
 class ManufacturerAdmin(ModelAdmin):

@@ -2,11 +2,7 @@ from django.contrib.gis import admin
 from guardian.shortcuts import get_objects_for_user
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
-from unfold.contrib.filters.admin import (
-    ChoicesDropdownFilter,
-    RangeDateFilter,
-    RelatedDropdownFilter,
-)
+from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter, RelatedDropdownFilter
 
 from analysis.models import GenericMeasurement
 from prototype.mixins import (
@@ -16,16 +12,7 @@ from prototype.mixins import (
 )
 from prototype.models import Project
 
-from .models import (
-    Campaign,
-    ExposureType,
-    Layer,
-    Location,
-    Sample,
-    SampleType,
-    Site,
-    StudyArea,
-)
+from .models import Campaign, ExposureType, Layer, Location, Sample, SampleType, Site, StudyArea
 from .resources import LocationResource
 
 
@@ -249,7 +236,7 @@ class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
                     "geometry",
                     "climate_koeppen",
                     "ecozone_schultz",
-                )
+                ),
             },
         ),
     )
@@ -275,7 +262,7 @@ class SiteAdmin(
                 "fields": (
                     "label",
                     "study_area",
-                )
+                ),
             },
         ),
     )
@@ -320,7 +307,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
                     "date_end",
                     "destination_country",
                     "study_areas",
-                )
+                ),
             },
         ),
     )
@@ -418,7 +405,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
 
         accessible_project_ids = accessible_projects.values_list("id", flat=True)
         filtered_qs = Sample.objects.filter(
-            location__project_id__in=accessible_project_ids
+            location__project_id__in=accessible_project_ids,
         )
 
         return filtered_qs
@@ -426,23 +413,23 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     def has_change_permission(self, request, obj=None):
         if obj is None:
             return True
-        change_perm = f"organisation.change_project"
+        change_perm = "organisation.change_project"
         return request.user.has_perm(change_perm, obj.project)
 
     def has_view_permission(self, request, obj=None):
         if obj is None:
             return True
-        view_perm = f"organisation.view_project"
+        view_perm = "organisation.view_project"
         return request.user.has_perm(view_perm, obj.project)
 
     def has_delete_permission(self, request, obj=None):
         if obj is None:
             return True
-        delete_perm = f"organisation.delete_project"
+        delete_perm = "organisation.delete_project"
         return request.user.has_perm(delete_perm, obj.project)
 
     def has_add_permission(self, request):
-        add_perm = f"organisation.add_project"
+        add_perm = "organisation.add_project"
         return request.user.has_perm(add_perm)
 
 

@@ -39,9 +39,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="rawmeasurement",
             name="sample",
-            field=models.ManyToManyField(
-                related_name="analysis_raw_data", to="field_data.sample"
-            ),
+            field=models.ManyToManyField(related_name="analysis_raw_data", to="field_data.sample"),
         ),
         migrations.AddField(
             model_name="rawmeasurement",

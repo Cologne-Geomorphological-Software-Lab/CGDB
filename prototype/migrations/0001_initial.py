@@ -184,9 +184,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "public",
-                    models.BooleanField(
-                        default=False, help_text="Is the project currently public?"
-                    ),
+                    models.BooleanField(default=False, help_text="Is the project currently public?"),
                 ),
                 (
                     "created_by",

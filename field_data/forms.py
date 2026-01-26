@@ -23,24 +23,24 @@ class CampaignForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "readonly": "readonly",
-                }
+                },
             ),
             "date_start": forms.DateInput(
                 attrs={
                     "class": "form-control",
                     "type": "date",
-                }
+                },
             ),
             "date_end": forms.DateInput(
                 attrs={
                     "class": "form-control",
                     "type": "date",
-                }
+                },
             ),
             "destination_country": forms.Select(
                 attrs={
                     "class": "form-control",
-                }
+                },
             ),
             "season": forms.Select(attrs={"class": "form-control"}),
         }
@@ -147,7 +147,7 @@ class SampleForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "readonly": "readonly",
-                }
+                },
             ),
         }
 

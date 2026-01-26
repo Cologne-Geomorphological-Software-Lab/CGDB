@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 import datetime
 import json
 import os
+from pathlib import Path
+from typing import Self
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -13,6 +18,17 @@ from prototype.models import BaseModel, Project, Researcher
 
 
 class Algorithm(models.Model):
+    """Represents an analysis algorithm.
+
+    Attributes:
+        name (CharField): Name of the algorithm.
+        version (CharField): Version of the algorithm.
+        description (TextField): Description of the algorithm.
+        link (URLField): Link to the algorithm resource.
+        file (FileField): File containing the algorithm.
+        programming_language (CharField): Programming language used.
+    """
+
     name = models.CharField(max_length=100)
     version = models.CharField(max_length=10)
     description = models.TextField(blank=True, null=True)
@@ -35,14 +51,28 @@ class Algorithm(models.Model):
 
 
 class RawMeasurement(BaseModel):
-    """Raw data model for storing uploaded files."""
+    """Raw data model for storing uploaded files.
+
+    Attributes:
+        project (ForeignKey): Project associated with the measurement.
+        sample (ManyToManyField): Samples associated with the measurement.
+        device (ForeignKey): Device used for measurement.
+        accessories (ForeignKey): Accessories used.
+        researcher (ForeignKey): Researcher who performed the measurement.
+        file (FileField): Uploaded raw data file.
+        description (TextField): Description of the measurement.
+    """
 
     project = models.ForeignKey(
-        Project, on_delete=models.CASCADE, related_name="analysis_raw_data"
+        Project,
+        on_delete=models.CASCADE,
+        related_name="analysis_raw_data",
     )
     sample = models.ManyToManyField(Sample, related_name="analysis_raw_data")
     device = models.ForeignKey(
-        Device, on_delete=models.CASCADE, related_name="analysis_raw_data"
+        Device,
+        on_delete=models.CASCADE,
+        related_name="analysis_raw_data",
     )
     accessories = models.ForeignKey(
         Accessory,
@@ -52,28 +82,47 @@ class RawMeasurement(BaseModel):
         null=True,
     )
     researcher = models.ForeignKey(
-        Researcher, on_delete=models.CASCADE, related_name="analysis_raw_data"
+        Researcher,
+        on_delete=models.CASCADE,
+        related_name="analysis_raw_data",
     )
     file = models.FileField(upload_to="analysis/raw_data/")
     description = models.TextField(blank=True, null=True)
 
     def filename(self):
-        return os.path.basename(self.file.name)
+        return Path.name(self.file.name)
 
     def __str__(self):
         return f"{self.sample} - {self.filename()}"
 
 
 class RawProcessing(BaseModel):
+    """Model for storing processed data derived from raw measurements.
+
+    Attributes:
+        raw_measurement (ForeignKey): Reference to the raw measurement.
+        processed_file (FileField): File containing processed data.
+        processing_description (TextField): Description of the processing.
+        processed_by (ForeignKey): Researcher who processed the data.
+        processing_date (DateField): Date of processing.
+        preparation_algorithm (ForeignKey): Algorithm used for preparation.
+        evaluation_algorithm (ForeignKey): Algorithm used for evaluation.
+        publication (ForeignKey): Reference to publication.
+    """
+
     raw_measurement = models.ForeignKey(
-        RawMeasurement, on_delete=models.CASCADE, related_name="analysis_raw_processing"
+        RawMeasurement,
+        on_delete=models.CASCADE,
+        related_name="analysis_raw_processing",
     )
 
     processed_file = models.FileField(upload_to="analysis/processed_data/")
     processing_description = models.TextField(blank=True, null=True)
 
     processed_by = models.ForeignKey(
-        Researcher, on_delete=models.CASCADE, related_name="analysis_processed_data"
+        Researcher,
+        on_delete=models.CASCADE,
+        related_name="analysis_processed_data",
     )
     processing_date = models.DateField(auto_now_add=True)
 
@@ -101,12 +150,10 @@ class RawProcessing(BaseModel):
     )
 
     def processed_filename(self):
-        return os.path.basename(self.processed_file.name)
+        return Path.name(self.processed_file.name)
 
     def __str__(self):
-        return (
-            f"Processed data for {self.raw_measurement} - {self.processed_filename()}"
-        )
+        return f"Processed data for {self.raw_measurement} - {self.processed_filename()}"
 
 
 # ======================
@@ -115,10 +162,18 @@ class RawProcessing(BaseModel):
 
 
 class Counting(BaseModel):
-    """Counting model for paleobotany analysis."""
+    """Counting model for paleobotany analysis.
+
+    Attributes:
+        sample (ForeignKey): Sample associated with the counting.
+        raw_data (ForeignKey): Raw measurement data.
+        type (CharField): Type of counting (Percent or Absolute numbers).
+    """
 
     sample = models.ForeignKey(
-        Sample, on_delete=models.RESTRICT, related_name="analysis_countings"
+        Sample,
+        on_delete=models.RESTRICT,
+        related_name="analysis_countings",
     )
     raw_data = models.ForeignKey(
         RawMeasurement,
@@ -148,7 +203,15 @@ class Counting(BaseModel):
 
 
 class Pollen(BaseModel):
-    """Pollen species model for paleobotany analysis."""
+    """Pollen species model for paleobotany analysis.
+
+    Attributes:
+        name (CharField): Name in Latin.
+        token (CharField): Short token for the pollen.
+        name_en (CharField): Name in English.
+        name_german (CharField): Name in German.
+        name_nor (CharField): Name in Norwegian.
+    """
 
     name = models.CharField(max_length=250, help_text="Name in Latin")
     token = models.CharField(max_length=5)
@@ -157,21 +220,18 @@ class Pollen(BaseModel):
         help_text="Name in English",
         verbose_name="English name",
         blank=True,
-        null=True,
     )
     name_german = models.CharField(
         max_length=250,
         help_text="Name in German",
         verbose_name="German name",
         blank=True,
-        null=True,
     )
     name_nor = models.CharField(
         max_length=250,
         help_text="Name in Norwegian",
         verbose_name="Norwegian name",
         blank=True,
-        null=True,
     )
 
     class Meta:
@@ -183,13 +243,23 @@ class Pollen(BaseModel):
 
 
 class PollenCount(BaseModel):
-    """Pollen count model linking counting and pollen species."""
+    """Pollen count model linking counting and pollen species.
+
+    Attributes:
+        counting (ForeignKey): Reference to Counting.
+        pollen (ForeignKey): Reference to Pollen.
+        number (IntegerField): Number of pollen counted.
+    """
 
     counting = models.ForeignKey(
-        Counting, on_delete=models.RESTRICT, related_name="analysis_pollen_counts"
+        Counting,
+        on_delete=models.RESTRICT,
+        related_name="analysis_pollen_counts",
     )
     pollen = models.ForeignKey(
-        Pollen, on_delete=models.RESTRICT, related_name="analysis_pollen_counts"
+        Pollen,
+        on_delete=models.RESTRICT,
+        related_name="analysis_pollen_counts",
     )
     number = models.IntegerField()
 
@@ -207,7 +277,7 @@ class PollenCount(BaseModel):
 
 
 def current_year():
-    return datetime.date.today().year
+    return datetime.datetime.now(tz=ZoneInfo("Europe/Berlin")).date().year
 
 
 def max_value_current_year(value):
@@ -215,11 +285,69 @@ def max_value_current_year(value):
 
 
 class LuminescenceDating(BaseModel):
+    """Model representing luminescence dating information for a sample.
+
+    Attributes:
+        laboratory_id (CharField): Laboratory identifier.
+        sample (ForeignKey): Sample being dated.
+        raw_data (ForeignKey): Raw measurement data.
+        sample_id_cll (CharField): Sample ID CLL.
+        mineral (CharField): Mineral type.
+        dating_approach (CharField): Dating approach.
+        luminescence_age (DecimalField): Age in kiloannum.
+        age_error (DecimalField): Error in age.
+        signal (CharField): Signal type.
+        protocol (CharField): Protocol used.
+        palaeodose_value (DecimalField): Palaeodose value.
+        palaeodose_error (DecimalField): Error in palaeodose.
+        dose_rate (DecimalField): Dose rate.
+        dose_rate_error (DecimalField): Error in dose rate.
+        published (BooleanField): Publication status.
+        year_of_publication (PositiveIntegerField): Year of publication.
+        thesis (CharField): Thesis type.
+        comments (TextField): Additional comments.
+        grain_size_min (IntegerField): Minimum grain size.
+        grain_size_max (IntegerField): Maximum grain size.
+        aliquot_size (CharField): Aliquot size.
+        aliquot_number_used_for_palaeodose (IntegerField): Number of aliquots used.
+        od_percent (DecimalField): Overdispersion percent.
+        od_percent_error (DecimalField): Error in overdispersion percent.
+        od_gy (DecimalField): Overdispersion in Gy.
+        od_gy_error (DecimalField): Error in overdispersion Gy.
+        age_model (CharField): Age model used.
+        beta_source_calibration (CharField): Beta source calibration.
+        instrumental_beta_source_error (DecimalField): Instrumental error.
+        uncertainty_beta_source_calibration (PositiveIntegerField): Uncertainty in calibration.
+        fading_correction (BooleanField): Fading correction applied.
+        g_value (DecimalField): g-value.
+        g_value_error (DecimalField): Error in g-value.
+        Lnat_Lsat_ratio (DecimalField): L_na/L_sat ratio.
+        dose_rate_measurement_technique (CharField): Dose rate measurement technique.
+        dose_rate_calculation_software (CharField): Dose rate calculation software.
+        u_ppm (DecimalField): Uranium concentration.
+        u_ppm_error (DecimalField): Error in uranium concentration.
+        th_ppm (DecimalField): Thorium concentration.
+        th_ppm_error (DecimalField): Error in thorium concentration.
+        k_percent (DecimalField): Potassium concentration.
+        k_percent_error (DecimalField): Error in potassium concentration.
+        water_content_for_dating (DecimalField): Water content for dating.
+        water_content_for_dating_error (DecimalField): Error in water content.
+        a_value (DecimalField): a-value.
+        a_value_error (DecimalField): Error in a-value.
+        alpha_dose_rate (DecimalField): Alpha dose rate.
+        alpha_dose_rate_error (DecimalField): Error in alpha dose rate.
+        beta_dose_rate (DecimalField): Beta dose rate.
+        beta_dose_rate_error (DecimalField): Error in beta dose rate.
+        gamma_dose_rate (DecimalField): Gamma dose rate.
+        gamma_dose_rate_error (DecimalField): Error in gamma dose rate.
+        cosmic_dose_rate (DecimalField): Cosmic dose rate.
+        cosmic_dose_rate_error (DecimalField): Error in cosmic dose rate.
+    """
+
     laboratory_id = models.CharField(
         max_length=15,
         verbose_name="Laboratory ID",
         blank=True,
-        null=True,
     )
     sample = models.ForeignKey(
         Sample,
@@ -236,7 +364,6 @@ class LuminescenceDating(BaseModel):
     sample_id_cll = models.CharField(
         max_length=15,
         blank=True,
-        null=True,
         verbose_name="Sample ID CLL",
     )
 
@@ -250,7 +377,6 @@ class LuminescenceDating(BaseModel):
         max_length=11,
         choices=CHOICES_MINERAL,
         blank=True,
-        null=True,
     )
 
     CHOICES_DATING_APPROACH = [
@@ -262,7 +388,6 @@ class LuminescenceDating(BaseModel):
         max_length=18,
         choices=CHOICES_DATING_APPROACH,
         blank=True,
-        null=True,
     )
 
     luminescence_age = models.DecimalField(
@@ -284,13 +409,11 @@ class LuminescenceDating(BaseModel):
     signal = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
         help_text="BSL/IRSL/pIRSL/TL/…",
     )
     protocol = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
         help_text="SAR/MAAD/…",
     )
 
@@ -349,7 +472,6 @@ class LuminescenceDating(BaseModel):
         choices=CHOICES_THESIS,
         default="None",
         blank=True,
-        null=True,
     )
 
     comments = models.TextField(
@@ -370,7 +492,6 @@ class LuminescenceDating(BaseModel):
     aliquot_size = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
     )
 
     aliquot_number_used_for_palaeodose = models.IntegerField(
@@ -413,14 +534,12 @@ class LuminescenceDating(BaseModel):
     age_model = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
         help_text="CAM/MAM/AM/FMM/…",
     )
 
     beta_source_calibration = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
         default="2019-2",
     )
 
@@ -470,13 +589,11 @@ class LuminescenceDating(BaseModel):
     dose_rate_measurement_technique = models.CharField(
         max_length=50,
         blank=True,
-        null=True,
     )
 
     dose_rate_calculation_software = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
     )
 
     u_ppm = models.DecimalField(
@@ -631,21 +748,14 @@ class LuminescenceDating(BaseModel):
 
 
 class RadiocarbonDating(BaseModel):
-    """The model represents radiocarbon dating information for a sample.
+    """Represents radiocarbon dating information for a sample.
 
     Attributes:
-        sample (ForeignKey): A foreign key to the Sample model.
-        lab (CharField): The name of the laboratory where the dating was performed.
-        lab_id (CharField): The identifier of the sample in the laboratory.
-        age (DecimalField): The age of the sample in kiloannum (ka), with up to 8 digits and 3 decimal places.
-
-    Meta:
-        ordering (list): Orders the records by 'lab_id'.
-
-    LAB_CHOICES (list of tuples): Choices for the lab field, including "Poznań", "Beta Analytics", and "Other".
-
-    Methods:
-        __str__(): Returns a string representation of the sample.
+        sample (ForeignKey): Sample being dated.
+        raw_data (ForeignKey): Raw measurement data.
+        lab (CharField): Laboratory name.
+        lab_id (CharField): Laboratory identifier for the sample.
+        age (DecimalField): Age in kiloannum.
     """
 
     LAB_CHOICES = [
@@ -816,6 +926,17 @@ def default_classes():
 
 
 class Parameter(BaseModel):
+    """Represents a physical parameter for measurement.
+
+    Attributes:
+        name (CharField): Name of the parameter.
+        token (CharField): Short token for the parameter.
+        unit (CharField): Physical unit.
+        minimal_limit (FloatField): Minimal limit for the parameter.
+        maximal_limit (FloatField): Maximal limit for the parameter.
+        classes (JSONField): Classes for unstructured list data.
+    """
+
     name = models.CharField(max_length=40)
     token = models.CharField(max_length=10)
     UNIT_CHOICES = [
@@ -856,20 +977,33 @@ class Parameter(BaseModel):
 
 
 class MeasurementSeries(BaseModel):
+    """Represents a series of measurements.
+
+    Attributes:
+        datetime (DateTimeField): Date and time of the measurement series.
+    """
+
     datetime = models.DateTimeField()
 
 
 class GenericMeasurement(BaseModel):
-    """The model GeochemistryMeasurement lists all distinct geochemical measurements and is independent of
-    measured results, stored in the separate model :model:`laboratory.result`.
+    """Lists all distinct generic measurements, independent of measured results.
 
-    This ensures complete documentation of all individual measurements without
-    changing or overwriting attribute values in the linked models :model:`profiles.sample` or
-    :model:`laboratory.result`. It also ensures that measurements without results are documented.
+    Attributes:
+        sample (ForeignKey): Sample associated with the measurement.
+        raw_data (ForeignKey): Raw measurement data.
+        MeasurementSeries (ForeignKey): Measurement series.
+        sample_weight (FloatField): Weight of the sample.
+        method (ForeignKey): Method used for measurement.
+        parameter (ForeignKey): Parameter measured.
+        value (FloatField): Measured value.
+        error (FloatField): Error in measurement.
     """
 
     sample = models.ForeignKey(
-        Sample, related_name="generic_measurements", on_delete=models.CASCADE
+        Sample,
+        related_name="generic_measurements",
+        on_delete=models.CASCADE,
     )
     raw_data = models.ForeignKey(
         RawMeasurement,
@@ -913,28 +1047,34 @@ class GenericMeasurement(BaseModel):
 
 
 class GrainSize(BaseModel):
-    """GrainSize model represents the grain size distribution of a sediment sample.
+    """Represents the grain size distribution of a sediment sample.
 
     Attributes:
         sample (ForeignKey): Reference to the Sample model.
-        sample_weight (FloatField): Weight of the sample, optional.
-        sample_concentration (FloatField): Concentration of the sample, optional.
-        method (CharField): Method used for grain size measurement, choices are "Laser diffraction", "Camsizer", and "Sieves".
-        classes (JSONField): JSON field for determining the classes of the raw grain size measurement.
-        measured_data (JSONField): JSON field containing the raw grain size measurement data, optional.
-        clay (FloatField): Percentage of clay in the sample, optional.
-        fine_silt (FloatField): Percentage of fine silt in the sample, optional.
-        medium_silt (FloatField): Percentage of medium silt in the sample, optional.
-        coarse_silt (FloatField): Percentage of coarse silt in the sample, optional.
-        fine_sand (FloatField): Percentage of fine sand in the sample, optional.
-        medium_sand (FloatField): Percentage of medium sand in the sample, optional.
-        coarse_sand (FloatField): Percentage of coarse sand in the sample, optional.
-
-    Methods:
-        _reclassify(): Reclassifies the measured data into different grain size categories and calculates their percentages.
-        save(*args, **kwargs): Overrides the save method to reclassify measured data before saving.
-        __str__(): Returns a string representation of the GrainSize instance.
-        from_file(cls, file_path, sample, method): Class method to create an instance of GrainSize from a file.
+        raw_data (ForeignKey): Raw measurement data.
+        sample_weight (FloatField): Weight of the sample.
+        sample_concentration (FloatField): Concentration of the sample.
+        method (CharField): Method used for grain size measurement.
+        classes (JSONField): Classes of the raw grain size measurement.
+        measured_data (JSONField): Raw grain size measurement data.
+        clay (FloatField): Percentage of clay.
+        fine_silt (FloatField): Percentage of fine silt.
+        medium_silt (FloatField): Percentage of medium silt.
+        coarse_silt (FloatField): Percentage of coarse silt.
+        fine_sand (FloatField): Percentage of fine sand.
+        medium_sand (FloatField): Percentage of medium sand.
+        coarse_sand (FloatField): Percentage of coarse sand.
+        mean (FloatField): Mean grain size.
+        mode (FloatField): Mode grain size.
+        median (FloatField): Median grain size.
+        std (FloatField): Standard deviation.
+        skew (FloatField): Skewness.
+        kurtosis (FloatField): Kurtosis.
+        fwmean (FloatField): Folk & Ward mean.
+        fwmedian (FloatField): Folk & Ward median.
+        fwsd (FloatField): Folk & Ward standard deviation.
+        fwskew (FloatField): Folk & Ward skewness.
+        fwkurt (FloatField): Folk & Ward kurtosis.
     """
 
     sample = models.ForeignKey(
@@ -954,7 +1094,9 @@ class GrainSize(BaseModel):
         null=True,
     )
     sample_concentration = models.FloatField(
-        blank=True, null=True, verbose_name="Sample concentration [%]"
+        blank=True,
+        null=True,
+        verbose_name="Sample concentration [%]",
     )
     CHOICES = [
         ("L", "Laser diffraction"),
@@ -1058,7 +1200,7 @@ class GrainSize(BaseModel):
         verbose_name="Folk & Ward Kurtosis",
     )
 
-    def _reclassify(self):
+    def _reclassify(self) -> tuple[float, float, float, float, float, float, float]:
         if isinstance(self.measured_data, str):
             self.measured_data = json.loads(self.measured_data)
         elif isinstance(self.measured_data, list):
@@ -1073,7 +1215,7 @@ class GrainSize(BaseModel):
         self.medium_sand = 0
         self.coarse_sand = 0
 
-        for index, (item, data) in enumerate(zip(self.classes, self.measured_data)):
+        for item, data in enumerate(zip(self.classes, self.measured_data)):
             if item < 2:
                 self.clay += data
             elif item < 6.3:
@@ -1128,20 +1270,21 @@ class GrainSize(BaseModel):
         verbose_name_plural = "Grain size"
 
     @classmethod
-    def from_file(cls, file_path, sample, method):
+    def from_file(cls, file_path, sample, method) -> Self:
         """Create an instance of the class from a file.
 
         Args:
             file_path (str): The path to the file to read.
             sample (str): The sample identifier.
             method (str): The method used for measurement.
+
         Returns:
             An instance of the class with data populated from the file.
         The file should have sections denoted by square brackets, e.g., [CLASSES] and [MEASURED_DATA].
         The data under [CLASSES] should be float values representing different classes.
         The data under [MEASURED_DATA] should be float values representing measured data.
         """
-        with open(file_path, "r", encoding="latin-1", errors="ignore") as file:
+        with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
             lines = file.readlines()
 
         classes = []
@@ -1213,7 +1356,7 @@ class GrainSize(BaseModel):
         try:
             sample_concentration = sum(concentration) / len(concentration)
         except (ZeroDivisionError, TypeError):
-            raise ValueError("No concentration data found in the file.")
+            raise ValueError("No concentration data found in the file.") from None
 
         return cls(
             sample=sample,
@@ -1236,13 +1379,24 @@ class GrainSize(BaseModel):
 
 
 class MicroXRFMeasurement(BaseModel):
+    """Represents a MicroXRF measurement for a sample.
+
+    Attributes:
+        sample (ForeignKey): Sample measured.
+        measurement_date (DateField): Date of measurement.
+        method (ForeignKey): Method or device used.
+        notes (TextField): Additional notes.
+    """
+
     sample = models.ForeignKey(
         Sample,
         on_delete=models.CASCADE,
         related_name="microxrf_measurements",
     )
     measurement_date = models.DateField(
-        blank=True, null=True, help_text="Date of measurement"
+        blank=True,
+        null=True,
+        help_text="Date of measurement",
     )
     method = models.ForeignKey(
         Method,
@@ -1259,6 +1413,15 @@ class MicroXRFMeasurement(BaseModel):
 
 
 class MicroXRFElementMap(BaseModel):
+    """Represents an element map from a MicroXRF measurement.
+
+    Attributes:
+        measurement (ForeignKey): Reference to MicroXRFMeasurement.
+        element (CharField): Element or compound mapped.
+        raster_file (FileField): Path to raster file (.tif).
+        unit (CharField): Unit of measurement.
+    """
+
     measurement = models.ForeignKey(
         MicroXRFMeasurement,
         on_delete=models.CASCADE,
@@ -1328,10 +1491,13 @@ class MicroXRFElementMap(BaseModel):
         choices=ELEMENT_CHOICES,
     )
     raster_file = models.FileField(
-        upload_to="microxrf_raster/", help_text="Pfad zur .tif Rasterdatei"
+        upload_to="microxrf_raster/",
+        help_text="Pfad zur .tif Rasterdatei",
     )
     unit = models.CharField(
-        max_length=20, default="counts", help_text="Einheit (z.B. counts, ppm, %)"
+        max_length=20,
+        default="counts",
+        help_text="Einheit (z.B. counts, ppm, %)",
     )
 
     def __str__(self):

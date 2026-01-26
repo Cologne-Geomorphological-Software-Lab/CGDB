@@ -35,9 +35,7 @@ class Migration(migrations.Migration):
                 ("link", models.URLField(blank=True, null=True)),
                 (
                     "file",
-                    models.FileField(
-                        blank=True, null=True, upload_to="analysis/algorithms/"
-                    ),
+                    models.FileField(blank=True, null=True, upload_to="analysis/algorithms/"),
                 ),
                 (
                     "programming_language",
@@ -91,9 +89,7 @@ class Migration(migrations.Migration):
                 ("sample_weight", models.FloatField(blank=True, null=True)),
                 (
                     "sample_concentration",
-                    models.FloatField(
-                        blank=True, null=True, verbose_name="Sample concentration [%]"
-                    ),
+                    models.FloatField(blank=True, null=True, verbose_name="Sample concentration [%]"),
                 ),
                 (
                     "method",
@@ -133,9 +129,7 @@ class Migration(migrations.Migration):
                 ("median", models.FloatField(blank=True, null=True)),
                 (
                     "std",
-                    models.FloatField(
-                        blank=True, null=True, verbose_name="Standard Deviation"
-                    ),
+                    models.FloatField(blank=True, null=True, verbose_name="Standard Deviation"),
                 ),
                 (
                     "skew",
@@ -144,15 +138,11 @@ class Migration(migrations.Migration):
                 ("kurtosis", models.FloatField(blank=True, null=True)),
                 (
                     "fwmean",
-                    models.FloatField(
-                        blank=True, null=True, verbose_name="Folk & Ward Mean"
-                    ),
+                    models.FloatField(blank=True, null=True, verbose_name="Folk & Ward Mean"),
                 ),
                 (
                     "fwmedian",
-                    models.FloatField(
-                        blank=True, null=True, verbose_name="Folk & Ward Median"
-                    ),
+                    models.FloatField(blank=True, null=True, verbose_name="Folk & Ward Median"),
                 ),
                 (
                     "fwsd",
@@ -164,15 +154,11 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "fwskew",
-                    models.FloatField(
-                        blank=True, null=True, verbose_name="Folk & Ward Skewness"
-                    ),
+                    models.FloatField(blank=True, null=True, verbose_name="Folk & Ward Skewness"),
                 ),
                 (
                     "fwkurt",
-                    models.FloatField(
-                        blank=True, null=True, verbose_name="Folk & Ward Kurtosis"
-                    ),
+                    models.FloatField(blank=True, null=True, verbose_name="Folk & Ward Kurtosis"),
                 ),
             ],
             options={
@@ -268,9 +254,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "protocol",
-                    models.CharField(
-                        blank=True, help_text="SAR/MAAD/…", max_length=30, null=True
-                    ),
+                    models.CharField(blank=True, help_text="SAR/MAAD/…", max_length=30, null=True),
                 ),
                 (
                     "palaeodose_value",
@@ -403,15 +387,11 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "beta_source_calibration",
-                    models.CharField(
-                        blank=True, default="2019-2", max_length=30, null=True
-                    ),
+                    models.CharField(blank=True, default="2019-2", max_length=30, null=True),
                 ),
                 (
                     "instrumental_beta_source_error",
-                    models.DecimalField(
-                        blank=True, decimal_places=3, max_digits=7, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=3, max_digits=7, null=True),
                 ),
                 (
                     "uncertainty_beta_source_calibration",
@@ -542,15 +522,11 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "a_value",
-                    models.DecimalField(
-                        blank=True, decimal_places=4, max_digits=8, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=4, max_digits=8, null=True),
                 ),
                 (
                     "a_value_error",
-                    models.DecimalField(
-                        blank=True, decimal_places=4, max_digits=8, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=4, max_digits=8, null=True),
                 ),
                 (
                     "alpha_dose_rate",
@@ -769,9 +745,7 @@ class Migration(migrations.Migration):
                 ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
                 (
                     "measurement_date",
-                    models.DateField(
-                        blank=True, help_text="Date of measurement", null=True
-                    ),
+                    models.DateField(blank=True, help_text="Date of measurement", null=True),
                 ),
                 ("notes", models.TextField(blank=True, null=True)),
             ],

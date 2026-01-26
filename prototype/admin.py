@@ -24,7 +24,7 @@ class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
         if not change and obj.pk:
             from django.db import transaction
 
-            def assign_permissions():
+            def assign_permissions() -> None:
                 model_name = self.opts.model_name
                 assign_perm(f"view_{model_name}", request.user, obj)
                 assign_perm(f"change_{model_name}", request.user, obj)

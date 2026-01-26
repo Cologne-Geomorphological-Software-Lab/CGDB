@@ -2,7 +2,7 @@ import base64
 import io
 import os
 
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from django import forms
 from django.contrib import admin, messages
@@ -35,7 +35,7 @@ from .models import (
     RawProcessing,
 )
 
-matplotlib.use("Agg")
+mpl.use("Agg")
 
 # ======================
 # RAW DATA ADMIN
@@ -51,7 +51,7 @@ class AlgorithmAdmin(ExportMixin, ModelAdmin):
 
 
 class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project"  
+    project_path = "sample__location__project"
     list_display = [
         "device",
         "accessories",
@@ -102,7 +102,7 @@ class PollenCountInline(TabularInline):
 
 
 class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project" 
+    project_path = "sample__location__project"
     inlines = [PollenCountInline]
     list_display = [
         "project",
@@ -189,15 +189,12 @@ class LuminescenceDatingAdmin(ImportExportMixin, ModelAdmin):
             ChoicesDropdownFilter,
         ),
     ]
-    list_filter_sheet = False
-    list_filter_submit = True
 
     def age(self, obj):
         if obj.luminescence_age:
             entry = f"{round(obj.luminescence_age, 2)} ± {round(obj.age_error, 2)}"
             return entry
-        else:
-            return "Not available"
+        return "Not available"
 
     age.short_description = "Luminescence age [ka]"
 
@@ -205,19 +202,15 @@ class LuminescenceDatingAdmin(ImportExportMixin, ModelAdmin):
         if obj.dose_rate:
             entry = f"{round(obj.dose_rate, 2)} ± {round(obj.dose_rate_error, 2)}"
             return entry
-        else:
-            return "Not available"
+        return "Not available"
 
     total_dose_rate.short_description = "Dose rate [Gy/ka]"
 
     def paleodose(self, obj):
         if obj.palaeodose_value:
-            entry = (
-                f"{round(obj.palaeodose_value, 2)} ± {round(obj.palaeodose_error, 2)}"
-            )
+            entry = f"{round(obj.palaeodose_value, 2)} ± {round(obj.palaeodose_error, 2)}"
             return entry
-        else:
-            return "Not available"
+        return "Not available"
 
     paleodose.short_description = "Paleodose [Gy]"
 
@@ -300,16 +293,18 @@ class LuminescenceDatingAdmin(ImportExportMixin, ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        if not obj.pk:  
+        if not obj.pk:
             obj.created_by = request.user
         obj.updated_by = request.user
         super().save_model(request, obj, form, change)
 
 
 class RadiocarbonDatingAdmin(
-    ImportExportMixin, ModelAdmin, NestedProjectPermissionMixin
+    ImportExportMixin,
+    ModelAdmin,
+    NestedProjectPermissionMixin,
 ):
-    project_path = "sample__location__project" 
+    project_path = "sample__location__project"
     raw_id_fields = ["sample"]
     list_filter = [
         (
@@ -366,8 +361,8 @@ class GrainSizeImportForm(forms.ModelForm):
         if file.size > max_size_mb * 1024 * 1024:
             raise ValidationError(
                 _(
-                    f"File size ({file.size / (1024 * 1024):.1f}MB) exceeds maximum allowed size of {max_size_mb}MB."
-                )
+                    f"File size ({file.size / (1024 * 1024):.1f}MB) exceeds maximum allowed size of {max_size_mb}MB.",
+                ),
             )
 
         try:
@@ -378,7 +373,7 @@ class GrainSizeImportForm(forms.ModelForm):
             if len(first_chunk) == 0:
                 raise ValidationError(_("File is empty or corrupted."))
         except Exception as e:
-            raise ValidationError(_(f"Unable to read file: {str(e)}"))
+            raise ValidationError(_(f"Unable to read file: {e!s}")) from None
 
         return file
 
@@ -388,7 +383,7 @@ class GrainSizeImportForm(forms.ModelForm):
 
 
 class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project" 
+    project_path = "sample__location__project"
     form = GrainSizeImportForm
 
     list_display = [
@@ -550,7 +545,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
             color = "red"
         rounded_concentration = round(obj.sample_concentration, 1)
         return mark_safe(
-            f'<span style="color: {color};">{rounded_concentration}</span>'
+            f'<span style="color: {color};">{rounded_concentration}</span>',
         )
 
     colored_sample_concentration.short_description = "Sample concentration [%]"
@@ -572,7 +567,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
                 x=x,
                 y=-0.1,
                 s=str(x),
-                fontsize=21,  
+                fontsize=21,
                 verticalalignment="top",
                 horizontalalignment="center",
                 transform=ax.get_xaxis_transform(),
@@ -589,7 +584,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class GenericMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project"  
+    project_path = "sample__location__project"
     resource_classes = [GenericMeasurementResource]
     list_display = [
         "sample__location__project__label",
@@ -655,7 +650,7 @@ class MicroXRFElementInline(admin.TabularInline):
                     img.save(buf, format="PNG")
                     image_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
                     return mark_safe(
-                        f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />'
+                        f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />',
                     )
             except Exception as e:
                 return f"Fehler beim Laden: {e}"

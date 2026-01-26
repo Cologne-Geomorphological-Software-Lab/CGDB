@@ -1,6 +1,6 @@
 """Dagster jobs - orchestrate asset execution."""
 
-from dagster import AssetSelection, ScheduleDefinition, define_asset_job
+from dagster import AssetSelection, define_asset_job
 
 full_pipeline_job = define_asset_job(
     name="full_pipeline",

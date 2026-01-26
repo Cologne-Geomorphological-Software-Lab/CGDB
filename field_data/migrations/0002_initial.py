@@ -21,9 +21,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="campaign",
             name="project",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.RESTRICT, to="prototype.project"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to="prototype.project"),
         ),
         migrations.AddField(
             model_name="campaign",
@@ -168,9 +166,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="layer",
             name="location",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to="field_data.location"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="field_data.location"),
         ),
         migrations.AddField(
             model_name="province",
@@ -334,9 +330,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="studyarea",
             name="project",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.RESTRICT, to="prototype.project"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to="prototype.project"),
         ),
         migrations.AddField(
             model_name="studyarea",
@@ -362,9 +356,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="site",
             name="study_area",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to="field_data.studyarea"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="field_data.studyarea"),
         ),
         migrations.AddField(
             model_name="campaign",
@@ -456,9 +448,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="transect",
             name="study_area",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.RESTRICT, to="field_data.studyarea"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to="field_data.studyarea"),
         ),
         migrations.AddField(
             model_name="transect",

@@ -30,9 +30,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "name",
-                    models.CharField(
-                        blank=True, help_text="Country name", max_length=100, null=True
-                    ),
+                    models.CharField(blank=True, help_text="Country name", max_length=100, null=True),
                 ),
                 (
                     "iso_code",
@@ -248,28 +246,20 @@ class Migration(migrations.Migration):
                 ("date_of_record", models.DateField(blank=True, null=True)),
                 (
                     "easting",
-                    models.FloatField(
-                        blank=True, help_text="in decimal degrees.", null=True
-                    ),
+                    models.FloatField(blank=True, help_text="in decimal degrees.", null=True),
                 ),
                 (
                     "northing",
-                    models.FloatField(
-                        blank=True, help_text="in decimal degrees.", null=True
-                    ),
+                    models.FloatField(blank=True, help_text="in decimal degrees.", null=True),
                 ),
                 ("srid", models.IntegerField(default=4326, help_text="EPSG code")),
                 (
                     "location",
-                    django.contrib.gis.db.models.fields.PointField(
-                        blank=True, null=True, srid=4326
-                    ),
+                    django.contrib.gis.db.models.fields.PointField(blank=True, null=True, srid=4326),
                 ),
                 (
                     "altitude",
-                    models.FloatField(
-                        blank=True, help_text="in meters above sea level", null=True
-                    ),
+                    models.FloatField(blank=True, help_text="in meters above sea level", null=True),
                 ),
                 (
                     "liner",
@@ -280,9 +270,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "sampling",
-                    models.BooleanField(
-                        default=False, help_text="Were samples taken at the location?"
-                    ),
+                    models.BooleanField(default=False, help_text="Were samples taken at the location?"),
                 ),
                 ("gradient_upslope", models.FloatField(blank=True, null=True)),
                 ("gradient_downslope", models.FloatField(blank=True, null=True)),
@@ -394,9 +382,7 @@ class Migration(migrations.Migration):
                 ("material", models.CharField(blank=True, max_length=40, null=True)),
                 (
                     "weight",
-                    models.DecimalField(
-                        blank=True, decimal_places=2, max_digits=6, null=True
-                    ),
+                    models.DecimalField(blank=True, decimal_places=2, max_digits=6, null=True),
                 ),
                 (
                     "depth_top",
@@ -444,9 +430,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "label",
-                    models.CharField(
-                        help_text="A short, abbreviated label.", max_length=5
-                    ),
+                    models.CharField(help_text="A short, abbreviated label.", max_length=5),
                 ),
                 (
                     "created_at",
@@ -495,9 +479,7 @@ class Migration(migrations.Migration):
                 ("label", models.CharField(max_length=20)),
                 (
                     "geometry",
-                    django.contrib.gis.db.models.fields.PolygonField(
-                        blank=True, null=True, srid=4326
-                    ),
+                    django.contrib.gis.db.models.fields.PolygonField(blank=True, null=True, srid=4326),
                 ),
                 (
                     "climate_koeppen",
@@ -632,9 +614,7 @@ class Migration(migrations.Migration):
                 ("word", models.CharField(max_length=255)),
                 (
                     "slug",
-                    models.SlugField(
-                        blank=True, max_length=255, null=True, unique=True
-                    ),
+                    models.SlugField(blank=True, max_length=255, null=True, unique=True),
                 ),
             ],
             options={
@@ -683,9 +663,7 @@ class Migration(migrations.Migration):
                 ("label", models.CharField(max_length=20, unique=True)),
                 (
                     "date_start",
-                    models.DateField(
-                        blank=True, null=True, verbose_name="Starting date"
-                    ),
+                    models.DateField(blank=True, null=True, verbose_name="Starting date"),
                 ),
                 (
                     "date_end",

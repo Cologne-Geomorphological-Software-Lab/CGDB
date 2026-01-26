@@ -2,11 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
 from django.core.exceptions import ValidationError
-from django.core.validators import (
-    MaxValueValidator,
-    MinValueValidator,
-    StepValueValidator,
-)
+from django.core.validators import MaxValueValidator, MinValueValidator, StepValueValidator
 
 from prototype.models import BaseModel, Project, Researcher
 
@@ -15,7 +11,10 @@ class Country(models.Model):
     """Simplified Country model for basic country information."""
 
     name = models.CharField(
-        max_length=100, blank=True, null=True, help_text="Country name"
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Country name",
     )
     iso_code = models.CharField(
         max_length=3,
@@ -25,7 +24,9 @@ class Country(models.Model):
         help_text="ISO 3166-1 alpha-3 code",
     )
     geometry = models.MultiPolygonField(
-        blank=True, null=True, help_text="Country borders"
+        blank=True,
+        null=True,
+        help_text="Country borders",
     )
 
     def __str__(self):
@@ -49,7 +50,9 @@ class Province(models.Model):
         help_text="Country this province belongs to",
     )
     geometry = models.MultiPolygonField(
-        blank=True, null=True, help_text="Province borders"
+        blank=True,
+        null=True,
+        help_text="Province borders",
     )
 
     def __str__(self):
@@ -123,9 +126,8 @@ class SampleType(BaseModel):
     )
 
     def __str__(self):
-        """
-        Returns:
-            str: The unique word identifier of the sample type.
+        """Returns:
+        str: The unique word identifier of the sample type.
         """
         return self.word
 
@@ -270,6 +272,7 @@ class Site(BaseModel):
         label (CharField): The label of the site, with a maximum length of 30 characters.
         study_area (ForeignKey): A foreign key to the StudyArea model, with a cascade delete option.
         tags (ManyToManyField): A many-to-many relationship with the Tag model.
+
     Methods:
         __str__(): Returns the string representation of the site, which is its label.
     """
@@ -296,6 +299,7 @@ class Campaign(BaseModel):
         destination_country (ForeignKey): Foreign key to the Country model, represents country of destination.
         study_areas (ManyToManyField): Many-to-many relationship with StudyArea model.
         season (CharField): The season code, with predefined choices relating to climate seasonality.
+
     Methods:
         __str__(): Returns the string representation of the campaign, which is its label.
     """
@@ -434,8 +438,8 @@ class ExposureType(BaseModel):
 
 
 class Location(BaseModel):
-    """Location model represents a specific geographical location that can be associated with either
-    a project (internal data) or a reference (literature data).
+    """Location model represents a specific geographical location that can be associated with either a project
+    (internal data) or a reference (literature data).
 
     Attributes:
         data_source (CharField): Source type - 'internal' for project data, 'literature' for published data.
@@ -650,16 +654,16 @@ class Location(BaseModel):
         if self.data_source == "internal":
             if not self.project:
                 raise ValidationError(
-                    "Internal data source requires a project assignment."
+                    "Internal data source requires a project assignment.",
                 )
             if self.reference:
                 raise ValidationError(
-                    "Internal data source cannot have a reference assignment."
+                    "Internal data source cannot have a reference assignment.",
                 )
         elif self.data_source == "literature":
             if not self.reference:
                 raise ValidationError(
-                    "Literature data source requires a reference assignment."
+                    "Literature data source requires a reference assignment.",
                 )
 
     def save(self, *args, **kwargs):
@@ -671,7 +675,7 @@ class Location(BaseModel):
             )
         else:
             self.location = None
-        super(Location, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
 class Layer(BaseModel):
@@ -948,7 +952,7 @@ class Sample(BaseModel):
         if self.pk:
             if not self.project and not self.location:
                 raise ValidationError(
-                    "Sample must have either a project or a location."
+                    "Sample must have either a project or a location.",
                 )
 
             if self.project and self.location and self.location.project:
@@ -963,7 +967,7 @@ class Sample(BaseModel):
         if not self.pk:
             if not self.project and not self.location:
                 raise ValidationError(
-                    "Sample must have either a project or a location."
+                    "Sample must have either a project or a location.",
                 )
 
         super().save(*args, **kwargs)

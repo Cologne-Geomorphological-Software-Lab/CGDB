@@ -3,12 +3,11 @@
 import os
 
 import django
+from dagster import AssetExecutionContext, asset
+from django.apps import apps
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prototype.settings")
 django.setup()
-
-from dagster import AssetExecutionContext, asset
-from django.apps import apps
 
 
 @asset(description="Extract from Django models", group_name="django_extraction")
@@ -30,7 +29,8 @@ def extract_sample_data(context: AssetExecutionContext) -> dict:
     deps=[extract_sample_data],
 )
 def validate_sample_data(
-    context: AssetExecutionContext, extract_sample_data: dict
+    context: AssetExecutionContext,
+    extract_sample_data: dict,
 ) -> dict:
     """Validate extracted data quality."""
     passed = extract_sample_data.get("status") == "success"

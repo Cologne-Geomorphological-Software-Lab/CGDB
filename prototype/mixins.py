@@ -7,8 +7,8 @@ from prototype.models import Project
 class ProjectBasedPermissionMixin:
     """Mixin for admin classes that need project-based permissions.
 
-    This mixin filters objects based on the user's project permissions,
-    allowing literature data to be visible to all users.
+    This mixin filters objects based on the user's project permissions, allowing literature data to be visible
+    to all users.
     """
 
     def get_queryset(self, request):
@@ -32,10 +32,9 @@ class ProjectBasedPermissionMixin:
 
         if hasattr(self.model, "data_source"):
             return qs.filter(
-                Q(project_id__in=accessible_project_ids) | Q(data_source="literature")
+                Q(project_id__in=accessible_project_ids) | Q(data_source="literature"),
             )
-        else:
-            return qs.filter(project_id__in=accessible_project_ids)
+        return qs.filter(project_id__in=accessible_project_ids)
 
     def has_change_permission(self, request, obj=None):
         """Check change permission for project-based objects."""
@@ -77,8 +76,8 @@ class ProjectBasedPermissionMixin:
 class GuardianPermissionMixin:
     """Generic Guardian permission mixin for any model.
 
-    This mixin provides generic object-level permission checking
-    for models that inherit from BaseModel and use Guardian permissions.
+    This mixin provides generic object-level permission checking for models that inherit from BaseModel and
+    use Guardian permissions.
     """
 
     def get_queryset(self, request):
@@ -134,22 +133,28 @@ class GuardianPermissionMixin:
 class NestedProjectPermissionMixin:
     """Mixin for admin classes where project relationship is nested (e.g., site.study_area.project).
 
-    This mixin handles cases where the model doesn't have a direct project relationship,
-    but accesses it through a nested relationship.
+    This mixin handles cases where the model doesn't have a direct project relationship, but accesses it
+    through a nested relationship.
     """
 
     project_path = None
 
     def get_project_filter_path(self):
-        """Get the filter path to the project field. Override this method in subclasses."""
+        """Get the filter path to the project field.
+
+        Override this method in subclasses.
+        """
         if self.project_path:
             return f"{self.project_path}_id__in"
         raise NotImplementedError(
-            "project_path must be defined or get_project_filter_path must be overridden"
+            "project_path must be defined or get_project_filter_path must be overridden",
         )
 
     def get_project_from_obj(self, obj):
-        """Get the project from an object. Override this method in subclasses."""
+        """Get the project from an object.
+
+        Override this method in subclasses.
+        """
         if self.project_path:
             current_obj = obj
             for attr in self.project_path.split("__"):
@@ -158,7 +163,7 @@ class NestedProjectPermissionMixin:
                 current_obj = getattr(current_obj, attr, None)
             return current_obj
         raise NotImplementedError(
-            "project_path must be defined or get_project_from_obj must be overridden"
+            "project_path must be defined or get_project_from_obj must be overridden",
         )
 
     def get_queryset(self, request):
@@ -220,8 +225,8 @@ class NestedProjectPermissionMixin:
 class HybridProjectPermissionMixin:
     """Mixin for admin classes with both direct and indirect project relationships.
 
-    This mixin handles cases where the model can have either a direct project relationship
-    or an indirect one through another model (like Sample which can have project or location.project).
+    This mixin handles cases where the model can have either a direct project relationship or an indirect one
+    through another model (like Sample which can have project or location.project).
     """
 
     def get_queryset(self, request):
@@ -244,8 +249,7 @@ class HybridProjectPermissionMixin:
         qs = super().get_queryset(request)
 
         return qs.filter(
-            Q(project_id__in=accessible_project_ids)
-            | Q(location__project_id__in=accessible_project_ids)
+            Q(project_id__in=accessible_project_ids) | Q(location__project_id__in=accessible_project_ids),
         )
 
     def has_change_permission(self, request, obj=None):
@@ -263,7 +267,8 @@ class HybridProjectPermissionMixin:
             and obj.location.project
         ):
             return request.user.has_perm(
-                "prototype.change_project", obj.location.project
+                "prototype.change_project",
+                obj.location.project,
             )
 
         return super().has_change_permission(request, obj)
@@ -301,7 +306,8 @@ class HybridProjectPermissionMixin:
             and obj.location.project
         ):
             return request.user.has_perm(
-                "prototype.delete_project", obj.location.project
+                "prototype.delete_project",
+                obj.location.project,
             )
 
         return super().has_delete_permission(request, obj)

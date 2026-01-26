@@ -39,23 +39,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="calibration",
             name="device",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to="laboratory.device"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="laboratory.device"),
         ),
         migrations.AddField(
             model_name="accessory",
             name="device",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to="laboratory.device"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="laboratory.device"),
         ),
         migrations.AddField(
             model_name="firmware",
             name="device",
-            field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to="laboratory.device"
-            ),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="laboratory.device"),
         ),
         migrations.AddField(
             model_name="device",

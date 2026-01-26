@@ -3,14 +3,13 @@
 import os
 
 import django
+from dagster import Definitions, load_assets_from_modules
+
+from . import assets, jobs
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prototype.settings")
 django.setup()
 
-from dagster import Definitions, load_assets_from_modules
-from django.conf import settings
-
-from . import assets, jobs
 
 all_assets = load_assets_from_modules([assets])
 

@@ -1,0 +1,64 @@
+[tool.ruff]
+line-length = 110
+
+# Exclude-Files
+exclude = [
+    "**/migrations/**",
+    "**/tests/**",
+    "**/settings.py",
+    "**/local_settings*",
+]
+
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN001", # Missing type annotation
+    "I001",  # isort
+    "D",     # Alle Docstring-Regeln (D100, D101, D102, D103, D104, D105, D106, D107)
+    "ANN101", # Missing type annotation for `self` in method
+    "ANN102", # Missing type annotation for `cls` in method
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "ANN201", # Missing return type annotation for public function
+    "ANN204", # Missing return type annotation for special method
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "TRY003", # Avoid specifying long messages outside the exception class
+    "EM101",  # Exception must not use a string literal
+    "SIM102", # Use a single `if` statement instead of nested `if` statements
+    "SIM108", # Use ternary operator
+    "SLF001", # Private member accessed
+    "RET504", # Unnecessary assignment before return statement
+    "PTH118", # Use Path with / operator instead of os.path.join
+    "PTH110", # Use Path.exists() instead of os.path.exists
+    "DTZ001", # The use of `datetime.datetime()` without `tzinfo` argument
+    "ERA001", # Found commented-out code
+    "G004",   # Logging statement uses f-string
+    "TRY300", # Consider moving this statement to an `else` block
+    "TRY301", # Abstract `raise` to an inner function
+    "TRY400", # Use `logging.exception` instead of `logging.error`
+    "BLE001", # Do not catch blind exception: `Exception`
+    "INT001", # f-string is resolved before function call
+    "ARG001", # Unused function argument
+    "ARG002", # Unused method argument
+    "ARG005", # Unused lambda argument
+    "PLW2901",# `for` loop variable overwritten by assignment target
+    "PLR2004",# Magic value used in comparison
+    "C901",   # Function is too complex
+    "PLR0912",# Too many branches
+    "PLR0915",# Too many statements
+    "S308",   # Use of `mark_safe` may expose cross-site scripting vulnerabilities
+    "DJ001",  # Avoid using `null=True` on string-based fields
+    "DJ007",  # Order of model's inner classes, methods, and fields does not follow the Django Style Guide
+    "DJ012",  # Order of model's inner classes, methods, and fields does not follow the Django Style Guide
+    "INP001", # File is part of an implicit namespace package
+    "E501",   # Line too long 
+    "RUF001", # String contains ambiguous `σ` (GREEK SMALL LETTER SIGMA). Did you mean `o` (LATIN SMALL LETTER O)?
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["prototype", "field_data", "analysis", "orchestration"]
+known-third-party = ["django", "rest_framework", "dagster"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

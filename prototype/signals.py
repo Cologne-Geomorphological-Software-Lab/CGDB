@@ -8,11 +8,7 @@ from guardian.shortcuts import assign_perm
 @receiver(post_save)
 def assign_permissions_to_creator(sender, instance, created, **kwargs):
     """Assigns all object-related permissions to the creator when the object is newly created."""
-    if (
-        created
-        and hasattr(instance, "created_by")
-        and isinstance(instance.created_by, User)
-    ):
+    if created and hasattr(instance, "created_by") and isinstance(instance.created_by, User):
 
         user = instance.created_by
 
@@ -22,7 +18,7 @@ def assign_permissions_to_creator(sender, instance, created, **kwargs):
             f"delete_{instance._meta.model_name}",
         ]
 
-        def assign_perms():
+        def assign_perms() -> None:
             for perm in perms:
                 assign_perm(perm, user, instance)
 

@@ -1,10 +1,6 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
-from unfold.contrib.filters.admin import (
-    ChoicesDropdownFilter,
-    RangeNumericFilter,
-    RelatedDropdownFilter,
-)
+from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeNumericFilter, RelatedDropdownFilter
 
 from .models import Author, Reference, ReferenceKeyword
 

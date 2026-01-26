@@ -1,5 +1,5 @@
 # Core Django & Database
-Django[Argon2]>=4.2,<5.0
+Django[Argon2]>=4.2
 psycopg==3.3.2
 python-decouple==3.8
 
@@ -23,3 +23,14 @@ dagster-webserver==1.12.8
 dagster-postgres==0.28.8
 duckdb==1.4.3
 honcho==2.0.0
+
+# Code Quality
+pre-commit
+black
+isort
+docformatter
+ruff
+ty
+pytest
+django-stubs
+django-stubs-ext

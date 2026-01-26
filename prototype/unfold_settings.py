@@ -126,7 +126,7 @@ UNFOLD = {
                         "title": _("Raw Measurements"),
                         "icon": "storage",
                         "link": reverse_lazy(
-                            "admin:analysis_rawmeasurement_changelist"
+                            "admin:analysis_rawmeasurement_changelist",
                         ),
                     },
                     {
@@ -149,7 +149,7 @@ UNFOLD = {
                         "title": _("Generic Measurements"),
                         "icon": "experiment",
                         "link": reverse_lazy(
-                            "admin:analysis_genericmeasurement_changelist"
+                            "admin:analysis_genericmeasurement_changelist",
                         ),
                     },
                     {
@@ -161,7 +161,7 @@ UNFOLD = {
                         "title": _("MicroXRF"),
                         "icon": "process_chart",
                         "link": reverse_lazy(
-                            "admin:analysis_microxrfmeasurement_changelist"
+                            "admin:analysis_microxrfmeasurement_changelist",
                         ),
                     },
                     {
@@ -173,14 +173,14 @@ UNFOLD = {
                         "title": _("Luminescence"),
                         "icon": "brightness_7",
                         "link": reverse_lazy(
-                            "admin:analysis_luminescencedating_changelist"
+                            "admin:analysis_luminescencedating_changelist",
                         ),
                     },
                     {
                         "title": _("Radiocarbon"),
                         "icon": "schedule",
                         "link": reverse_lazy(
-                            "admin:analysis_radiocarbondating_changelist"
+                            "admin:analysis_radiocarbondating_changelist",
                         ),
                     },
                 ],
@@ -208,7 +208,7 @@ UNFOLD = {
                         "title": _("Manufacturers"),
                         "icon": "business_center",
                         "link": reverse_lazy(
-                            "admin:laboratory_manufacturer_changelist"
+                            "admin:laboratory_manufacturer_changelist",
                         ),
                     },
                     {
@@ -263,11 +263,9 @@ def environment_callback(request):
 
 
 def badge_callback(request):
-    """
-    Return an integer badge value based on the current user.
+    """Return an integer badge value based on the current user.
 
-    Currently this returns the number of permissions for authenticated users,
-    or 0 for anonymous users.
+    Currently this returns the number of permissions for authenticated users, or 0 for anonymous users.
     """
     user = getattr(request, "user", None)
     if user is None or not user.is_authenticated:
