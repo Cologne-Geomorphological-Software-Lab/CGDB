@@ -492,6 +492,7 @@ class LuminescenceDating(BaseModel):
     aliquot_size = models.CharField(
         max_length=30,
         blank=True,
+        null=True,
     )
 
     aliquot_number_used_for_palaeodose = models.IntegerField(

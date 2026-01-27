@@ -1,0 +1,49 @@
+{% extends "admin/change_form.html" %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+{% endblock %}
+
+{% block content %}
+    {{ block.super }}  
+
+    <div id="map" style="width: 100%; height: 400px; border: 1px solid red;"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const wkt = "{{ cell_wkt|escapejs }}";
+            console.log("WKT:", wkt);
+
+            const map = L.map('map').setView([-18.005, -70.832], 14);
+            L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}').addTo(map);
+
+            const polyMatch = wkt.match(/POLYGON\s*\(\((.*?)\)\)/i);
+            if (polyMatch) {
+                const coords = polyMatch[1].split(',').map(pair => {
+                    const [lon, lat] = pair.trim().split(' ').map(parseFloat);
+                    return [lat, lon];
+                });
+                L.polygon(coords, { color: 'blue' }).addTo(map);
+                map.fitBounds(L.polygon(coords).getBounds());
+            }
+
+            map.on('click', function(e) {
+                const { lat, lng } = e.latlng;
+                console.log("Klick auf:", lat, lng);
+
+                const inlines = document.querySelectorAll('.inline-related.last-related');
+                if (inlines.length > 0) {
+                    const lastInline = inlines[inlines.length - 1];
+
+                    const latitudeField = lastInline.querySelector('input[name$="-latitude"]');
+                    const longitudeField = lastInline.querySelector('input[name$="-longitude"]');
+
+                    if (latitudeField) latitudeField.value = lat.toFixed(6);
+                    if (longitudeField) longitudeField.value = lng.toFixed(6);
+
+                }
+            });
+        });
+    </script>
+{% endblock %}
