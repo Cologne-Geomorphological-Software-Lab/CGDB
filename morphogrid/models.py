@@ -1,4 +1,3 @@
-from django.contrib.gis.db import models as geo_models
 from django.db import models
 
 from prototype.models import BaseModel
@@ -22,10 +21,6 @@ class GridCell(BaseModel):
     s2_level = models.IntegerField(
         db_index=True,
         help_text="The S2 cell level (0-30). Higher levels mean smaller cells.",
-    )
-    footprint = geo_models.PolygonField(
-        srid=4326,
-        help_text="The exact geographic polygon of this grid cell.",
     )
 
     class Meta:

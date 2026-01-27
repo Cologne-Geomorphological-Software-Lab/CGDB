@@ -54,9 +54,7 @@ def stat_data():
         start_date__lt=start_of_this_month,
     ).count()
     project_last_month_pct = (
-        round(project_last_month_count / project_total * 100, 2)
-        if project_total > 0
-        else 0
+        round(project_last_month_count / project_total * 100, 2) if project_total > 0 else 0
     )
 
     location_total = Location.objects.count()
@@ -65,9 +63,7 @@ def stat_data():
         created_at__lt=start_of_this_month,
     ).count()
     location_last_month_pct = (
-        round(location_last_month_count / location_total * 100, 2)
-        if location_total > 0
-        else 0
+        round(location_last_month_count / location_total * 100, 2) if location_total > 0 else 0
     )
 
     sample_total = Sample.objects.count()
@@ -75,11 +71,7 @@ def stat_data():
         created_at__gte=start_of_last_month,
         created_at__lt=start_of_this_month,
     ).count()
-    sample_last_month_pct = (
-        round(sample_last_month_count / sample_total * 100, 2)
-        if sample_total > 0
-        else 0
-    )
+    sample_last_month_pct = round(sample_last_month_count / sample_total * 100, 2) if sample_total > 0 else 0
 
     measurements_total = (
         GenericMeasurement.objects.count()
@@ -106,9 +98,7 @@ def stat_data():
         ).count()
     )
     measurements_last_month_pct = (
-        round(measurements_last_month_count / measurements_total * 100, 2)
-        if measurements_total > 0
-        else 0
+        round(measurements_last_month_count / measurements_total * 100, 2) if measurements_total > 0 else 0
     )
 
     return {
