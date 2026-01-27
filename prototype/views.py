@@ -25,7 +25,7 @@ def documentation(request, filepath):
         return render(request, "404.html", status=404)
     return render(
         request,
-        "docmentation.html",
+        "documentation.html",
         {"filepath": f"/static/docs/{filepath}"},
     )
 
