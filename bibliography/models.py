@@ -134,6 +134,7 @@ class Reference(BaseModel):
     project = models.ManyToManyField(
         Project,
         blank=True,
+        help_text="Select a project, provided that a unique one can be assigned to the publication.",
     )
     doi = models.URLField(
         max_length=50,
@@ -143,16 +144,19 @@ class Reference(BaseModel):
     issn = models.IntegerField(
         blank=True,
         null=True,
+        verbose_name="ISSN",
     )
     isbn_print = models.CharField(
         max_length=50,
         blank=True,
         null=True,
+        verbose_name="ISBN Print",
     )
     isbn_online = models.CharField(
         max_length=50,
         blank=True,
         null=True,
+        verbose_name="ISBN Online",
     )
     how_to_cite = models.CharField(
         max_length=350,
