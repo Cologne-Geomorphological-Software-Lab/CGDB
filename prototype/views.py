@@ -23,7 +23,11 @@ def documentation(request, filepath):
     doc_path = os.path.join(settings.BASE_DIR, "static", "docs", filepath)
     if not os.path.exists(doc_path):
         return render(request, "404.html", status=404)
-    return render(request, "docmentation.html", {"filepath": f"/static/docs/{filepath}"})
+    return render(
+        request,
+        "docmentation.html",
+        {"filepath": f"/static/docs/{filepath}"},
+    )
 
 
 def logout_view(request):
@@ -157,7 +161,10 @@ for i in range(11, -1, -1):
     end_day = monthrange(year, month)[1]
     end_date = datetime(year, month, end_day, 23, 59, 59)
 
-    count = Location.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
+    count = Location.objects.filter(
+        created_at__gte=start_date,
+        created_at__lte=end_date,
+    ).count()
 
     performance.append([f"{MONTH_NAMES[month - 1]} {year}", count])
 
@@ -165,14 +172,26 @@ for i in range(11, -1, -1):
     geoch_performance.append(
         [
             f"{MONTH_NAMES[month - 1]} {year}",
-            LuminescenceDating.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
-            + RadiocarbonDating.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count(),
+            LuminescenceDating.objects.filter(
+                created_at__gte=start_date,
+                created_at__lte=end_date,
+            ).count()
+            + RadiocarbonDating.objects.filter(
+                created_at__gte=start_date,
+                created_at__lte=end_date,
+            ).count(),
         ],
     )
     sed_performance.append(
         [
             f"{MONTH_NAMES[month - 1]} {year}",
-            GenericMeasurement.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
-            + GrainSize.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count(),
+            GenericMeasurement.objects.filter(
+                created_at__gte=start_date,
+                created_at__lte=end_date,
+            ).count()
+            + GrainSize.objects.filter(
+                created_at__gte=start_date,
+                created_at__lte=end_date,
+            ).count(),
         ],
     )
