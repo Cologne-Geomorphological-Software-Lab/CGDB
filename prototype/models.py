@@ -25,6 +25,13 @@ class BaseModel(models.Model):
         auto_now_add=True,
         blank=True,
         null=True,
+        editable=False,
+    )
+    modified_at = models.DateTimeField(
+        auto_now=True,
+        blank=True,
+        null=True,
+        editable=False,
     )
     created_by = models.ForeignKey(
         User,
@@ -32,6 +39,7 @@ class BaseModel(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        editable=False,
     )
     updated_by = models.ForeignKey(
         User,
@@ -39,10 +47,12 @@ class BaseModel(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        editable=False,
     )
 
     class Meta:
         abstract = True
+        ordering = ["-modified_at", "-created_at"]
 
 
 class ResearchGroup(BaseModel):
