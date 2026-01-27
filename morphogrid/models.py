@@ -1,6 +1,7 @@
 from django.contrib.gis.db import models as geo_models
 from django.db import models
-from protoype.models import BaseModel
+
+from prototype.models import BaseModel
 
 
 # --- GridCell ---
