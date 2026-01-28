@@ -20,16 +20,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="reference",
             name="isbn_online",
-            field=models.CharField(
-                blank=True, max_length=50, null=True, verbose_name="ISBN Online"
-            ),
+            field=models.CharField(blank=True, max_length=50, null=True, verbose_name="ISBN Online"),
         ),
         migrations.AlterField(
             model_name="reference",
             name="isbn_print",
-            field=models.CharField(
-                blank=True, max_length=50, null=True, verbose_name="ISBN Print"
-            ),
+            field=models.CharField(blank=True, max_length=50, null=True, verbose_name="ISBN Print"),
         ),
         migrations.AlterField(
             model_name="reference",
