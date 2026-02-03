@@ -100,21 +100,6 @@ def stat_data():
     )
 
     return {
-        "navigation": [
-            {"title": _("Dashboard"), "link": "/", "active": True},
-            {"title": _("Tools"), "link": "#"},
-        ],
-        "filters": [
-            {
-                "title": _("All"),
-                "link": "#",
-                "active": True,
-            },
-            {
-                "title": _("Mine"),
-                "link": "#",
-            },
-        ],
         "project": [
             {
                 "title": "Projects",
