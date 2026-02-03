@@ -6,8 +6,3 @@
     {% include "unfold/helpers/site_branding.html" %}
 {% endblock %}
 
-{% block extrahead %}
-    {% if plausible_domain %}
-        <script defer data-domain="{{ plausible_domain }}" src="https://plausible.io/js/script.js"></script>
-    {% endif %}
-{% endblock %}

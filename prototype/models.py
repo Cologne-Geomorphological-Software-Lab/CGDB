@@ -206,12 +206,14 @@ class Project(BaseModel):
         help_text="Is the project currently public?",
     )
 
+    '''
     def clean(self):
         if self.principal_investigator.exists() and self.associated_investigator.exists():
             if (self.principal_investigator.all() & self.associated_investigator.all()).exists():
                 raise ValidationError(
                     "A researcher cannot be both a principal investigator and an associated investigator.",
                 )
+    '''
 
     def __str__(self):
         """Returns a human-readable representation of the research project."""
