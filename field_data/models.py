@@ -862,7 +862,12 @@ class Sample(BaseModel):
     """
 
     identifier = models.CharField(max_length=40, unique=True)
-    igsn = models.CharField(max_length=100, blank=True, null=True)
+    igsn = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="International Generic Sample Number",
+    )
     project = models.ForeignKey(
         Project,
         on_delete=models.RESTRICT,

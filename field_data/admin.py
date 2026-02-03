@@ -26,7 +26,7 @@ class MeasurementInline(admin.TabularInline):
     )
 
 
-class SampleTabularInline(TabularInline):
+class SampleTabularInline(StackedInline):
     model = Sample
     tab = True
     extra = 1
@@ -169,23 +169,31 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
                     "identifier",
                     "date_of_record",
                     "processor",
-                    "liner",
-                    "sampling",
                 ),
             },
         ),
         (
-            "Location",
+            "Spatial Metadata",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "exposure_type",
                     "easting",
                     "northing",
                     "altitude",
                     "srid",
                     "location",
+                ),
+            },
+        ),
+        (
+            "Data Acquisiton",
+            {
+                "classes": ["tab"],
+                "fields": (
                     "study_site",
+                    "exposure_type",
+                    "liner",
+                    "sampling",
                 ),
             },
         ),
@@ -292,7 +300,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_filter_submit = True
     raw_id_fields = [
         "project",
-        #"destination_country",
+        # "destination_country",
         # "study_areas",
     ]
 
@@ -339,6 +347,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     show_full_result_count = False
     fields = [
         "identifier",
+        "igsn",
         "project",
         "location",
         "processor",
@@ -355,8 +364,6 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         "identifier",
         "location__identifier",
     ]
-
-    conditional_fields = {"project": "location == False"}
 
     filter_horizontal = ["tags"]
     list_display = [

@@ -93,7 +93,7 @@ class RawMeasurement(BaseModel):
         return Path.name(self.file.name)
 
     def __str__(self):
-        return f"{self.sample} - {self.filename()}"
+        return f"{self.device} - {self.created_at}"
 
 
 class RawProcessing(BaseModel):
@@ -153,7 +153,7 @@ class RawProcessing(BaseModel):
         return Path.name(self.processed_file.name)
 
     def __str__(self):
-        return f"Processed data for {self.raw_measurement} - {self.processed_filename()}"
+        return f"Processed data for {self.raw_measurement}"
 
 
 # ======================
