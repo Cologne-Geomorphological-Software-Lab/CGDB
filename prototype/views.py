@@ -2,7 +2,6 @@ import json
 import os
 from calendar import monthrange
 from datetime import datetime, timedelta
-from functools import lru_cache
 
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
@@ -40,18 +39,17 @@ def dashboard_callback(request, context):
     return context
 
 
-@lru_cache
 def stat_data():
     now = timezone.now()
-    start_of_this_month = now.replace(day=1)
-    end_of_last_month = start_of_this_month - timedelta(days=1)
-    start_of_last_month = end_of_last_month.replace(day=1)
+    month_ago = now - timedelta(days=30)
+    print("Month: " + str(month_ago))
 
     # Pre-compute totals and percentage changes for dashboard metrics
     project_total = Project.objects.count()
+    print("Projects: " + str(project_total))
     project_last_month_count = Project.objects.filter(
-        start_date__gte=start_of_last_month,
-        start_date__lt=start_of_this_month,
+        start_date__gte=month_ago,
+        start_date__lt=now,
     ).count()
     project_last_month_pct = (
         round(project_last_month_count / project_total * 100, 2) if project_total > 0 else 0
@@ -59,8 +57,8 @@ def stat_data():
 
     location_total = Location.objects.count()
     location_last_month_count = Location.objects.filter(
-        created_at__gte=start_of_last_month,
-        created_at__lt=start_of_this_month,
+        created_at__gte=month_ago,
+        created_at__lt=now,
     ).count()
     location_last_month_pct = (
         round(location_last_month_count / location_total * 100, 2) if location_total > 0 else 0
@@ -68,8 +66,8 @@ def stat_data():
 
     sample_total = Sample.objects.count()
     sample_last_month_count = Sample.objects.filter(
-        created_at__gte=start_of_last_month,
-        created_at__lt=start_of_this_month,
+        created_at__gte=month_ago,
+        created_at__lt=now,
     ).count()
     sample_last_month_pct = round(sample_last_month_count / sample_total * 100, 2) if sample_total > 0 else 0
 
@@ -81,20 +79,20 @@ def stat_data():
     )
     measurements_last_month_count = (
         GenericMeasurement.objects.filter(
-            created_at__gte=start_of_last_month,
-            created_at__lt=start_of_this_month,
+            created_at__gte=month_ago,
+            created_at__lt=now,
         ).count()
         + GrainSize.objects.filter(
-            created_at__gte=start_of_last_month,
-            created_at__lt=start_of_this_month,
+            created_at__gte=month_ago,
+            created_at__lt=now,
         ).count()
         + LuminescenceDating.objects.filter(
-            created_at__gte=start_of_last_month,
-            created_at__lt=start_of_this_month,
+            created_at__gte=month_ago,
+            created_at__lt=now,
         ).count()
         + RadiocarbonDating.objects.filter(
-            created_at__gte=start_of_last_month,
-            created_at__lt=start_of_this_month,
+            created_at__gte=month_ago,
+            created_at__lt=now,
         ).count()
     )
     measurements_last_month_pct = (
@@ -102,48 +100,33 @@ def stat_data():
     )
 
     return {
-        "navigation": [
-            {"title": _("Dashboard"), "link": "/", "active": True},
-            {"title": _("Tools"), "link": "#"},
-        ],
-        "filters": [
-            {
-                "title": _("All"),
-                "link": "#",
-                "active": True,
-            },
-            {
-                "title": _("Mine"),
-                "link": "#",
-            },
-        ],
         "project": [
             {
                 "title": "Projects",
                 "metric": f"{project_total}",
                 "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(project_last_month_pct)}%</strong>&nbsp; last month',
+                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(project_last_month_pct)}%</strong>&nbsp; last 30 days',
                 ),
             },
             {
                 "title": "Locations",
                 "metric": f"{location_total}",
                 "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(location_last_month_pct)}%</strong>&nbsp; last month',
+                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(location_last_month_pct)}%</strong>&nbsp; last 30 days',
                 ),
             },
             {
                 "title": "Samples",
                 "metric": f"{sample_total}",
                 "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(sample_last_month_pct)}%</strong>&nbsp; last month',
+                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(sample_last_month_pct)}%</strong>&nbsp; last 30 days',
                 ),
             },
             {
                 "title": "Measurements",
                 "metric": f"{measurements_total}",
                 "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(measurements_last_month_pct)}%</strong>&nbsp; last month',
+                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(measurements_last_month_pct)}%</strong>&nbsp; last 30 days',
                 ),
             },
         ],

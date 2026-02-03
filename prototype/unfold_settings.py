@@ -246,6 +246,12 @@ UNFOLD = {
                 "collapsible": True,
                 "items": [
                     {
+                        "title": _("Researchers"),
+                        "icon": "school",
+                        "link": reverse_lazy("admin:prototype_researcher_changelist"),
+                        "permissions": ["auth.view_user"],
+                    },
+                    {
                         "title": _("Users"),
                         "icon": "person",
                         "link": reverse_lazy("admin:auth_user_changelist"),
