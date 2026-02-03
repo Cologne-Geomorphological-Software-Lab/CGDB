@@ -292,8 +292,8 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_filter_submit = True
     raw_id_fields = [
         "project",
-        "destination_country",
-        "study_areas",
+        #"destination_country",
+        # "study_areas",
     ]
 
     fieldsets = (
