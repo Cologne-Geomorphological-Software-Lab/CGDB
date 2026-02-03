@@ -16,7 +16,6 @@ from django.contrib.auth.models import Group, User
 from django.db import models
 from guardian.models import UserObjectPermissionBase
 
-
 class BaseModel(models.Model):
     """Abstract base model with common fields for all models."""
 

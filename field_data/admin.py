@@ -26,7 +26,7 @@ class MeasurementInline(admin.TabularInline):
     )
 
 
-class SampleTabularInline(StackedInline):
+class SampleTabularInline(TabularInline):
     model = Sample
     tab = True
     extra = 1
@@ -36,7 +36,6 @@ class SampleTabularInline(StackedInline):
         "depth_top",
         "depth_bottom",
     ]
-
 
 class SiteStackedInline(StackedInline):
     model = Site

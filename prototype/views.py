@@ -54,6 +54,7 @@ def stat_data():
     project_last_month_pct = (
         round(project_last_month_count / project_total * 100, 2) if project_total > 0 else 0
     )
+    print(project_last_month_count)
 
     location_total = Location.objects.count()
     location_last_month_count = Location.objects.filter(
