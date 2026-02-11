@@ -16,7 +16,7 @@ pytest-django
 # Data Processing & Visualization
 matplotlib==3.10.8
 numpy==2.4.0
-pillow==12.1.0
+pillow==12.1.1
 
 # Optional: Data Orchestration with Dagster
 # dagster==1.12.8
