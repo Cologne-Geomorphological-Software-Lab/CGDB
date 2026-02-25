@@ -20,7 +20,7 @@ from prototype.models import BaseModel, Project, Researcher
 class Algorithm(models.Model):
     """Represents an analysis algorithm.
 
-    Attributes:
+    Args:
         name (CharField): Name of the algorithm.
         version (CharField): Version of the algorithm.
         description (TextField): Description of the algorithm.

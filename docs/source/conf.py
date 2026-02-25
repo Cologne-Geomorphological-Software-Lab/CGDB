@@ -26,7 +26,7 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = []
+exclude_patterns = ["migrations"]
 
 
 # -- Options for HTML output -------------------------------------------------
