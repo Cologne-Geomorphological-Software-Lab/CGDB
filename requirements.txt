@@ -35,3 +35,6 @@ ty
 pytest
 django-stubs
 django-stubs-ext
+
+# Documentation
+sphinx
