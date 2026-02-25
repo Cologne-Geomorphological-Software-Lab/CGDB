@@ -38,5 +38,6 @@ django-stubs
 django-stubs-ext
 
 # Documentation
+django-docs
 sphinx
 sphinx-rtd-theme

@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "import_export",
     "django_filters",
     "crispy_forms",
+    "docs",
     # CGDB Apps
     "prototype",
     "field_data",
@@ -217,3 +218,6 @@ except ImportError:
     import logging
 
     logging.warning("local_settings.py not imported.")
+
+DOCS_ROOT = os.path.join(BASE_DIR, "docs/_build/html")
+DOCS_ACCESS = "public"
