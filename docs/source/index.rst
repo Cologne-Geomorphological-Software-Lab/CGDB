@@ -15,8 +15,8 @@ documentation for details.
    :maxdepth: 2
    :caption: Contents:
 
-   modules
-
+.. automodule:: analysis.models
+   :members:
 
 Indices and tables
 ==================
