@@ -8,9 +8,16 @@
 
 import os
 import sys
-
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(".."))
+# Pfad zum Projekt-Root (da, wo manage.py liegt)
+ROOT_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT_DIR))
+
+# Django-Settings setzen
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prototype.settings")
+
 import django
 
 django.setup()
