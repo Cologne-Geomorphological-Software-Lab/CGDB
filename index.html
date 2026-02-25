@@ -1,0 +1,2141 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CGDB documentation &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fc837d61"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">CGDB documentation</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+<li><a class="reference internal" href="#module-analysis.models">Analysis</a><ul>
+<li><a class="reference internal" href="#analysis.models.Algorithm"><code class="docutils literal notranslate"><span class="pre">Algorithm</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.Algorithm.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">Algorithm.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Algorithm.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">Algorithm.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Algorithm.NotUpdated"><code class="docutils literal notranslate"><span class="pre">Algorithm.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.Counting"><code class="docutils literal notranslate"><span class="pre">Counting</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.Counting.sample"><code class="docutils literal notranslate"><span class="pre">Counting.sample</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Counting.raw_data"><code class="docutils literal notranslate"><span class="pre">Counting.raw_data</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Counting.type"><code class="docutils literal notranslate"><span class="pre">Counting.type</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Counting.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">Counting.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Counting.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">Counting.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Counting.NotUpdated"><code class="docutils literal notranslate"><span class="pre">Counting.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.sample"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.sample</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.raw_data"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.raw_data</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.MeasurementSeries"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.MeasurementSeries</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.sample_weight"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.sample_weight</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.method"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.method</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.parameter"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.parameter</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.value"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.value</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.error"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GenericMeasurement.NotUpdated"><code class="docutils literal notranslate"><span class="pre">GenericMeasurement.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.GrainSize"><code class="docutils literal notranslate"><span class="pre">GrainSize</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.GrainSize.sample"><code class="docutils literal notranslate"><span class="pre">GrainSize.sample</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.raw_data"><code class="docutils literal notranslate"><span class="pre">GrainSize.raw_data</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.sample_weight"><code class="docutils literal notranslate"><span class="pre">GrainSize.sample_weight</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.sample_concentration"><code class="docutils literal notranslate"><span class="pre">GrainSize.sample_concentration</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.method"><code class="docutils literal notranslate"><span class="pre">GrainSize.method</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.classes"><code class="docutils literal notranslate"><span class="pre">GrainSize.classes</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.measured_data"><code class="docutils literal notranslate"><span class="pre">GrainSize.measured_data</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.clay"><code class="docutils literal notranslate"><span class="pre">GrainSize.clay</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.fine_silt"><code class="docutils literal notranslate"><span class="pre">GrainSize.fine_silt</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.medium_silt"><code class="docutils literal notranslate"><span class="pre">GrainSize.medium_silt</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.coarse_silt"><code class="docutils literal notranslate"><span class="pre">GrainSize.coarse_silt</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.fine_sand"><code class="docutils literal notranslate"><span class="pre">GrainSize.fine_sand</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.medium_sand"><code class="docutils literal notranslate"><span class="pre">GrainSize.medium_sand</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.coarse_sand"><code class="docutils literal notranslate"><span class="pre">GrainSize.coarse_sand</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.mean"><code class="docutils literal notranslate"><span class="pre">GrainSize.mean</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.mode"><code class="docutils literal notranslate"><span class="pre">GrainSize.mode</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.median"><code class="docutils literal notranslate"><span class="pre">GrainSize.median</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.std"><code class="docutils literal notranslate"><span class="pre">GrainSize.std</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.skew"><code class="docutils literal notranslate"><span class="pre">GrainSize.skew</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.kurtosis"><code class="docutils literal notranslate"><span class="pre">GrainSize.kurtosis</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.fwmean"><code class="docutils literal notranslate"><span class="pre">GrainSize.fwmean</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.fwmedian"><code class="docutils literal notranslate"><span class="pre">GrainSize.fwmedian</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.fwsd"><code class="docutils literal notranslate"><span class="pre">GrainSize.fwsd</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.fwskew"><code class="docutils literal notranslate"><span class="pre">GrainSize.fwskew</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.fwkurt"><code class="docutils literal notranslate"><span class="pre">GrainSize.fwkurt</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">GrainSize.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">GrainSize.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.NotUpdated"><code class="docutils literal notranslate"><span class="pre">GrainSize.NotUpdated</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.from_file"><code class="docutils literal notranslate"><span class="pre">GrainSize.from_file()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.GrainSize.save"><code class="docutils literal notranslate"><span class="pre">GrainSize.save()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.laboratory_id"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.laboratory_id</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.sample"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.sample</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.raw_data"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.raw_data</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.sample_id_cll"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.sample_id_cll</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.mineral"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.mineral</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.dating_approach"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.dating_approach</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.luminescence_age"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.luminescence_age</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.age_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.age_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.signal"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.signal</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.protocol"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.protocol</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.palaeodose_value"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.palaeodose_value</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.palaeodose_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.palaeodose_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.dose_rate"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.dose_rate</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.dose_rate_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.dose_rate_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.published"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.published</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.year_of_publication"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.year_of_publication</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.thesis"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.thesis</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.comments"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.comments</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.grain_size_min"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.grain_size_min</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.grain_size_max"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.grain_size_max</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.aliquot_size"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.aliquot_size</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.aliquot_number_used_for_palaeodose"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.aliquot_number_used_for_palaeodose</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.od_percent"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.od_percent</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.od_percent_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.od_percent_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.od_gy"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.od_gy</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.od_gy_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.od_gy_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.age_model"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.age_model</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.beta_source_calibration"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.beta_source_calibration</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.instrumental_beta_source_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.instrumental_beta_source_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.uncertainty_beta_source_calibration"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.uncertainty_beta_source_calibration</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.fading_correction"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.fading_correction</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.g_value"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.g_value</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.g_value_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.g_value_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.Lnat_Lsat_ratio"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.Lnat_Lsat_ratio</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.dose_rate_measurement_technique"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.dose_rate_measurement_technique</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.dose_rate_calculation_software"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.dose_rate_calculation_software</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.u_ppm"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.u_ppm</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.u_ppm_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.u_ppm_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.th_ppm"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.th_ppm</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.th_ppm_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.th_ppm_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.k_percent"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.k_percent</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.k_percent_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.k_percent_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.water_content_for_dating"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.water_content_for_dating</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.water_content_for_dating_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.water_content_for_dating_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.a_value"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.a_value</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.a_value_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.a_value_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.alpha_dose_rate"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.alpha_dose_rate</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.alpha_dose_rate_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.alpha_dose_rate_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.beta_dose_rate"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.beta_dose_rate</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.beta_dose_rate_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.beta_dose_rate_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.gamma_dose_rate"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.gamma_dose_rate</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.gamma_dose_rate_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.gamma_dose_rate_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.cosmic_dose_rate"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.cosmic_dose_rate</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.cosmic_dose_rate_error"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.cosmic_dose_rate_error</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.LuminescenceDating.NotUpdated"><code class="docutils literal notranslate"><span class="pre">LuminescenceDating.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.MeasurementSeries"><code class="docutils literal notranslate"><span class="pre">MeasurementSeries</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.MeasurementSeries.datetime"><code class="docutils literal notranslate"><span class="pre">MeasurementSeries.datetime</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MeasurementSeries.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">MeasurementSeries.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MeasurementSeries.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">MeasurementSeries.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MeasurementSeries.NotUpdated"><code class="docutils literal notranslate"><span class="pre">MeasurementSeries.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap.measurement"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap.measurement</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap.element"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap.element</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap.raster_file"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap.raster_file</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap.unit"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap.unit</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFElementMap.NotUpdated"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMap.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement.sample"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement.sample</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement.measurement_date"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement.measurement_date</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement.method"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement.method</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement.notes"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement.notes</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.MicroXRFMeasurement.NotUpdated"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurement.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.Parameter"><code class="docutils literal notranslate"><span class="pre">Parameter</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.Parameter.name"><code class="docutils literal notranslate"><span class="pre">Parameter.name</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.token"><code class="docutils literal notranslate"><span class="pre">Parameter.token</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.unit"><code class="docutils literal notranslate"><span class="pre">Parameter.unit</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.minimal_limit"><code class="docutils literal notranslate"><span class="pre">Parameter.minimal_limit</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.maximal_limit"><code class="docutils literal notranslate"><span class="pre">Parameter.maximal_limit</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.classes"><code class="docutils literal notranslate"><span class="pre">Parameter.classes</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">Parameter.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">Parameter.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Parameter.NotUpdated"><code class="docutils literal notranslate"><span class="pre">Parameter.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.Pollen"><code class="docutils literal notranslate"><span class="pre">Pollen</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.Pollen.name"><code class="docutils literal notranslate"><span class="pre">Pollen.name</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Pollen.token"><code class="docutils literal notranslate"><span class="pre">Pollen.token</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Pollen.name_en"><code class="docutils literal notranslate"><span class="pre">Pollen.name_en</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Pollen.name_german"><code class="docutils literal notranslate"><span class="pre">Pollen.name_german</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Pollen.name_nor"><code class="docutils literal notranslate"><span class="pre">Pollen.name_nor</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Pollen.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">Pollen.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Pollen.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">Pollen.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.Pollen.NotUpdated"><code class="docutils literal notranslate"><span class="pre">Pollen.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.PollenCount"><code class="docutils literal notranslate"><span class="pre">PollenCount</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.PollenCount.counting"><code class="docutils literal notranslate"><span class="pre">PollenCount.counting</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.PollenCount.pollen"><code class="docutils literal notranslate"><span class="pre">PollenCount.pollen</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.PollenCount.number"><code class="docutils literal notranslate"><span class="pre">PollenCount.number</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.PollenCount.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">PollenCount.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.PollenCount.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">PollenCount.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.PollenCount.NotUpdated"><code class="docutils literal notranslate"><span class="pre">PollenCount.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.sample"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.sample</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.raw_data"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.raw_data</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.lab"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.lab</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.lab_id"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.lab_id</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.age"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.age</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RadiocarbonDating.NotUpdated"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDating.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement"><code class="docutils literal notranslate"><span class="pre">RawMeasurement</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.project"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.project</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.sample"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.sample</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.device"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.device</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.accessories"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.accessories</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.researcher"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.researcher</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.file"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.file</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.description"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.description</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawMeasurement.NotUpdated"><code class="docutils literal notranslate"><span class="pre">RawMeasurement.NotUpdated</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing"><code class="docutils literal notranslate"><span class="pre">RawProcessing</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.raw_measurement"><code class="docutils literal notranslate"><span class="pre">RawProcessing.raw_measurement</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.processed_file"><code class="docutils literal notranslate"><span class="pre">RawProcessing.processed_file</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.processing_description"><code class="docutils literal notranslate"><span class="pre">RawProcessing.processing_description</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.processed_by"><code class="docutils literal notranslate"><span class="pre">RawProcessing.processed_by</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.processing_date"><code class="docutils literal notranslate"><span class="pre">RawProcessing.processing_date</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.preparation_algorithm"><code class="docutils literal notranslate"><span class="pre">RawProcessing.preparation_algorithm</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.evaluation_algorithm"><code class="docutils literal notranslate"><span class="pre">RawProcessing.evaluation_algorithm</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.publication"><code class="docutils literal notranslate"><span class="pre">RawProcessing.publication</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.DoesNotExist"><code class="docutils literal notranslate"><span class="pre">RawProcessing.DoesNotExist</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.MultipleObjectsReturned"><code class="docutils literal notranslate"><span class="pre">RawProcessing.MultipleObjectsReturned</span></code></a></li>
+<li><a class="reference internal" href="#analysis.models.RawProcessing.NotUpdated"><code class="docutils literal notranslate"><span class="pre">RawProcessing.NotUpdated</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">CGDB documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cgdb-documentation">
+<h1>CGDB documentation<a class="headerlink" href="#cgdb-documentation" title="Link to this heading"></a></h1>
+<p>The Cologne Geomorphological Database System (CGDB)  is a comprehensive information system for managing complex geoscientific research data. It is specifically designed to support small research projects that must adhere to strict data management requirements set by funding bodies but often lack the financial and human resources to do so. The framework supports the transformation of raw research data into scientific knowledge. It addresses critical challenges, such as the rapid increase in the volume, variety, and complexity of geoscientific datasets, data heterogeneity, spatial complexity, and the need to comply with the FAIR (Findable, Accessible, Interoperable, and Reusable) principles. The approach optimizes the research management process by enhancing scalability and enabling interdisciplinary integration. It is adaptable to evolving research requirements and supports various data types and methodological approaches, such as machine learning and deep learning, that place high demands on the data and their formats.</p>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+<section id="module-analysis.models">
+<span id="analysis"></span><h1>Analysis<a class="headerlink" href="#module-analysis.models" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.Algorithm">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">Algorithm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#Algorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.Algorithm" title="Link to this definition"></a></dt>
+<dd><p>Represents an analysis algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>CharField</em>) – Name of the algorithm.</p></li>
+<li><p><strong>version</strong> (<em>CharField</em>) – Version of the algorithm.</p></li>
+<li><p><strong>description</strong> (<em>TextField</em>) – Description of the algorithm.</p></li>
+<li><p><strong>link</strong> (<em>URLField</em>) – Link to the algorithm resource.</p></li>
+<li><p><strong>file</strong> (<em>FileField</em>) – File containing the algorithm.</p></li>
+<li><p><strong>programming_language</strong> (<em>CharField</em>) – Programming language used.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Algorithm.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.Algorithm.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Algorithm.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.Algorithm.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Algorithm.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.Algorithm.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.Counting">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">Counting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#Counting"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.Counting" title="Link to this definition"></a></dt>
+<dd><p>Counting model for paleobotany analysis.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Counting.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><a class="headerlink" href="#analysis.models.Counting.sample" title="Link to this definition"></a></dt>
+<dd><p>Sample associated with the counting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Counting.raw_data">
+<span class="sig-name descname"><span class="pre">raw_data</span></span><a class="headerlink" href="#analysis.models.Counting.raw_data" title="Link to this definition"></a></dt>
+<dd><p>Raw measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Counting.type">
+<span class="sig-name descname"><span class="pre">type</span></span><a class="headerlink" href="#analysis.models.Counting.type" title="Link to this definition"></a></dt>
+<dd><p>Type of counting (Percent or Absolute numbers).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Counting.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.Counting.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Counting.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.Counting.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Counting.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.Counting.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">GenericMeasurement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#GenericMeasurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.GenericMeasurement" title="Link to this definition"></a></dt>
+<dd><p>Lists all distinct generic measurements, independent of measured results.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.sample" title="Link to this definition"></a></dt>
+<dd><p>Sample associated with the measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.raw_data">
+<span class="sig-name descname"><span class="pre">raw_data</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.raw_data" title="Link to this definition"></a></dt>
+<dd><p>Raw measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.MeasurementSeries">
+<span class="sig-name descname"><span class="pre">MeasurementSeries</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.MeasurementSeries" title="Link to this definition"></a></dt>
+<dd><p>Measurement series.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.sample_weight">
+<span class="sig-name descname"><span class="pre">sample_weight</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.sample_weight" title="Link to this definition"></a></dt>
+<dd><p>Weight of the sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.method">
+<span class="sig-name descname"><span class="pre">method</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.method" title="Link to this definition"></a></dt>
+<dd><p>Method used for measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.parameter">
+<span class="sig-name descname"><span class="pre">parameter</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.parameter" title="Link to this definition"></a></dt>
+<dd><p>Parameter measured.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.value">
+<span class="sig-name descname"><span class="pre">value</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.value" title="Link to this definition"></a></dt>
+<dd><p>Measured value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.error">
+<span class="sig-name descname"><span class="pre">error</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.error" title="Link to this definition"></a></dt>
+<dd><p>Error in measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.GenericMeasurement.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.GenericMeasurement.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.GrainSize">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">GrainSize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#GrainSize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.GrainSize" title="Link to this definition"></a></dt>
+<dd><p>Represents the grain size distribution of a sediment sample.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><a class="headerlink" href="#analysis.models.GrainSize.sample" title="Link to this definition"></a></dt>
+<dd><p>Reference to the Sample model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.raw_data">
+<span class="sig-name descname"><span class="pre">raw_data</span></span><a class="headerlink" href="#analysis.models.GrainSize.raw_data" title="Link to this definition"></a></dt>
+<dd><p>Raw measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.sample_weight">
+<span class="sig-name descname"><span class="pre">sample_weight</span></span><a class="headerlink" href="#analysis.models.GrainSize.sample_weight" title="Link to this definition"></a></dt>
+<dd><p>Weight of the sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.sample_concentration">
+<span class="sig-name descname"><span class="pre">sample_concentration</span></span><a class="headerlink" href="#analysis.models.GrainSize.sample_concentration" title="Link to this definition"></a></dt>
+<dd><p>Concentration of the sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.method">
+<span class="sig-name descname"><span class="pre">method</span></span><a class="headerlink" href="#analysis.models.GrainSize.method" title="Link to this definition"></a></dt>
+<dd><p>Method used for grain size measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.classes">
+<span class="sig-name descname"><span class="pre">classes</span></span><a class="headerlink" href="#analysis.models.GrainSize.classes" title="Link to this definition"></a></dt>
+<dd><p>Classes of the raw grain size measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSONField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.measured_data">
+<span class="sig-name descname"><span class="pre">measured_data</span></span><a class="headerlink" href="#analysis.models.GrainSize.measured_data" title="Link to this definition"></a></dt>
+<dd><p>Raw grain size measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSONField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.clay">
+<span class="sig-name descname"><span class="pre">clay</span></span><a class="headerlink" href="#analysis.models.GrainSize.clay" title="Link to this definition"></a></dt>
+<dd><p>Percentage of clay.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.fine_silt">
+<span class="sig-name descname"><span class="pre">fine_silt</span></span><a class="headerlink" href="#analysis.models.GrainSize.fine_silt" title="Link to this definition"></a></dt>
+<dd><p>Percentage of fine silt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.medium_silt">
+<span class="sig-name descname"><span class="pre">medium_silt</span></span><a class="headerlink" href="#analysis.models.GrainSize.medium_silt" title="Link to this definition"></a></dt>
+<dd><p>Percentage of medium silt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.coarse_silt">
+<span class="sig-name descname"><span class="pre">coarse_silt</span></span><a class="headerlink" href="#analysis.models.GrainSize.coarse_silt" title="Link to this definition"></a></dt>
+<dd><p>Percentage of coarse silt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.fine_sand">
+<span class="sig-name descname"><span class="pre">fine_sand</span></span><a class="headerlink" href="#analysis.models.GrainSize.fine_sand" title="Link to this definition"></a></dt>
+<dd><p>Percentage of fine sand.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.medium_sand">
+<span class="sig-name descname"><span class="pre">medium_sand</span></span><a class="headerlink" href="#analysis.models.GrainSize.medium_sand" title="Link to this definition"></a></dt>
+<dd><p>Percentage of medium sand.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.coarse_sand">
+<span class="sig-name descname"><span class="pre">coarse_sand</span></span><a class="headerlink" href="#analysis.models.GrainSize.coarse_sand" title="Link to this definition"></a></dt>
+<dd><p>Percentage of coarse sand.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.mean">
+<span class="sig-name descname"><span class="pre">mean</span></span><a class="headerlink" href="#analysis.models.GrainSize.mean" title="Link to this definition"></a></dt>
+<dd><p>Mean grain size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.mode">
+<span class="sig-name descname"><span class="pre">mode</span></span><a class="headerlink" href="#analysis.models.GrainSize.mode" title="Link to this definition"></a></dt>
+<dd><p>Mode grain size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.median">
+<span class="sig-name descname"><span class="pre">median</span></span><a class="headerlink" href="#analysis.models.GrainSize.median" title="Link to this definition"></a></dt>
+<dd><p>Median grain size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.std">
+<span class="sig-name descname"><span class="pre">std</span></span><a class="headerlink" href="#analysis.models.GrainSize.std" title="Link to this definition"></a></dt>
+<dd><p>Standard deviation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.skew">
+<span class="sig-name descname"><span class="pre">skew</span></span><a class="headerlink" href="#analysis.models.GrainSize.skew" title="Link to this definition"></a></dt>
+<dd><p>Skewness.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.kurtosis">
+<span class="sig-name descname"><span class="pre">kurtosis</span></span><a class="headerlink" href="#analysis.models.GrainSize.kurtosis" title="Link to this definition"></a></dt>
+<dd><p>Kurtosis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.fwmean">
+<span class="sig-name descname"><span class="pre">fwmean</span></span><a class="headerlink" href="#analysis.models.GrainSize.fwmean" title="Link to this definition"></a></dt>
+<dd><p>Folk &amp; Ward mean.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.fwmedian">
+<span class="sig-name descname"><span class="pre">fwmedian</span></span><a class="headerlink" href="#analysis.models.GrainSize.fwmedian" title="Link to this definition"></a></dt>
+<dd><p>Folk &amp; Ward median.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.fwsd">
+<span class="sig-name descname"><span class="pre">fwsd</span></span><a class="headerlink" href="#analysis.models.GrainSize.fwsd" title="Link to this definition"></a></dt>
+<dd><p>Folk &amp; Ward standard deviation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.fwskew">
+<span class="sig-name descname"><span class="pre">fwskew</span></span><a class="headerlink" href="#analysis.models.GrainSize.fwskew" title="Link to this definition"></a></dt>
+<dd><p>Folk &amp; Ward skewness.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.fwkurt">
+<span class="sig-name descname"><span class="pre">fwkurt</span></span><a class="headerlink" href="#analysis.models.GrainSize.fwkurt" title="Link to this definition"></a></dt>
+<dd><p>Folk &amp; Ward kurtosis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.GrainSize.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.GrainSize.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.GrainSize.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.from_file">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Self</span></span></span><a class="reference internal" href="_modules/analysis/models.html#GrainSize.from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.GrainSize.from_file" title="Link to this definition"></a></dt>
+<dd><p>Create an instance of the class from a file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_path</strong> (<em>str</em>) – The path to the file to read.</p></li>
+<li><p><strong>sample</strong> (<em>str</em>) – The sample identifier.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – The method used for measurement.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>An instance of the class with data populated from the file.</p>
+</dd>
+</dl>
+<p>The file should have sections denoted by square brackets, e.g., [CLASSES] and [MEASURED_DATA].
+The data under [CLASSES] should be float values representing different classes.
+The data under [MEASURED_DATA] should be float values representing measured data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.models.GrainSize.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#GrainSize.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.GrainSize.save" title="Link to this definition"></a></dt>
+<dd><p>Save the current instance. Override this in a subclass if you want to
+control the saving process.</p>
+<p>The ‘force_insert’ and ‘force_update’ parameters can be used to insist
+that the “save” must be an SQL insert or update (or equivalent for
+non-SQL backends), respectively. Normally, they should not be set.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">LuminescenceDating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#LuminescenceDating"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.LuminescenceDating" title="Link to this definition"></a></dt>
+<dd><p>Model representing luminescence dating information for a sample.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.laboratory_id">
+<span class="sig-name descname"><span class="pre">laboratory_id</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.laboratory_id" title="Link to this definition"></a></dt>
+<dd><p>Laboratory identifier.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.sample" title="Link to this definition"></a></dt>
+<dd><p>Sample being dated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.raw_data">
+<span class="sig-name descname"><span class="pre">raw_data</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.raw_data" title="Link to this definition"></a></dt>
+<dd><p>Raw measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.sample_id_cll">
+<span class="sig-name descname"><span class="pre">sample_id_cll</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.sample_id_cll" title="Link to this definition"></a></dt>
+<dd><p>Sample ID CLL.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.mineral">
+<span class="sig-name descname"><span class="pre">mineral</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.mineral" title="Link to this definition"></a></dt>
+<dd><p>Mineral type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.dating_approach">
+<span class="sig-name descname"><span class="pre">dating_approach</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.dating_approach" title="Link to this definition"></a></dt>
+<dd><p>Dating approach.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.luminescence_age">
+<span class="sig-name descname"><span class="pre">luminescence_age</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.luminescence_age" title="Link to this definition"></a></dt>
+<dd><p>Age in kiloannum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.age_error">
+<span class="sig-name descname"><span class="pre">age_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.age_error" title="Link to this definition"></a></dt>
+<dd><p>Error in age.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.signal">
+<span class="sig-name descname"><span class="pre">signal</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.signal" title="Link to this definition"></a></dt>
+<dd><p>Signal type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.protocol">
+<span class="sig-name descname"><span class="pre">protocol</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.protocol" title="Link to this definition"></a></dt>
+<dd><p>Protocol used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.palaeodose_value">
+<span class="sig-name descname"><span class="pre">palaeodose_value</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.palaeodose_value" title="Link to this definition"></a></dt>
+<dd><p>Palaeodose value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.palaeodose_error">
+<span class="sig-name descname"><span class="pre">palaeodose_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.palaeodose_error" title="Link to this definition"></a></dt>
+<dd><p>Error in palaeodose.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.dose_rate">
+<span class="sig-name descname"><span class="pre">dose_rate</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.dose_rate" title="Link to this definition"></a></dt>
+<dd><p>Dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.dose_rate_error">
+<span class="sig-name descname"><span class="pre">dose_rate_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.dose_rate_error" title="Link to this definition"></a></dt>
+<dd><p>Error in dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.published">
+<span class="sig-name descname"><span class="pre">published</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.published" title="Link to this definition"></a></dt>
+<dd><p>Publication status.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>BooleanField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.year_of_publication">
+<span class="sig-name descname"><span class="pre">year_of_publication</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.year_of_publication" title="Link to this definition"></a></dt>
+<dd><p>Year of publication.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PositiveIntegerField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.thesis">
+<span class="sig-name descname"><span class="pre">thesis</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.thesis" title="Link to this definition"></a></dt>
+<dd><p>Thesis type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.comments">
+<span class="sig-name descname"><span class="pre">comments</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.comments" title="Link to this definition"></a></dt>
+<dd><p>Additional comments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>TextField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.grain_size_min">
+<span class="sig-name descname"><span class="pre">grain_size_min</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.grain_size_min" title="Link to this definition"></a></dt>
+<dd><p>Minimum grain size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>IntegerField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.grain_size_max">
+<span class="sig-name descname"><span class="pre">grain_size_max</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.grain_size_max" title="Link to this definition"></a></dt>
+<dd><p>Maximum grain size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>IntegerField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.aliquot_size">
+<span class="sig-name descname"><span class="pre">aliquot_size</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.aliquot_size" title="Link to this definition"></a></dt>
+<dd><p>Aliquot size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.aliquot_number_used_for_palaeodose">
+<span class="sig-name descname"><span class="pre">aliquot_number_used_for_palaeodose</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.aliquot_number_used_for_palaeodose" title="Link to this definition"></a></dt>
+<dd><p>Number of aliquots used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>IntegerField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.od_percent">
+<span class="sig-name descname"><span class="pre">od_percent</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.od_percent" title="Link to this definition"></a></dt>
+<dd><p>Overdispersion percent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.od_percent_error">
+<span class="sig-name descname"><span class="pre">od_percent_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.od_percent_error" title="Link to this definition"></a></dt>
+<dd><p>Error in overdispersion percent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.od_gy">
+<span class="sig-name descname"><span class="pre">od_gy</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.od_gy" title="Link to this definition"></a></dt>
+<dd><p>Overdispersion in Gy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.od_gy_error">
+<span class="sig-name descname"><span class="pre">od_gy_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.od_gy_error" title="Link to this definition"></a></dt>
+<dd><p>Error in overdispersion Gy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.age_model">
+<span class="sig-name descname"><span class="pre">age_model</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.age_model" title="Link to this definition"></a></dt>
+<dd><p>Age model used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.beta_source_calibration">
+<span class="sig-name descname"><span class="pre">beta_source_calibration</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.beta_source_calibration" title="Link to this definition"></a></dt>
+<dd><p>Beta source calibration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.instrumental_beta_source_error">
+<span class="sig-name descname"><span class="pre">instrumental_beta_source_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.instrumental_beta_source_error" title="Link to this definition"></a></dt>
+<dd><p>Instrumental error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.uncertainty_beta_source_calibration">
+<span class="sig-name descname"><span class="pre">uncertainty_beta_source_calibration</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.uncertainty_beta_source_calibration" title="Link to this definition"></a></dt>
+<dd><p>Uncertainty in calibration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PositiveIntegerField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.fading_correction">
+<span class="sig-name descname"><span class="pre">fading_correction</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.fading_correction" title="Link to this definition"></a></dt>
+<dd><p>Fading correction applied.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>BooleanField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.g_value">
+<span class="sig-name descname"><span class="pre">g_value</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.g_value" title="Link to this definition"></a></dt>
+<dd><p>g-value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.g_value_error">
+<span class="sig-name descname"><span class="pre">g_value_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.g_value_error" title="Link to this definition"></a></dt>
+<dd><p>Error in g-value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.Lnat_Lsat_ratio">
+<span class="sig-name descname"><span class="pre">Lnat_Lsat_ratio</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.Lnat_Lsat_ratio" title="Link to this definition"></a></dt>
+<dd><p>L_na/L_sat ratio.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.dose_rate_measurement_technique">
+<span class="sig-name descname"><span class="pre">dose_rate_measurement_technique</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.dose_rate_measurement_technique" title="Link to this definition"></a></dt>
+<dd><p>Dose rate measurement technique.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.dose_rate_calculation_software">
+<span class="sig-name descname"><span class="pre">dose_rate_calculation_software</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.dose_rate_calculation_software" title="Link to this definition"></a></dt>
+<dd><p>Dose rate calculation software.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.u_ppm">
+<span class="sig-name descname"><span class="pre">u_ppm</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.u_ppm" title="Link to this definition"></a></dt>
+<dd><p>Uranium concentration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.u_ppm_error">
+<span class="sig-name descname"><span class="pre">u_ppm_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.u_ppm_error" title="Link to this definition"></a></dt>
+<dd><p>Error in uranium concentration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.th_ppm">
+<span class="sig-name descname"><span class="pre">th_ppm</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.th_ppm" title="Link to this definition"></a></dt>
+<dd><p>Thorium concentration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.th_ppm_error">
+<span class="sig-name descname"><span class="pre">th_ppm_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.th_ppm_error" title="Link to this definition"></a></dt>
+<dd><p>Error in thorium concentration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.k_percent">
+<span class="sig-name descname"><span class="pre">k_percent</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.k_percent" title="Link to this definition"></a></dt>
+<dd><p>Potassium concentration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.k_percent_error">
+<span class="sig-name descname"><span class="pre">k_percent_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.k_percent_error" title="Link to this definition"></a></dt>
+<dd><p>Error in potassium concentration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.water_content_for_dating">
+<span class="sig-name descname"><span class="pre">water_content_for_dating</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.water_content_for_dating" title="Link to this definition"></a></dt>
+<dd><p>Water content for dating.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.water_content_for_dating_error">
+<span class="sig-name descname"><span class="pre">water_content_for_dating_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.water_content_for_dating_error" title="Link to this definition"></a></dt>
+<dd><p>Error in water content.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.a_value">
+<span class="sig-name descname"><span class="pre">a_value</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.a_value" title="Link to this definition"></a></dt>
+<dd><p>a-value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.a_value_error">
+<span class="sig-name descname"><span class="pre">a_value_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.a_value_error" title="Link to this definition"></a></dt>
+<dd><p>Error in a-value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.alpha_dose_rate">
+<span class="sig-name descname"><span class="pre">alpha_dose_rate</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.alpha_dose_rate" title="Link to this definition"></a></dt>
+<dd><p>Alpha dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.alpha_dose_rate_error">
+<span class="sig-name descname"><span class="pre">alpha_dose_rate_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.alpha_dose_rate_error" title="Link to this definition"></a></dt>
+<dd><p>Error in alpha dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.beta_dose_rate">
+<span class="sig-name descname"><span class="pre">beta_dose_rate</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.beta_dose_rate" title="Link to this definition"></a></dt>
+<dd><p>Beta dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.beta_dose_rate_error">
+<span class="sig-name descname"><span class="pre">beta_dose_rate_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.beta_dose_rate_error" title="Link to this definition"></a></dt>
+<dd><p>Error in beta dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.gamma_dose_rate">
+<span class="sig-name descname"><span class="pre">gamma_dose_rate</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.gamma_dose_rate" title="Link to this definition"></a></dt>
+<dd><p>Gamma dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.gamma_dose_rate_error">
+<span class="sig-name descname"><span class="pre">gamma_dose_rate_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.gamma_dose_rate_error" title="Link to this definition"></a></dt>
+<dd><p>Error in gamma dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.cosmic_dose_rate">
+<span class="sig-name descname"><span class="pre">cosmic_dose_rate</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.cosmic_dose_rate" title="Link to this definition"></a></dt>
+<dd><p>Cosmic dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.cosmic_dose_rate_error">
+<span class="sig-name descname"><span class="pre">cosmic_dose_rate_error</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.cosmic_dose_rate_error" title="Link to this definition"></a></dt>
+<dd><p>Error in cosmic dose rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.LuminescenceDating.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.LuminescenceDating.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.MeasurementSeries">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">MeasurementSeries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#MeasurementSeries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.MeasurementSeries" title="Link to this definition"></a></dt>
+<dd><p>Represents a series of measurements.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MeasurementSeries.datetime">
+<span class="sig-name descname"><span class="pre">datetime</span></span><a class="headerlink" href="#analysis.models.MeasurementSeries.datetime" title="Link to this definition"></a></dt>
+<dd><p>Date and time of the measurement series.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DateTimeField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MeasurementSeries.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.MeasurementSeries.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MeasurementSeries.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.MeasurementSeries.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MeasurementSeries.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.MeasurementSeries.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">MicroXRFElementMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#MicroXRFElementMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.MicroXRFElementMap" title="Link to this definition"></a></dt>
+<dd><p>Represents an element map from a MicroXRF measurement.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap.measurement">
+<span class="sig-name descname"><span class="pre">measurement</span></span><a class="headerlink" href="#analysis.models.MicroXRFElementMap.measurement" title="Link to this definition"></a></dt>
+<dd><p>Reference to MicroXRFMeasurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap.element">
+<span class="sig-name descname"><span class="pre">element</span></span><a class="headerlink" href="#analysis.models.MicroXRFElementMap.element" title="Link to this definition"></a></dt>
+<dd><p>Element or compound mapped.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap.raster_file">
+<span class="sig-name descname"><span class="pre">raster_file</span></span><a class="headerlink" href="#analysis.models.MicroXRFElementMap.raster_file" title="Link to this definition"></a></dt>
+<dd><p>Path to raster file (.tif).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FileField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap.unit">
+<span class="sig-name descname"><span class="pre">unit</span></span><a class="headerlink" href="#analysis.models.MicroXRFElementMap.unit" title="Link to this definition"></a></dt>
+<dd><p>Unit of measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.MicroXRFElementMap.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.MicroXRFElementMap.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFElementMap.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.MicroXRFElementMap.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">MicroXRFMeasurement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#MicroXRFMeasurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.MicroXRFMeasurement" title="Link to this definition"></a></dt>
+<dd><p>Represents a MicroXRF measurement for a sample.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><a class="headerlink" href="#analysis.models.MicroXRFMeasurement.sample" title="Link to this definition"></a></dt>
+<dd><p>Sample measured.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement.measurement_date">
+<span class="sig-name descname"><span class="pre">measurement_date</span></span><a class="headerlink" href="#analysis.models.MicroXRFMeasurement.measurement_date" title="Link to this definition"></a></dt>
+<dd><p>Date of measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DateField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement.method">
+<span class="sig-name descname"><span class="pre">method</span></span><a class="headerlink" href="#analysis.models.MicroXRFMeasurement.method" title="Link to this definition"></a></dt>
+<dd><p>Method or device used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement.notes">
+<span class="sig-name descname"><span class="pre">notes</span></span><a class="headerlink" href="#analysis.models.MicroXRFMeasurement.notes" title="Link to this definition"></a></dt>
+<dd><p>Additional notes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>TextField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.MicroXRFMeasurement.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.MicroXRFMeasurement.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.MicroXRFMeasurement.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.MicroXRFMeasurement.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.Parameter">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">Parameter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#Parameter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.Parameter" title="Link to this definition"></a></dt>
+<dd><p>Represents a physical parameter for measurement.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Parameter.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#analysis.models.Parameter.name" title="Link to this definition"></a></dt>
+<dd><p>Name of the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Parameter.token">
+<span class="sig-name descname"><span class="pre">token</span></span><a class="headerlink" href="#analysis.models.Parameter.token" title="Link to this definition"></a></dt>
+<dd><p>Short token for the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Parameter.unit">
+<span class="sig-name descname"><span class="pre">unit</span></span><a class="headerlink" href="#analysis.models.Parameter.unit" title="Link to this definition"></a></dt>
+<dd><p>Physical unit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Parameter.minimal_limit">
+<span class="sig-name descname"><span class="pre">minimal_limit</span></span><a class="headerlink" href="#analysis.models.Parameter.minimal_limit" title="Link to this definition"></a></dt>
+<dd><p>Minimal limit for the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Parameter.maximal_limit">
+<span class="sig-name descname"><span class="pre">maximal_limit</span></span><a class="headerlink" href="#analysis.models.Parameter.maximal_limit" title="Link to this definition"></a></dt>
+<dd><p>Maximal limit for the parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FloatField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Parameter.classes">
+<span class="sig-name descname"><span class="pre">classes</span></span><a class="headerlink" href="#analysis.models.Parameter.classes" title="Link to this definition"></a></dt>
+<dd><p>Classes for unstructured list data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSONField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Parameter.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.Parameter.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Parameter.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.Parameter.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Parameter.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.Parameter.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.Pollen">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">Pollen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#Pollen"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.Pollen" title="Link to this definition"></a></dt>
+<dd><p>Pollen species model for paleobotany analysis.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Pollen.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#analysis.models.Pollen.name" title="Link to this definition"></a></dt>
+<dd><p>Name in Latin.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Pollen.token">
+<span class="sig-name descname"><span class="pre">token</span></span><a class="headerlink" href="#analysis.models.Pollen.token" title="Link to this definition"></a></dt>
+<dd><p>Short token for the pollen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Pollen.name_en">
+<span class="sig-name descname"><span class="pre">name_en</span></span><a class="headerlink" href="#analysis.models.Pollen.name_en" title="Link to this definition"></a></dt>
+<dd><p>Name in English.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Pollen.name_german">
+<span class="sig-name descname"><span class="pre">name_german</span></span><a class="headerlink" href="#analysis.models.Pollen.name_german" title="Link to this definition"></a></dt>
+<dd><p>Name in German.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.Pollen.name_nor">
+<span class="sig-name descname"><span class="pre">name_nor</span></span><a class="headerlink" href="#analysis.models.Pollen.name_nor" title="Link to this definition"></a></dt>
+<dd><p>Name in Norwegian.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Pollen.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.Pollen.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Pollen.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.Pollen.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.Pollen.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.Pollen.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.PollenCount">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">PollenCount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#PollenCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.PollenCount" title="Link to this definition"></a></dt>
+<dd><p>Pollen count model linking counting and pollen species.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.PollenCount.counting">
+<span class="sig-name descname"><span class="pre">counting</span></span><a class="headerlink" href="#analysis.models.PollenCount.counting" title="Link to this definition"></a></dt>
+<dd><p>Reference to Counting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.PollenCount.pollen">
+<span class="sig-name descname"><span class="pre">pollen</span></span><a class="headerlink" href="#analysis.models.PollenCount.pollen" title="Link to this definition"></a></dt>
+<dd><p>Reference to Pollen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.PollenCount.number">
+<span class="sig-name descname"><span class="pre">number</span></span><a class="headerlink" href="#analysis.models.PollenCount.number" title="Link to this definition"></a></dt>
+<dd><p>Number of pollen counted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>IntegerField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.PollenCount.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.PollenCount.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.PollenCount.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.PollenCount.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.PollenCount.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.PollenCount.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">RadiocarbonDating</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#RadiocarbonDating"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.RadiocarbonDating" title="Link to this definition"></a></dt>
+<dd><p>Represents radiocarbon dating information for a sample.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.sample" title="Link to this definition"></a></dt>
+<dd><p>Sample being dated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.raw_data">
+<span class="sig-name descname"><span class="pre">raw_data</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.raw_data" title="Link to this definition"></a></dt>
+<dd><p>Raw measurement data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.lab">
+<span class="sig-name descname"><span class="pre">lab</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.lab" title="Link to this definition"></a></dt>
+<dd><p>Laboratory name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.lab_id">
+<span class="sig-name descname"><span class="pre">lab_id</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.lab_id" title="Link to this definition"></a></dt>
+<dd><p>Laboratory identifier for the sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>CharField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.age">
+<span class="sig-name descname"><span class="pre">age</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.age" title="Link to this definition"></a></dt>
+<dd><p>Age in kiloannum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DecimalField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RadiocarbonDating.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.RadiocarbonDating.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">RawMeasurement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#RawMeasurement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.RawMeasurement" title="Link to this definition"></a></dt>
+<dd><p>Raw data model for storing uploaded files.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.project">
+<span class="sig-name descname"><span class="pre">project</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.project" title="Link to this definition"></a></dt>
+<dd><p>Project associated with the measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.sample" title="Link to this definition"></a></dt>
+<dd><p>Samples associated with the measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ManyToManyField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.device">
+<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.device" title="Link to this definition"></a></dt>
+<dd><p>Device used for measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.accessories">
+<span class="sig-name descname"><span class="pre">accessories</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.accessories" title="Link to this definition"></a></dt>
+<dd><p>Accessories used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.researcher">
+<span class="sig-name descname"><span class="pre">researcher</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.researcher" title="Link to this definition"></a></dt>
+<dd><p>Researcher who performed the measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.file">
+<span class="sig-name descname"><span class="pre">file</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.file" title="Link to this definition"></a></dt>
+<dd><p>Uploaded raw data file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FileField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.description">
+<span class="sig-name descname"><span class="pre">description</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.description" title="Link to this definition"></a></dt>
+<dd><p>Description of the measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>TextField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RawMeasurement.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.RawMeasurement.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.models.</span></span><span class="sig-name descname"><span class="pre">RawProcessing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/models.html#RawProcessing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.models.RawProcessing" title="Link to this definition"></a></dt>
+<dd><p>Model for storing processed data derived from raw measurements.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.raw_measurement">
+<span class="sig-name descname"><span class="pre">raw_measurement</span></span><a class="headerlink" href="#analysis.models.RawProcessing.raw_measurement" title="Link to this definition"></a></dt>
+<dd><p>Reference to the raw measurement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.processed_file">
+<span class="sig-name descname"><span class="pre">processed_file</span></span><a class="headerlink" href="#analysis.models.RawProcessing.processed_file" title="Link to this definition"></a></dt>
+<dd><p>File containing processed data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>FileField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.processing_description">
+<span class="sig-name descname"><span class="pre">processing_description</span></span><a class="headerlink" href="#analysis.models.RawProcessing.processing_description" title="Link to this definition"></a></dt>
+<dd><p>Description of the processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>TextField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.processed_by">
+<span class="sig-name descname"><span class="pre">processed_by</span></span><a class="headerlink" href="#analysis.models.RawProcessing.processed_by" title="Link to this definition"></a></dt>
+<dd><p>Researcher who processed the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.processing_date">
+<span class="sig-name descname"><span class="pre">processing_date</span></span><a class="headerlink" href="#analysis.models.RawProcessing.processing_date" title="Link to this definition"></a></dt>
+<dd><p>Date of processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DateField</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.preparation_algorithm">
+<span class="sig-name descname"><span class="pre">preparation_algorithm</span></span><a class="headerlink" href="#analysis.models.RawProcessing.preparation_algorithm" title="Link to this definition"></a></dt>
+<dd><p>Algorithm used for preparation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.evaluation_algorithm">
+<span class="sig-name descname"><span class="pre">evaluation_algorithm</span></span><a class="headerlink" href="#analysis.models.RawProcessing.evaluation_algorithm" title="Link to this definition"></a></dt>
+<dd><p>Algorithm used for evaluation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.publication">
+<span class="sig-name descname"><span class="pre">publication</span></span><a class="headerlink" href="#analysis.models.RawProcessing.publication" title="Link to this definition"></a></dt>
+<dd><p>Reference to publication.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ForeignKey</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.DoesNotExist">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DoesNotExist</span></span><a class="headerlink" href="#analysis.models.RawProcessing.DoesNotExist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.MultipleObjectsReturned">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MultipleObjectsReturned</span></span><a class="headerlink" href="#analysis.models.RawProcessing.MultipleObjectsReturned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="analysis.models.RawProcessing.NotUpdated">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">NotUpdated</span></span><a class="headerlink" href="#analysis.models.RawProcessing.NotUpdated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

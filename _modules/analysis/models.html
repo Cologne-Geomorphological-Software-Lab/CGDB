@@ -1,0 +1,1672 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.models &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.models</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.models</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Self</span>
+<span class="kn">from</span> <span class="nn">zoneinfo</span> <span class="kn">import</span> <span class="n">ZoneInfo</span>
+
+<span class="kn">from</span> <span class="nn">django.conf</span> <span class="kn">import</span> <span class="n">settings</span>
+<span class="kn">from</span> <span class="nn">django.core.validators</span> <span class="kn">import</span> <span class="n">MaxValueValidator</span><span class="p">,</span> <span class="n">MinValueValidator</span>
+<span class="kn">from</span> <span class="nn">django.db</span> <span class="kn">import</span> <span class="n">models</span>
+
+<span class="kn">from</span> <span class="nn">bibliography.models</span> <span class="kn">import</span> <span class="n">Reference</span>
+<span class="kn">from</span> <span class="nn">field_data.models</span> <span class="kn">import</span> <span class="n">Sample</span>
+<span class="kn">from</span> <span class="nn">laboratory.models</span> <span class="kn">import</span> <span class="n">Accessory</span><span class="p">,</span> <span class="n">Device</span><span class="p">,</span> <span class="n">Method</span>
+<span class="kn">from</span> <span class="nn">prototype.models</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Project</span><span class="p">,</span> <span class="n">Researcher</span>
+
+
+<div class="viewcode-block" id="Algorithm">
+<a class="viewcode-back" href="../../index.html#analysis.admin.Algorithm">[docs]</a>
+<span class="k">class</span> <span class="nc">Algorithm</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an analysis algorithm.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        name (CharField): Name of the algorithm.</span>
+<span class="sd">        version (CharField): Version of the algorithm.</span>
+<span class="sd">        description (TextField): Description of the algorithm.</span>
+<span class="sd">        link (URLField): Link to the algorithm resource.</span>
+<span class="sd">        file (FileField): File containing the algorithm.</span>
+<span class="sd">        programming_language (CharField): Programming language used.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">link</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">URLField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">file</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FileField</span><span class="p">(</span><span class="n">upload_to</span><span class="o">=</span><span class="s2">&quot;analysis/algorithms/&quot;</span><span class="p">,</span> <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;Python&quot;</span><span class="p">,</span> <span class="s2">&quot;Python&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;R&quot;</span><span class="p">,</span> <span class="s2">&quot;R&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;MATLAB&quot;</span><span class="p">,</span> <span class="s2">&quot;MATLAB&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Julia&quot;</span><span class="p">,</span> <span class="s2">&quot;Julia&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Other&quot;</span><span class="p">,</span> <span class="s2">&quot;Other&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">programming_language</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">CHOICES</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span></div>
+
+
+
+<div class="viewcode-block" id="RawMeasurement">
+<a class="viewcode-back" href="../../index.html#analysis.admin.RawMeasurement">[docs]</a>
+<span class="k">class</span> <span class="nc">RawMeasurement</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raw data model for storing uploaded files.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        project (ForeignKey): Project associated with the measurement.</span>
+<span class="sd">        sample (ManyToManyField): Samples associated with the measurement.</span>
+<span class="sd">        device (ForeignKey): Device used for measurement.</span>
+<span class="sd">        accessories (ForeignKey): Accessories used.</span>
+<span class="sd">        researcher (ForeignKey): Researcher who performed the measurement.</span>
+<span class="sd">        file (FileField): Uploaded raw data file.</span>
+<span class="sd">        description (TextField): Description of the measurement.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">project</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Project</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_raw_data&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="n">Sample</span><span class="p">,</span> <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_raw_data&quot;</span><span class="p">)</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Device</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_raw_data&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">accessories</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Accessory</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_raw_data&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">researcher</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Researcher</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_raw_data&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">file</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FileField</span><span class="p">(</span><span class="n">upload_to</span><span class="o">=</span><span class="s2">&quot;analysis/raw_data/&quot;</span><span class="p">)</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RawMeasurement.filename">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.RawMeasurement.filename">[docs]</a>
+    <span class="k">def</span> <span class="nf">filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="o">.</span><span class="n">name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">created_at</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="RawProcessing">
+<a class="viewcode-back" href="../../index.html#analysis.admin.RawProcessing">[docs]</a>
+<span class="k">class</span> <span class="nc">RawProcessing</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for storing processed data derived from raw measurements.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        raw_measurement (ForeignKey): Reference to the raw measurement.</span>
+<span class="sd">        processed_file (FileField): File containing processed data.</span>
+<span class="sd">        processing_description (TextField): Description of the processing.</span>
+<span class="sd">        processed_by (ForeignKey): Researcher who processed the data.</span>
+<span class="sd">        processing_date (DateField): Date of processing.</span>
+<span class="sd">        preparation_algorithm (ForeignKey): Algorithm used for preparation.</span>
+<span class="sd">        evaluation_algorithm (ForeignKey): Algorithm used for evaluation.</span>
+<span class="sd">        publication (ForeignKey): Reference to publication.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">raw_measurement</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">RawMeasurement</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_raw_processing&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">processed_file</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FileField</span><span class="p">(</span><span class="n">upload_to</span><span class="o">=</span><span class="s2">&quot;analysis/processed_data/&quot;</span><span class="p">)</span>
+    <span class="n">processing_description</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">processed_by</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Researcher</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_processed_data&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">processing_date</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateField</span><span class="p">(</span><span class="n">auto_now_add</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">preparation_algorithm</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Algorithm</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_processed_data&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">evaluation_algorithm</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Algorithm</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_evaluated_data&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">publication</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Reference</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">SET_NULL</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_processed_data&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="RawProcessing.processed_filename">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.RawProcessing.processed_filename">[docs]</a>
+    <span class="k">def</span> <span class="nf">processed_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="o">.</span><span class="n">name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">processed_file</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Processed data for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">raw_measurement</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<span class="c1"># ======================</span>
+<span class="c1"># PALEOBOTANY MODELS</span>
+<span class="c1"># ======================</span>
+
+
+<div class="viewcode-block" id="Counting">
+<a class="viewcode-back" href="../../index.html#analysis.admin.Counting">[docs]</a>
+<span class="k">class</span> <span class="nc">Counting</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Counting model for paleobotany analysis.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        sample (ForeignKey): Sample associated with the counting.</span>
+<span class="sd">        raw_data (ForeignKey): Raw measurement data.</span>
+<span class="sd">        type (CharField): Type of counting (Percent or Absolute numbers).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Sample</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_countings&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">raw_data</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">RawMeasurement</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_counting_raw_data&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">COUNTING_CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Percent&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Percent&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Absolute numbers&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Absolute numbers&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="nb">type</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="n">COUNTING_CHOICES</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">verbose_name</span> <span class="o">=</span> <span class="s2">&quot;Counting&quot;</span>
+        <span class="n">verbose_name_plural</span> <span class="o">=</span> <span class="s2">&quot;Countings&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="Pollen">
+<a class="viewcode-back" href="../../index.html#analysis.admin.Pollen">[docs]</a>
+<span class="k">class</span> <span class="nc">Pollen</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pollen species model for paleobotany analysis.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        name (CharField): Name in Latin.</span>
+<span class="sd">        token (CharField): Short token for the pollen.</span>
+<span class="sd">        name_en (CharField): Name in English.</span>
+<span class="sd">        name_german (CharField): Name in German.</span>
+<span class="sd">        name_nor (CharField): Name in Norwegian.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Name in Latin&quot;</span><span class="p">)</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">name_en</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Name in English&quot;</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;English name&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">name_german</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Name in German&quot;</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;German name&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">name_nor</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Name in Norwegian&quot;</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Norwegian name&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">verbose_name</span> <span class="o">=</span> <span class="s2">&quot;Pollen&quot;</span>
+        <span class="n">verbose_name_plural</span> <span class="o">=</span> <span class="s2">&quot;Pollen&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="PollenCount">
+<a class="viewcode-back" href="../../index.html#analysis.admin.PollenCount">[docs]</a>
+<span class="k">class</span> <span class="nc">PollenCount</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pollen count model linking counting and pollen species.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        counting (ForeignKey): Reference to Counting.</span>
+<span class="sd">        pollen (ForeignKey): Reference to Pollen.</span>
+<span class="sd">        number (IntegerField): Number of pollen counted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">counting</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Counting</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_pollen_counts&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">pollen</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Pollen</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_pollen_counts&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">number</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">verbose_name</span> <span class="o">=</span> <span class="s2">&quot;Pollen Count&quot;</span>
+        <span class="n">verbose_name_plural</span> <span class="o">=</span> <span class="s2">&quot;Pollen Counts&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">counting</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pollen</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<span class="c1"># ======================</span>
+<span class="c1"># GEOCHRONOLOGY MODELS</span>
+<span class="c1"># ======================</span>
+
+
+<div class="viewcode-block" id="current_year">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.current_year">[docs]</a>
+<span class="k">def</span> <span class="nf">current_year</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">tz</span><span class="o">=</span><span class="n">ZoneInfo</span><span class="p">(</span><span class="s2">&quot;Europe/Berlin&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="o">.</span><span class="n">year</span></div>
+
+
+
+<div class="viewcode-block" id="max_value_current_year">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.max_value_current_year">[docs]</a>
+<span class="k">def</span> <span class="nf">max_value_current_year</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">MaxValueValidator</span><span class="p">(</span><span class="n">current_year</span><span class="p">())(</span><span class="n">value</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="LuminescenceDating">
+<a class="viewcode-back" href="../../index.html#analysis.admin.LuminescenceDating">[docs]</a>
+<span class="k">class</span> <span class="nc">LuminescenceDating</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Model representing luminescence dating information for a sample.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        laboratory_id (CharField): Laboratory identifier.</span>
+<span class="sd">        sample (ForeignKey): Sample being dated.</span>
+<span class="sd">        raw_data (ForeignKey): Raw measurement data.</span>
+<span class="sd">        sample_id_cll (CharField): Sample ID CLL.</span>
+<span class="sd">        mineral (CharField): Mineral type.</span>
+<span class="sd">        dating_approach (CharField): Dating approach.</span>
+<span class="sd">        luminescence_age (DecimalField): Age in kiloannum.</span>
+<span class="sd">        age_error (DecimalField): Error in age.</span>
+<span class="sd">        signal (CharField): Signal type.</span>
+<span class="sd">        protocol (CharField): Protocol used.</span>
+<span class="sd">        palaeodose_value (DecimalField): Palaeodose value.</span>
+<span class="sd">        palaeodose_error (DecimalField): Error in palaeodose.</span>
+<span class="sd">        dose_rate (DecimalField): Dose rate.</span>
+<span class="sd">        dose_rate_error (DecimalField): Error in dose rate.</span>
+<span class="sd">        published (BooleanField): Publication status.</span>
+<span class="sd">        year_of_publication (PositiveIntegerField): Year of publication.</span>
+<span class="sd">        thesis (CharField): Thesis type.</span>
+<span class="sd">        comments (TextField): Additional comments.</span>
+<span class="sd">        grain_size_min (IntegerField): Minimum grain size.</span>
+<span class="sd">        grain_size_max (IntegerField): Maximum grain size.</span>
+<span class="sd">        aliquot_size (CharField): Aliquot size.</span>
+<span class="sd">        aliquot_number_used_for_palaeodose (IntegerField): Number of aliquots used.</span>
+<span class="sd">        od_percent (DecimalField): Overdispersion percent.</span>
+<span class="sd">        od_percent_error (DecimalField): Error in overdispersion percent.</span>
+<span class="sd">        od_gy (DecimalField): Overdispersion in Gy.</span>
+<span class="sd">        od_gy_error (DecimalField): Error in overdispersion Gy.</span>
+<span class="sd">        age_model (CharField): Age model used.</span>
+<span class="sd">        beta_source_calibration (CharField): Beta source calibration.</span>
+<span class="sd">        instrumental_beta_source_error (DecimalField): Instrumental error.</span>
+<span class="sd">        uncertainty_beta_source_calibration (PositiveIntegerField): Uncertainty in calibration.</span>
+<span class="sd">        fading_correction (BooleanField): Fading correction applied.</span>
+<span class="sd">        g_value (DecimalField): g-value.</span>
+<span class="sd">        g_value_error (DecimalField): Error in g-value.</span>
+<span class="sd">        Lnat_Lsat_ratio (DecimalField): L_na/L_sat ratio.</span>
+<span class="sd">        dose_rate_measurement_technique (CharField): Dose rate measurement technique.</span>
+<span class="sd">        dose_rate_calculation_software (CharField): Dose rate calculation software.</span>
+<span class="sd">        u_ppm (DecimalField): Uranium concentration.</span>
+<span class="sd">        u_ppm_error (DecimalField): Error in uranium concentration.</span>
+<span class="sd">        th_ppm (DecimalField): Thorium concentration.</span>
+<span class="sd">        th_ppm_error (DecimalField): Error in thorium concentration.</span>
+<span class="sd">        k_percent (DecimalField): Potassium concentration.</span>
+<span class="sd">        k_percent_error (DecimalField): Error in potassium concentration.</span>
+<span class="sd">        water_content_for_dating (DecimalField): Water content for dating.</span>
+<span class="sd">        water_content_for_dating_error (DecimalField): Error in water content.</span>
+<span class="sd">        a_value (DecimalField): a-value.</span>
+<span class="sd">        a_value_error (DecimalField): Error in a-value.</span>
+<span class="sd">        alpha_dose_rate (DecimalField): Alpha dose rate.</span>
+<span class="sd">        alpha_dose_rate_error (DecimalField): Error in alpha dose rate.</span>
+<span class="sd">        beta_dose_rate (DecimalField): Beta dose rate.</span>
+<span class="sd">        beta_dose_rate_error (DecimalField): Error in beta dose rate.</span>
+<span class="sd">        gamma_dose_rate (DecimalField): Gamma dose rate.</span>
+<span class="sd">        gamma_dose_rate_error (DecimalField): Error in gamma dose rate.</span>
+<span class="sd">        cosmic_dose_rate (DecimalField): Cosmic dose rate.</span>
+<span class="sd">        cosmic_dose_rate_error (DecimalField): Error in cosmic dose rate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">laboratory_id</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Laboratory ID&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Sample</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;luminescence_datings&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">raw_data</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">RawMeasurement</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_luminescence_datings&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sample_id_cll</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Sample ID CLL&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">CHOICES_MINERAL</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;Quartz&quot;</span><span class="p">,</span> <span class="s2">&quot;Quartz&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Feldspar&quot;</span><span class="p">,</span> <span class="s2">&quot;Feldspar&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Polymineral&quot;</span><span class="p">,</span> <span class="s2">&quot;Polymineral&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Other&quot;</span><span class="p">,</span> <span class="s2">&quot;Other&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">mineral</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">CHOICES_MINERAL</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">CHOICES_DATING_APPROACH</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;Burial dating&quot;</span><span class="p">,</span> <span class="s2">&quot;Burial dating&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Exposure dating&quot;</span><span class="p">,</span> <span class="s2">&quot;Exposure dating&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Other&quot;</span><span class="p">,</span> <span class="s2">&quot;Other&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">dating_approach</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">18</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">CHOICES_DATING_APPROACH</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">luminescence_age</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">age_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;ka, 1σ&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">signal</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;BSL/IRSL/pIRSL/TL/…&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;SAR/MAAD/…&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">palaeodose_value</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Palaeodose&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">palaeodose_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy, 1σ&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">dose_rate</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">dose_rate_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka, 1σ&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">published</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">year_of_publication</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">PositiveIntegerField</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">2025</span><span class="p">,</span>
+        <span class="n">validators</span><span class="o">=</span><span class="p">[</span><span class="n">MinValueValidator</span><span class="p">(</span><span class="mi">1984</span><span class="p">),</span> <span class="n">MaxValueValidator</span><span class="p">(</span><span class="n">current_year</span><span class="p">())],</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">CHOICES_THESIS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;BSc&quot;</span><span class="p">,</span> <span class="s2">&quot;BSc&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;MSc&quot;</span><span class="p">,</span> <span class="s2">&quot;MSc&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;PhD&quot;</span><span class="p">,</span> <span class="s2">&quot;PhD&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;None&quot;</span><span class="p">,</span> <span class="s2">&quot;None&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">thesis</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">CHOICES_THESIS</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;None&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">comments</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">grain_size_min</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">grain_size_max</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">aliquot_size</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">aliquot_number_used_for_palaeodose</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">od_percent</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">od_percent_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">od_gy</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">od_gy_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">age_model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;CAM/MAM/AM/FMM/…&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">beta_source_calibration</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;2019-2&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">instrumental_beta_source_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">uncertainty_beta_source_calibration</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">PositiveIntegerField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">fading_correction</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">g_value</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%/dec&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">g_value_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%/dec&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">Lnat_Lsat_ratio</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;L_na/L_sat&quot;</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;L_na/L_sat-ratio&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">dose_rate_measurement_technique</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">dose_rate_calculation_software</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">u_ppm</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">u_ppm_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">th_ppm</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">th_ppm_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">k_percent</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">k_percent_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">water_content_for_dating</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">water_content_for_dating_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;%&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">a_value</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">a_value_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">alpha_dose_rate</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">alpha_dose_rate_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">beta_dose_rate</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">beta_dose_rate_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">gamma_dose_rate</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">gamma_dose_rate_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">cosmic_dose_rate</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">cosmic_dose_rate_error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Gy/ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">mineral_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mineral</span> <span class="ow">or</span> <span class="s2">&quot;Unknown&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pk</span><span class="p">:</span>
+            <span class="n">lab_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">laboratory_id</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;ID-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pk</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lab_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">laboratory_id</span> <span class="ow">or</span> <span class="s2">&quot;Unsaved&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lab_id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">mineral_str</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="RadiocarbonDating">
+<a class="viewcode-back" href="../../index.html#analysis.admin.RadiocarbonDating">[docs]</a>
+<span class="k">class</span> <span class="nc">RadiocarbonDating</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents radiocarbon dating information for a sample.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        sample (ForeignKey): Sample being dated.</span>
+<span class="sd">        raw_data (ForeignKey): Raw measurement data.</span>
+<span class="sd">        lab (CharField): Laboratory name.</span>
+<span class="sd">        lab_id (CharField): Laboratory identifier for the sample.</span>
+<span class="sd">        age (DecimalField): Age in kiloannum.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">LAB_CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;Poznań&quot;</span><span class="p">,</span> <span class="s2">&quot;Poznań&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Beta Analytics&quot;</span><span class="p">,</span> <span class="s2">&quot;Beta Analytics&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Other&quot;</span><span class="p">,</span> <span class="s2">&quot;Other&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Sample</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_radiocarbon_datings&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">raw_data</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">RawMeasurement</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;analysis_radiocarbon_raw_data&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">lab</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="n">LAB_CHOICES</span><span class="p">)</span>
+    <span class="n">lab_id</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="n">age</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span>
+        <span class="n">max_digits</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">decimal_places</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;ka&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">lab_id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">age</span><span class="si">}</span><span class="s2"> ka)&quot;</span></div>
+
+
+
+<span class="n">CLASSES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="mf">0.040</span><span class="p">,</span>
+    <span class="mf">0.044</span><span class="p">,</span>
+    <span class="mf">0.048</span><span class="p">,</span>
+    <span class="mf">0.053</span><span class="p">,</span>
+    <span class="mf">0.058</span><span class="p">,</span>
+    <span class="mf">0.064</span><span class="p">,</span>
+    <span class="mf">0.070</span><span class="p">,</span>
+    <span class="mf">0.077</span><span class="p">,</span>
+    <span class="mf">0.084</span><span class="p">,</span>
+    <span class="mf">0.093</span><span class="p">,</span>
+    <span class="mf">0.102</span><span class="p">,</span>
+    <span class="mf">0.112</span><span class="p">,</span>
+    <span class="mf">0.122</span><span class="p">,</span>
+    <span class="mf">0.134</span><span class="p">,</span>
+    <span class="mf">0.148</span><span class="p">,</span>
+    <span class="mf">0.162</span><span class="p">,</span>
+    <span class="mf">0.178</span><span class="p">,</span>
+    <span class="mf">0.195</span><span class="p">,</span>
+    <span class="mf">0.214</span><span class="p">,</span>
+    <span class="mf">0.235</span><span class="p">,</span>
+    <span class="mf">0.258</span><span class="p">,</span>
+    <span class="mf">0.284</span><span class="p">,</span>
+    <span class="mf">0.311</span><span class="p">,</span>
+    <span class="mf">0.342</span><span class="p">,</span>
+    <span class="mf">0.375</span><span class="p">,</span>
+    <span class="mf">0.412</span><span class="p">,</span>
+    <span class="mf">0.452</span><span class="p">,</span>
+    <span class="mf">0.496</span><span class="p">,</span>
+    <span class="mf">0.545</span><span class="p">,</span>
+    <span class="mf">0.598</span><span class="p">,</span>
+    <span class="mf">0.657</span><span class="p">,</span>
+    <span class="mf">0.721</span><span class="p">,</span>
+    <span class="mf">0.791</span><span class="p">,</span>
+    <span class="mf">0.869</span><span class="p">,</span>
+    <span class="mf">0.953</span><span class="p">,</span>
+    <span class="mf">1.047</span><span class="p">,</span>
+    <span class="mf">1.149</span><span class="p">,</span>
+    <span class="mf">1.261</span><span class="p">,</span>
+    <span class="mf">1.385</span><span class="p">,</span>
+    <span class="mf">1.520</span><span class="p">,</span>
+    <span class="mf">1.669</span><span class="p">,</span>
+    <span class="mf">1.832</span><span class="p">,</span>
+    <span class="mf">2.010</span><span class="p">,</span>
+    <span class="mf">2.207</span><span class="p">,</span>
+    <span class="mf">2.423</span><span class="p">,</span>
+    <span class="mf">2.660</span><span class="p">,</span>
+    <span class="mf">2.920</span><span class="p">,</span>
+    <span class="mf">3.206</span><span class="p">,</span>
+    <span class="mf">3.519</span><span class="p">,</span>
+    <span class="mf">3.862</span><span class="p">,</span>
+    <span class="mf">4.241</span><span class="p">,</span>
+    <span class="mf">4.656</span><span class="p">,</span>
+    <span class="mf">5.111</span><span class="p">,</span>
+    <span class="mf">5.611</span><span class="p">,</span>
+    <span class="mf">6.158</span><span class="p">,</span>
+    <span class="mf">6.761</span><span class="p">,</span>
+    <span class="mf">7.421</span><span class="p">,</span>
+    <span class="mf">8.147</span><span class="p">,</span>
+    <span class="mf">8.944</span><span class="p">,</span>
+    <span class="mf">9.819</span><span class="p">,</span>
+    <span class="mf">10.78</span><span class="p">,</span>
+    <span class="mf">11.83</span><span class="p">,</span>
+    <span class="mf">12.99</span><span class="p">,</span>
+    <span class="mf">14.26</span><span class="p">,</span>
+    <span class="mf">15.65</span><span class="p">,</span>
+    <span class="mf">17.17</span><span class="p">,</span>
+    <span class="mf">18.86</span><span class="p">,</span>
+    <span class="mf">20.70</span><span class="p">,</span>
+    <span class="mf">22.73</span><span class="p">,</span>
+    <span class="mf">24.95</span><span class="p">,</span>
+    <span class="mf">27.38</span><span class="p">,</span>
+    <span class="mf">30.07</span><span class="p">,</span>
+    <span class="mf">33.00</span><span class="p">,</span>
+    <span class="mf">36.24</span><span class="p">,</span>
+    <span class="mf">39.77</span><span class="p">,</span>
+    <span class="mf">43.66</span><span class="p">,</span>
+    <span class="mf">47.93</span><span class="p">,</span>
+    <span class="mf">52.63</span><span class="p">,</span>
+    <span class="mf">57.77</span><span class="p">,</span>
+    <span class="mf">63.41</span><span class="p">,</span>
+    <span class="mf">69.62</span><span class="p">,</span>
+    <span class="mf">76.43</span><span class="p">,</span>
+    <span class="mf">83.90</span><span class="p">,</span>
+    <span class="mf">92.09</span><span class="p">,</span>
+    <span class="mf">101.1</span><span class="p">,</span>
+    <span class="mf">111.0</span><span class="p">,</span>
+    <span class="mf">121.8</span><span class="p">,</span>
+    <span class="mf">133.7</span><span class="p">,</span>
+    <span class="mf">146.8</span><span class="p">,</span>
+    <span class="mf">161.2</span><span class="p">,</span>
+    <span class="mf">176.8</span><span class="p">,</span>
+    <span class="mf">194.2</span><span class="p">,</span>
+    <span class="mf">213.2</span><span class="p">,</span>
+    <span class="mf">234.1</span><span class="p">,</span>
+    <span class="mf">256.8</span><span class="p">,</span>
+    <span class="mf">282.1</span><span class="p">,</span>
+    <span class="mf">309.6</span><span class="p">,</span>
+    <span class="mf">339.8</span><span class="p">,</span>
+    <span class="mf">373.1</span><span class="p">,</span>
+    <span class="mf">409.6</span><span class="p">,</span>
+    <span class="mf">449.7</span><span class="p">,</span>
+    <span class="mf">493.6</span><span class="p">,</span>
+    <span class="mf">541.9</span><span class="p">,</span>
+    <span class="mf">594.9</span><span class="p">,</span>
+    <span class="mf">653.0</span><span class="p">,</span>
+    <span class="mf">716.9</span><span class="p">,</span>
+    <span class="mf">786.9</span><span class="p">,</span>
+    <span class="mf">863.9</span><span class="p">,</span>
+    <span class="mf">948.2</span><span class="p">,</span>
+    <span class="mi">1041</span><span class="p">,</span>
+    <span class="mi">1143</span><span class="p">,</span>
+    <span class="mi">1255</span><span class="p">,</span>
+    <span class="mi">1377</span><span class="p">,</span>
+    <span class="mi">1512</span><span class="p">,</span>
+    <span class="mi">1660</span><span class="p">,</span>
+    <span class="mi">1822</span><span class="p">,</span>
+    <span class="mi">2000</span><span class="p">,</span>
+    <span class="mi">2800</span><span class="p">,</span>
+    <span class="mi">4000</span><span class="p">,</span>
+    <span class="mi">5600</span><span class="p">,</span>
+    <span class="mi">8000</span><span class="p">,</span>
+    <span class="mi">11200</span><span class="p">,</span>
+    <span class="mi">16000</span><span class="p">,</span>
+    <span class="mi">22400</span><span class="p">,</span>
+    <span class="mi">31500</span><span class="p">,</span>
+    <span class="mi">45000</span><span class="p">,</span>
+    <span class="mi">63000</span><span class="p">,</span>
+    <span class="mi">75000</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="default_classes">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.default_classes">[docs]</a>
+<span class="k">def</span> <span class="nf">default_classes</span><span class="p">():</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">CLASSES</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Parameter">
+<a class="viewcode-back" href="../../index.html#analysis.admin.Parameter">[docs]</a>
+<span class="k">class</span> <span class="nc">Parameter</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a physical parameter for measurement.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        name (CharField): Name of the parameter.</span>
+<span class="sd">        token (CharField): Short token for the parameter.</span>
+<span class="sd">        unit (CharField): Physical unit.</span>
+<span class="sd">        minimal_limit (FloatField): Minimal limit for the parameter.</span>
+<span class="sd">        maximal_limit (FloatField): Maximal limit for the parameter.</span>
+<span class="sd">        classes (JSONField): Classes for unstructured list data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">UNIT_CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;mg/kg&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mg/kg&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Percent&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Percent&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;no dimension&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;no dimension&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">unit</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Physical unit&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">UNIT_CHOICES</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">minimal_limit</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">maximal_limit</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">classes</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">JSONField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;This field is for determining the classes of unstructured list data.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> - [</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">unit</span><span class="si">}</span><span class="s2">]&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="MeasurementSeries">
+<a class="viewcode-back" href="../../index.html#analysis.admin.MeasurementSeries">[docs]</a>
+<span class="k">class</span> <span class="nc">MeasurementSeries</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a series of measurements.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        datetime (DateTimeField): Date and time of the measurement series.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">datetime</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="GenericMeasurement">
+<a class="viewcode-back" href="../../index.html#analysis.admin.GenericMeasurement">[docs]</a>
+<span class="k">class</span> <span class="nc">GenericMeasurement</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Lists all distinct generic measurements, independent of measured results.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        sample (ForeignKey): Sample associated with the measurement.</span>
+<span class="sd">        raw_data (ForeignKey): Raw measurement data.</span>
+<span class="sd">        MeasurementSeries (ForeignKey): Measurement series.</span>
+<span class="sd">        sample_weight (FloatField): Weight of the sample.</span>
+<span class="sd">        method (ForeignKey): Method used for measurement.</span>
+<span class="sd">        parameter (ForeignKey): Parameter measured.</span>
+<span class="sd">        value (FloatField): Measured value.</span>
+<span class="sd">        error (FloatField): Error in measurement.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Sample</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;generic_measurements&quot;</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">raw_data</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">RawMeasurement</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;generic_measurements&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">MeasurementSeries</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">MeasurementSeries</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;generic_measurements&quot;</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sample_weight</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Method</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;generic_measurements&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parameter</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Parameter</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;generic_measurements&quot;</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">error</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="GrainSize">
+<a class="viewcode-back" href="../../index.html#analysis.admin.GrainSize">[docs]</a>
+<span class="k">class</span> <span class="nc">GrainSize</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents the grain size distribution of a sediment sample.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        sample (ForeignKey): Reference to the Sample model.</span>
+<span class="sd">        raw_data (ForeignKey): Raw measurement data.</span>
+<span class="sd">        sample_weight (FloatField): Weight of the sample.</span>
+<span class="sd">        sample_concentration (FloatField): Concentration of the sample.</span>
+<span class="sd">        method (CharField): Method used for grain size measurement.</span>
+<span class="sd">        classes (JSONField): Classes of the raw grain size measurement.</span>
+<span class="sd">        measured_data (JSONField): Raw grain size measurement data.</span>
+<span class="sd">        clay (FloatField): Percentage of clay.</span>
+<span class="sd">        fine_silt (FloatField): Percentage of fine silt.</span>
+<span class="sd">        medium_silt (FloatField): Percentage of medium silt.</span>
+<span class="sd">        coarse_silt (FloatField): Percentage of coarse silt.</span>
+<span class="sd">        fine_sand (FloatField): Percentage of fine sand.</span>
+<span class="sd">        medium_sand (FloatField): Percentage of medium sand.</span>
+<span class="sd">        coarse_sand (FloatField): Percentage of coarse sand.</span>
+<span class="sd">        mean (FloatField): Mean grain size.</span>
+<span class="sd">        mode (FloatField): Mode grain size.</span>
+<span class="sd">        median (FloatField): Median grain size.</span>
+<span class="sd">        std (FloatField): Standard deviation.</span>
+<span class="sd">        skew (FloatField): Skewness.</span>
+<span class="sd">        kurtosis (FloatField): Kurtosis.</span>
+<span class="sd">        fwmean (FloatField): Folk &amp; Ward mean.</span>
+<span class="sd">        fwmedian (FloatField): Folk &amp; Ward median.</span>
+<span class="sd">        fwsd (FloatField): Folk &amp; Ward standard deviation.</span>
+<span class="sd">        fwskew (FloatField): Folk &amp; Ward skewness.</span>
+<span class="sd">        fwkurt (FloatField): Folk &amp; Ward kurtosis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Sample</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;grain_sizes&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">raw_data</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">RawMeasurement</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;generic_grain_sizes&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sample_weight</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sample_concentration</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Sample concentration [%]&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;L&quot;</span><span class="p">,</span> <span class="s2">&quot;Laser diffraction&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;Camsizer&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;S&quot;</span><span class="p">,</span> <span class="s2">&quot;Sieves&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="n">CHOICES</span><span class="p">)</span>
+    <span class="n">classes</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">JSONField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;This field is for determining the classes of the raw grain size measurement.&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">default_classes</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">measured_data</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">JSONField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;This field contains the raw grain size measurement data.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">clay</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">fine_silt</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">medium_silt</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">coarse_silt</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">fine_sand</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">medium_sand</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">coarse_sand</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">mode</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">median</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">std</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Standard Deviation&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">skew</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Skewness&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">kurtosis</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">fwmean</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Folk &amp; Ward Mean&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">fwmedian</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Folk &amp; Ward Median&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">fwsd</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Folk &amp; Ward Standard Deviation&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">fwskew</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Folk &amp; Ward Skewness&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">fwkurt</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FloatField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose_name</span><span class="o">=</span><span class="s2">&quot;Folk &amp; Ward Kurtosis&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_reclassify</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measured_data</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measured_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measured_data</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measured_data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Measured data must be a string or a list.&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clay</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fine_silt</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">medium_silt</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coarse_silt</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fine_sand</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">medium_sand</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coarse_sand</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">measured_data</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">item</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">clay</span> <span class="o">+=</span> <span class="n">data</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">&lt;</span> <span class="mf">6.3</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fine_silt</span> <span class="o">+=</span> <span class="n">data</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">medium_silt</span> <span class="o">+=</span> <span class="n">data</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">&lt;</span> <span class="mi">63</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">coarse_silt</span> <span class="o">+=</span> <span class="n">data</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">&lt;</span> <span class="mi">200</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fine_sand</span> <span class="o">+=</span> <span class="n">data</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">&lt;</span> <span class="mi">630</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">medium_sand</span> <span class="o">+=</span> <span class="n">data</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">&lt;</span> <span class="mi">2000</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">coarse_sand</span> <span class="o">+=</span> <span class="n">data</span>
+
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measured_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clay</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">clay</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fine_silt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fine_silt</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">medium_silt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">medium_silt</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coarse_silt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coarse_silt</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fine_sand</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fine_sand</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">medium_sand</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">medium_sand</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coarse_sand</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coarse_sand</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fine_silt</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">medium_silt</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coarse_silt</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">medium_sand</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coarse_sand</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="GrainSize.save">
+<a class="viewcode-back" href="../../index.html#analysis.admin.GrainSize.save">[docs]</a>
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">measured_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fine_silt</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">medium_silt</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">coarse_silt</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">medium_sand</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">coarse_sand</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">verbose_name_plural</span> <span class="o">=</span> <span class="s2">&quot;Grain size&quot;</span>
+
+<div class="viewcode-block" id="GrainSize.from_file">
+<a class="viewcode-back" href="../../index.html#analysis.admin.GrainSize.from_file">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_file</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an instance of the class from a file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_path (str): The path to the file to read.</span>
+<span class="sd">            sample (str): The sample identifier.</span>
+<span class="sd">            method (str): The method used for measurement.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            An instance of the class with data populated from the file.</span>
+<span class="sd">        The file should have sections denoted by square brackets, e.g., [CLASSES] and [MEASURED_DATA].</span>
+<span class="sd">        The data under [CLASSES] should be float values representing different classes.</span>
+<span class="sd">        The data under [MEASURED_DATA] should be float values representing measured data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">Path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;latin-1&quot;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+        <span class="n">classes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">measured_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">concentration</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">current_block</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">median</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">skew</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">kurtosis</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">fwmean</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">fwmedian</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">fwsd</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">fwskew</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">fwkurt</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;[&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;]&quot;</span><span class="p">):</span>
+                <span class="n">current_block</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">current_block</span> <span class="o">==</span> <span class="s2">&quot;#Bindiam&quot;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">classes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            <span class="k">elif</span> <span class="n">current_block</span> <span class="o">==</span> <span class="s2">&quot;#Binheight&quot;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">measured_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            <span class="k">elif</span> <span class="n">current_block</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Size0&quot;</span><span class="p">,</span> <span class="s2">&quot;Size1&quot;</span><span class="p">,</span> <span class="s2">&quot;Size2&quot;</span><span class="p">]:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Obs&quot;</span><span class="p">:</span>
+                        <span class="n">concentration</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+            <span class="k">elif</span> <span class="n">current_block</span> <span class="o">==</span> <span class="s2">&quot;SizeStats&quot;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Mean&quot;</span><span class="p">:</span>
+                        <span class="n">mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Mode&quot;</span><span class="p">:</span>
+                        <span class="n">mode</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Median&quot;</span><span class="p">:</span>
+                        <span class="n">median</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;SD&quot;</span><span class="p">:</span>
+                        <span class="n">std</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Skew&quot;</span><span class="p">:</span>
+                        <span class="n">skew</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Kurtosis&quot;</span><span class="p">:</span>
+                        <span class="n">kurtosis</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FWMean&quot;</span><span class="p">:</span>
+                        <span class="n">fwmean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FWMedian&quot;</span><span class="p">:</span>
+                        <span class="n">fwmedian</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FWSD&quot;</span><span class="p">:</span>
+                        <span class="n">fwsd</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FWSkew&quot;</span><span class="p">:</span>
+                        <span class="n">fwskew</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;FWKurt&quot;</span><span class="p">:</span>
+                        <span class="n">fwkurt</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sample_concentration</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">concentration</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">concentration</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ZeroDivisionError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No concentration data found in the file.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">classes</span><span class="o">=</span><span class="n">classes</span><span class="p">,</span>
+            <span class="n">measured_data</span><span class="o">=</span><span class="n">measured_data</span><span class="p">,</span>
+            <span class="n">sample_concentration</span><span class="o">=</span><span class="n">sample_concentration</span><span class="p">,</span>
+            <span class="n">mean</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+            <span class="n">median</span><span class="o">=</span><span class="n">median</span><span class="p">,</span>
+            <span class="n">std</span><span class="o">=</span><span class="n">std</span><span class="p">,</span>
+            <span class="n">skew</span><span class="o">=</span><span class="n">skew</span><span class="p">,</span>
+            <span class="n">kurtosis</span><span class="o">=</span><span class="n">kurtosis</span><span class="p">,</span>
+            <span class="n">fwmean</span><span class="o">=</span><span class="n">fwmean</span><span class="p">,</span>
+            <span class="n">fwmedian</span><span class="o">=</span><span class="n">fwmedian</span><span class="p">,</span>
+            <span class="n">fwsd</span><span class="o">=</span><span class="n">fwsd</span><span class="p">,</span>
+            <span class="n">fwskew</span><span class="o">=</span><span class="n">fwskew</span><span class="p">,</span>
+            <span class="n">fwkurt</span><span class="o">=</span><span class="n">fwkurt</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MicroXRFMeasurement">
+<a class="viewcode-back" href="../../index.html#analysis.admin.MicroXRFMeasurement">[docs]</a>
+<span class="k">class</span> <span class="nc">MicroXRFMeasurement</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a MicroXRF measurement for a sample.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        sample (ForeignKey): Sample measured.</span>
+<span class="sd">        measurement_date (DateField): Date of measurement.</span>
+<span class="sd">        method (ForeignKey): Method or device used.</span>
+<span class="sd">        notes (TextField): Additional notes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Sample</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;microxrf_measurements&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">measurement_date</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateField</span><span class="p">(</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Date of measurement&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">Method</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">RESTRICT</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;microxrf_measurements&quot;</span><span class="p">,</span>
+        <span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Method/Device used&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">notes</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">TextField</span><span class="p">(</span><span class="n">blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;MicroXRF </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement_date</span><span class="si">}</span><span class="s2">)&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="MicroXRFElementMap">
+<a class="viewcode-back" href="../../index.html#analysis.admin.MicroXRFElementMap">[docs]</a>
+<span class="k">class</span> <span class="nc">MicroXRFElementMap</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an element map from a MicroXRF measurement.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        measurement (ForeignKey): Reference to MicroXRFMeasurement.</span>
+<span class="sd">        element (CharField): Element or compound mapped.</span>
+<span class="sd">        raster_file (FileField): Path to raster file (.tif).</span>
+<span class="sd">        unit (CharField): Unit of measurement.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">measurement</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span>
+        <span class="n">MicroXRFMeasurement</span><span class="p">,</span>
+        <span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span>
+        <span class="n">related_name</span><span class="o">=</span><span class="s2">&quot;element_maps&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ELEMENT_CHOICES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;Al&quot;</span><span class="p">,</span> <span class="s2">&quot;Aluminium (Al)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;As&quot;</span><span class="p">,</span> <span class="s2">&quot;Arsenic (As)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Ba&quot;</span><span class="p">,</span> <span class="s2">&quot;Barium (Ba)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Br&quot;</span><span class="p">,</span> <span class="s2">&quot;Bromine (Br)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;Carbon (C)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Ca&quot;</span><span class="p">,</span> <span class="s2">&quot;Calcium (Ca)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="s2">&quot;Chlorine (Cl)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Co&quot;</span><span class="p">,</span> <span class="s2">&quot;Cobalt (Co)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Cr&quot;</span><span class="p">,</span> <span class="s2">&quot;Chromium (Cr)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Cu&quot;</span><span class="p">,</span> <span class="s2">&quot;Copper (Cu)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Fe&quot;</span><span class="p">,</span> <span class="s2">&quot;Iron (Fe)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Hg&quot;</span><span class="p">,</span> <span class="s2">&quot;Mercury (Hg)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="s2">&quot;Potassium (K)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Mg&quot;</span><span class="p">,</span> <span class="s2">&quot;Magnesium (Mg)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Mn&quot;</span><span class="p">,</span> <span class="s2">&quot;Manganese (Mn)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Mo&quot;</span><span class="p">,</span> <span class="s2">&quot;Molybdenum (Mo)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="s2">&quot;Sodium (Na)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Ni&quot;</span><span class="p">,</span> <span class="s2">&quot;Nickel (Ni)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;P&quot;</span><span class="p">,</span> <span class="s2">&quot;Phosphorus (P)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Pb&quot;</span><span class="p">,</span> <span class="s2">&quot;Lead (Pb)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;S&quot;</span><span class="p">,</span> <span class="s2">&quot;Sulfur (S)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Se&quot;</span><span class="p">,</span> <span class="s2">&quot;Selenium (Se)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Si&quot;</span><span class="p">,</span> <span class="s2">&quot;Silicon (Si)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Sn&quot;</span><span class="p">,</span> <span class="s2">&quot;Tin (Sn)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Sr&quot;</span><span class="p">,</span> <span class="s2">&quot;Strontium (Sr)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Ti&quot;</span><span class="p">,</span> <span class="s2">&quot;Titanium (Ti)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;V&quot;</span><span class="p">,</span> <span class="s2">&quot;Vanadium (V)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Zn&quot;</span><span class="p">,</span> <span class="s2">&quot;Zinc (Zn)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Zr&quot;</span><span class="p">,</span> <span class="s2">&quot;Zirconium (Zr)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Al2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;Aluminium Oxide (Al2O3)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;As2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;Arsenic Trioxide (As2O3)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;BaSO4&quot;</span><span class="p">,</span> <span class="s2">&quot;Barium Sulfate (BaSO4)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Br2&quot;</span><span class="p">,</span> <span class="s2">&quot;Bromine (Br2)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;CaO&quot;</span><span class="p">,</span> <span class="s2">&quot;Calcium Oxide (CaO)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Cl2&quot;</span><span class="p">,</span> <span class="s2">&quot;Chlorine (Cl2)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;CoO&quot;</span><span class="p">,</span> <span class="s2">&quot;Cobalt(II) Oxide (CoO)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Cr2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;Chromium(III) Oxide (Cr2O3)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;CuO&quot;</span><span class="p">,</span> <span class="s2">&quot;Copper(II) Oxide (CuO)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Fe2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;Iron(III) Oxide (Fe2O3)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;HgS&quot;</span><span class="p">,</span> <span class="s2">&quot;Mercury Sulfide (HgS)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;K2O&quot;</span><span class="p">,</span> <span class="s2">&quot;Potassium Oxide (K2O)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;MgO&quot;</span><span class="p">,</span> <span class="s2">&quot;Magnesium Oxide (MgO)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;MoO3&quot;</span><span class="p">,</span> <span class="s2">&quot;Molybdenum Trioxide (MoO3)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Na2O&quot;</span><span class="p">,</span> <span class="s2">&quot;Sodium Oxide (Na2O)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;NiO&quot;</span><span class="p">,</span> <span class="s2">&quot;Nickel(II) Oxide (NiO)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;P2O5&quot;</span><span class="p">,</span> <span class="s2">&quot;Phosphorus Pentoxide (P2O5)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;PbO&quot;</span><span class="p">,</span> <span class="s2">&quot;Lead(II) Oxide (PbO)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;SeO2&quot;</span><span class="p">,</span> <span class="s2">&quot;Selenium Dioxide (SeO2)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;SiO2&quot;</span><span class="p">,</span> <span class="s2">&quot;Silicon Dioxide (SiO2)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;SnO2&quot;</span><span class="p">,</span> <span class="s2">&quot;Tin(IV) Oxide (SnO2)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;SO3&quot;</span><span class="p">,</span> <span class="s2">&quot;Sulfur Trioxide (SO3)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;SrSO4&quot;</span><span class="p">,</span> <span class="s2">&quot;Strontium Sulfate (SrSO4)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;TiO2&quot;</span><span class="p">,</span> <span class="s2">&quot;Titanium Dioxide (TiO2)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;VO2&quot;</span><span class="p">,</span> <span class="s2">&quot;Vanadium Dioxide (VO2)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;ZnO&quot;</span><span class="p">,</span> <span class="s2">&quot;Zinc Oxide (ZnO)&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;ZrO2&quot;</span><span class="p">,</span> <span class="s2">&quot;Zirconium Dioxide (ZrO2)&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">element</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Element (e.g. Fe, Mn, Si, ...)&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">ELEMENT_CHOICES</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">raster_file</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">FileField</span><span class="p">(</span>
+        <span class="n">upload_to</span><span class="o">=</span><span class="s2">&quot;microxrf_raster/&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Pfad zur .tif Rasterdatei&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">unit</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">max_length</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Einheit (z.B. counts, ppm, %)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="si">}</span><span class="s2"> map (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+<div class="viewcode-block" id="MicroXRFElementMap.get_raster_path">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.MicroXRFElementMap.get_raster_path">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_raster_path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">MEDIA_ROOT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raster_file</span><span class="o">.</span><span class="n">name</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

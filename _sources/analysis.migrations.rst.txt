@@ -1,0 +1,61 @@
+analysis.migrations package
+===========================
+
+Submodules
+----------
+
+analysis.migrations.0001\_initial module
+----------------------------------------
+
+.. automodule:: analysis.migrations.0001_initial
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.migrations.0002\_initial module
+----------------------------------------
+
+.. automodule:: analysis.migrations.0002_initial
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.migrations.0003\_initial module
+----------------------------------------
+
+.. automodule:: analysis.migrations.0003_initial
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.migrations.0004\_initial module
+----------------------------------------
+
+.. automodule:: analysis.migrations.0004_initial
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.migrations.0005\_alter\_genericmeasurement\_options\_and\_more module
+------------------------------------------------------------------------------
+
+.. automodule:: analysis.migrations.0005_alter_genericmeasurement_options_and_more
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.migrations.0006\_alter\_luminescencedating\_aliquot\_size module
+-------------------------------------------------------------------------
+
+.. automodule:: analysis.migrations.0006_alter_luminescencedating_aliquot_size
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: analysis.migrations
+   :members:
+   :show-inheritance:
+   :undoc-members:
