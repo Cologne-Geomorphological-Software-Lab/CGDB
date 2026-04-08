@@ -1216,21 +1216,21 @@ class GrainSize(BaseModel):
         self.medium_sand = 0
         self.coarse_sand = 0
 
-        for item, data in enumerate(zip(self.classes, self.measured_data)):
-            if item < 2:
-                self.clay += data
-            elif item < 6.3:
-                self.fine_silt += data
-            elif item < 20:
-                self.medium_silt += data
-            elif item < 63:
-                self.coarse_silt += data
-            elif item < 200:
-                self.fine_sand += data
-            elif item < 630:
-                self.medium_sand += data
-            elif item < 2000:
-                self.coarse_sand += data
+        for class_value, data_value in zip(self.classes, self.measured_data):
+            if class_value < 2:
+                self.clay += data_value
+            elif class_value < 6.3:
+                self.fine_silt += data_value
+            elif class_value < 20:
+                self.medium_silt += data_value
+            elif class_value < 63:
+                self.coarse_silt += data_value
+            elif class_value < 200:
+                self.fine_sand += data_value
+            elif class_value < 630:
+                self.medium_sand += data_value
+            elif class_value < 2000:
+                self.coarse_sand += data_value
 
         total = sum(self.measured_data)
         self.clay = self.clay / total * 100
