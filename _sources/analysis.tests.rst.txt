@@ -1,0 +1,21 @@
+analysis.tests package
+======================
+
+Submodules
+----------
+
+analysis.tests.test\_models module
+----------------------------------
+
+.. automodule:: analysis.tests.test_models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: analysis.tests
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,891 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.admin &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.admin</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.admin</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">base64</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">django</span> <span class="kn">import</span> <span class="n">forms</span>
+<span class="kn">from</span> <span class="nn">django.contrib</span> <span class="kn">import</span> <span class="n">admin</span><span class="p">,</span> <span class="n">messages</span>
+<span class="kn">from</span> <span class="nn">django.core.exceptions</span> <span class="kn">import</span> <span class="n">ValidationError</span>
+<span class="kn">from</span> <span class="nn">django.core.files.base</span> <span class="kn">import</span> <span class="n">ContentFile</span>
+<span class="kn">from</span> <span class="nn">django.core.files.storage</span> <span class="kn">import</span> <span class="n">default_storage</span>
+<span class="kn">from</span> <span class="nn">django.utils.safestring</span> <span class="kn">import</span> <span class="n">mark_safe</span>
+<span class="kn">from</span> <span class="nn">django.utils.translation</span> <span class="kn">import</span> <span class="n">gettext_lazy</span> <span class="k">as</span> <span class="n">_</span>
+<span class="kn">from</span> <span class="nn">import_export</span> <span class="kn">import</span> <span class="n">resources</span>
+<span class="kn">from</span> <span class="nn">import_export.admin</span> <span class="kn">import</span> <span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ImportExportMixin</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">unfold.admin</span> <span class="kn">import</span> <span class="n">ModelAdmin</span><span class="p">,</span> <span class="n">TabularInline</span>
+<span class="kn">from</span> <span class="nn">unfold.contrib.filters.admin</span> <span class="kn">import</span> <span class="n">ChoicesDropdownFilter</span><span class="p">,</span> <span class="n">RelatedDropdownFilter</span>
+
+<span class="kn">from</span> <span class="nn">prototype.mixins</span> <span class="kn">import</span> <span class="n">NestedProjectPermissionMixin</span>
+
+<span class="kn">from</span> <span class="nn">.models</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Algorithm</span><span class="p">,</span>
+    <span class="n">Counting</span><span class="p">,</span>
+    <span class="n">GenericMeasurement</span><span class="p">,</span>
+    <span class="n">GrainSize</span><span class="p">,</span>
+    <span class="n">LuminescenceDating</span><span class="p">,</span>
+    <span class="n">MicroXRFElementMap</span><span class="p">,</span>
+    <span class="n">MicroXRFMeasurement</span><span class="p">,</span>
+    <span class="n">Parameter</span><span class="p">,</span>
+    <span class="n">Pollen</span><span class="p">,</span>
+    <span class="n">PollenCount</span><span class="p">,</span>
+    <span class="n">RadiocarbonDating</span><span class="p">,</span>
+    <span class="n">RawMeasurement</span><span class="p">,</span>
+    <span class="n">RawProcessing</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">mpl</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s2">&quot;Agg&quot;</span><span class="p">)</span>
+
+<span class="c1"># ======================</span>
+<span class="c1"># RAW DATA ADMIN</span>
+<span class="c1"># ======================</span>
+
+
+<div class="viewcode-block" id="AlgorithmAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.AlgorithmAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">AlgorithmAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">):</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;version&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;programming_language&quot;</span><span class="p">,</span>
+    <span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="RawMeasurementAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.RawMeasurementAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">RawMeasurementAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">,</span> <span class="n">NestedProjectPermissionMixin</span><span class="p">):</span>
+    <span class="n">project_path</span> <span class="o">=</span> <span class="s2">&quot;sample__location__project&quot;</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;device&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;accessories&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;researcher&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;file&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span> <span class="s2">&quot;sample__location&quot;</span><span class="p">,</span> <span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+
+    <span class="n">raw_id_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;device&quot;</span><span class="p">,</span> <span class="s2">&quot;accessories&quot;</span><span class="p">,</span> <span class="s2">&quot;researcher&quot;</span><span class="p">]</span>
+    <span class="n">list_filter_sheet</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_filter_submit</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">filter_horizontal</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+    <span class="n">list_filter</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;device&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;accessories&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;researcher&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="RawProcessingAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.RawProcessingAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">RawProcessingAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">,</span> <span class="n">NestedProjectPermissionMixin</span><span class="p">):</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;raw_measurement&quot;</span><span class="p">,</span>
+    <span class="p">]</span></div>
+
+
+
+<span class="c1"># ======================</span>
+<span class="c1"># PALEOBOTANY ADMIN</span>
+<span class="c1"># ======================</span>
+
+
+<div class="viewcode-block" id="PollenCountInline">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.PollenCountInline">[docs]</a>
+<span class="k">class</span> <span class="nc">PollenCountInline</span><span class="p">(</span><span class="n">TabularInline</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">PollenCount</span>
+    <span class="n">extra</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+
+<div class="viewcode-block" id="CountingAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.CountingAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">CountingAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">,</span> <span class="n">NestedProjectPermissionMixin</span><span class="p">):</span>
+    <span class="n">project_path</span> <span class="o">=</span> <span class="s2">&quot;sample__location__project&quot;</span>
+    <span class="n">inlines</span> <span class="o">=</span> <span class="p">[</span><span class="n">PollenCountInline</span><span class="p">]</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;project&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;location&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">ordering</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span> <span class="s2">&quot;sample__location&quot;</span><span class="p">,</span> <span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+
+    <span class="n">raw_id_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+    <span class="n">list_filter_sheet</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_filter_submit</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">list_filter</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="CountingAdmin.location">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.CountingAdmin.location">[docs]</a>
+    <span class="nd">@admin</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">location</span></div>
+
+
+<div class="viewcode-block" id="CountingAdmin.project">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.CountingAdmin.project">[docs]</a>
+    <span class="nd">@admin</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Project&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">project</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PollenAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.PollenAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">PollenAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">):</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;token&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;name_en&quot;</span><span class="p">,</span>
+    <span class="p">]</span></div>
+
+
+
+<span class="c1"># ======================</span>
+<span class="c1"># GEOCHRONOLOGY ADMIN</span>
+<span class="c1"># ======================</span>
+
+
+<div class="viewcode-block" id="LuminescenceDatingAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.LuminescenceDatingAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">LuminescenceDatingAdmin</span><span class="p">(</span><span class="n">ImportExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">):</span>
+    <span class="n">compressed_fields</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">warn_unsaved_form</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">list_filter_submit</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_fullwidth</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_filter_sheet</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">list_horizontal_scrollbar_top</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_disable_select_all</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;sample__identifier&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;laboratory_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dating_approach&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;mineral&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;age&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;total_dose_rate&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;paleodose&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="n">raw_id_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+    <span class="n">list_filter</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;mineral&quot;</span><span class="p">,</span>
+            <span class="n">ChoicesDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;dating_approach&quot;</span><span class="p">,</span>
+            <span class="n">ChoicesDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;published&quot;</span><span class="p">,</span>
+            <span class="n">ChoicesDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;thesis&quot;</span><span class="p">,</span>
+            <span class="n">ChoicesDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="LuminescenceDatingAdmin.age">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.LuminescenceDatingAdmin.age">[docs]</a>
+    <span class="k">def</span> <span class="nf">age</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">luminescence_age</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">luminescence_age</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">age_error</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">return</span> <span class="n">entry</span>
+        <span class="k">return</span> <span class="s2">&quot;Not available&quot;</span></div>
+
+
+    <span class="n">age</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s2">&quot;Luminescence age [ka]&quot;</span>
+
+<div class="viewcode-block" id="LuminescenceDatingAdmin.total_dose_rate">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.LuminescenceDatingAdmin.total_dose_rate">[docs]</a>
+    <span class="k">def</span> <span class="nf">total_dose_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">dose_rate</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">dose_rate</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">dose_rate_error</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">return</span> <span class="n">entry</span>
+        <span class="k">return</span> <span class="s2">&quot;Not available&quot;</span></div>
+
+
+    <span class="n">total_dose_rate</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s2">&quot;Dose rate [Gy/ka]&quot;</span>
+
+<div class="viewcode-block" id="LuminescenceDatingAdmin.paleodose">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.LuminescenceDatingAdmin.paleodose">[docs]</a>
+    <span class="k">def</span> <span class="nf">paleodose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">palaeodose_value</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">palaeodose_value</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">palaeodose_error</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">return</span> <span class="n">entry</span>
+        <span class="k">return</span> <span class="s2">&quot;Not available&quot;</span></div>
+
+
+    <span class="n">paleodose</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s2">&quot;Paleodose [Gy]&quot;</span>
+
+    <span class="n">fieldsets</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Main information&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;laboratory_id&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;sample_id_cll&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;mineral&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;dating_approach&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;luminescence_age&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;age_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;signal&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;protocol&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;palaeodose_value&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;palaeodose_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;dose_rate&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;dose_rate_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;published&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;thesis&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Palaeodoses&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;grain_size_min&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;grain_size_max&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;aliquot_size&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;aliquot_number_used_for_palaeodose&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;od_percent&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;od_percent_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;od_gy&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;od_gy_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;age_model&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;beta_source_calibration&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;instrumental_beta_source_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;uncertainty_beta_source_calibration&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fading_correction&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;g_value&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;g_value_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Lnat_Lsat_ratio&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Dosimetry&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;dose_rate_measurement_technique&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;dose_rate_calculation_software&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;u_ppm&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;u_ppm_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;th_ppm&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;th_ppm_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;k_percent&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;k_percent_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;water_content_for_dating&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;water_content_for_dating_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;a_value&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;a_value_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;alpha_dose_rate&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;alpha_dose_rate_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;beta_dose_rate&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;beta_dose_rate_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;gamma_dose_rate&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;gamma_dose_rate_error&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;cosmic_dose_rate&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;cosmic_dose_rate_error&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="LuminescenceDatingAdmin.save_model">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.LuminescenceDatingAdmin.save_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">form</span><span class="p">,</span> <span class="n">change</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">obj</span><span class="o">.</span><span class="n">pk</span><span class="p">:</span>
+            <span class="n">obj</span><span class="o">.</span><span class="n">created_by</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">user</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">updated_by</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">user</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">form</span><span class="p">,</span> <span class="n">change</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RadiocarbonDatingAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.RadiocarbonDatingAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">RadiocarbonDatingAdmin</span><span class="p">(</span>
+    <span class="n">ImportExportMixin</span><span class="p">,</span>
+    <span class="n">ModelAdmin</span><span class="p">,</span>
+    <span class="n">NestedProjectPermissionMixin</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">project_path</span> <span class="o">=</span> <span class="s2">&quot;sample__location__project&quot;</span>
+    <span class="n">raw_id_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+    <span class="n">list_filter</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;lab&quot;</span><span class="p">,</span>
+            <span class="n">ChoicesDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">list_filter_sheet</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_filter_submit</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sample__location__project__label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;lab&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;age&quot;</span><span class="p">,</span>
+    <span class="p">]</span></div>
+
+
+
+<span class="c1"># ======================</span>
+<span class="c1"># SEDIMENTOLOGY ADMIN</span>
+<span class="c1"># ======================</span>
+
+
+<div class="viewcode-block" id="GenericMeasurementResource">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GenericMeasurementResource">[docs]</a>
+<span class="k">class</span> <span class="nc">GenericMeasurementResource</span><span class="p">(</span><span class="n">resources</span><span class="o">.</span><span class="n">ModelResource</span><span class="p">):</span>
+
+<div class="viewcode-block" id="GenericMeasurementResource.Meta">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GenericMeasurementResource.Meta">[docs]</a>
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">GenericMeasurement</span>
+
+        <span class="n">skip_diff</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">import_id_fields</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GeochemistryParameterResource">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GeochemistryParameterResource">[docs]</a>
+<span class="k">class</span> <span class="nc">GeochemistryParameterResource</span><span class="p">(</span><span class="n">resources</span><span class="o">.</span><span class="n">ModelResource</span><span class="p">):</span>
+<div class="viewcode-block" id="GeochemistryParameterResource.Meta">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GeochemistryParameterResource.Meta">[docs]</a>
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">Parameter</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GrainSizeImportForm">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeImportForm">[docs]</a>
+<span class="k">class</span> <span class="nc">GrainSizeImportForm</span><span class="p">(</span><span class="n">forms</span><span class="o">.</span><span class="n">ModelForm</span><span class="p">):</span>
+    <span class="n">file</span> <span class="o">=</span> <span class="n">forms</span><span class="o">.</span><span class="n">FileField</span><span class="p">(</span><span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GrainSizeImportForm.clean_file">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeImportForm.clean_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">clean_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleaned_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">file</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.$av&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="n">_</span><span class="p">(</span><span class="s2">&quot;Invalid file type. Only .$av files are allowed.&quot;</span><span class="p">))</span>
+
+        <span class="n">max_size_mb</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">max_size_mb</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span>
+                <span class="n">_</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;File size (</span><span class="si">{</span><span class="n">file</span><span class="o">.</span><span class="n">size</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="mi">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1024</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB) exceeds maximum allowed size of </span><span class="si">{</span><span class="n">max_size_mb</span><span class="si">}</span><span class="s2">MB.&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">first_chunk</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+            <span class="n">file</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">first_chunk</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="n">_</span><span class="p">(</span><span class="s2">&quot;File is empty or corrupted.&quot;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ValidationError</span><span class="p">(</span><span class="n">_</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unable to read file: </span><span class="si">{</span><span class="n">e</span><span class="si">!s}</span><span class="s2">&quot;</span><span class="p">))</span> <span class="kn">from</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">file</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeImportForm.Meta">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeImportForm.Meta">[docs]</a>
+    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">GrainSize</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="s2">&quot;__all__&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GrainSizeAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">GrainSizeAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">,</span> <span class="n">NestedProjectPermissionMixin</span><span class="p">):</span>
+    <span class="n">project_path</span> <span class="o">=</span> <span class="s2">&quot;sample__location__project&quot;</span>
+    <span class="n">form</span> <span class="o">=</span> <span class="n">GrainSizeImportForm</span>
+
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;location&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;project&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;colored_sample_concentration&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="GrainSizeAdmin.location">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeAdmin.location">[docs]</a>
+    <span class="nd">@admin</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Location&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">location</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeAdmin.project">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeAdmin.project">[docs]</a>
+    <span class="nd">@admin</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Project&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">project</span></div>
+
+
+    <span class="n">list_filter</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location__campaign&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">list_filter_submit</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">list_filter_sheet</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">readonly_fields</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;classes&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;colored_sample_concentration&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;measured_data&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;clay&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;fine_silt&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;medium_silt&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;coarse_silt&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;fine_sand&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;medium_sand&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;coarse_sand&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;plot&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">raw_id_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+
+    <span class="n">fieldsets</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Metadata&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;sample_weight&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;method&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;file&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Data&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;classes&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;measured_data&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;colored_sample_concentration&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Classes&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;clay&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fine_silt&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;medium_silt&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;coarse_silt&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fine_sand&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;medium_sand&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;coarse_sand&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Size Stats&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;mode&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;median&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;std&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;skew&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;kurtosis&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fwmean&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fwmedian&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fwsd&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fwskew&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;fwkurt&quot;</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;Plot&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;classes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;tab&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fields&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;plot&quot;</span><span class="p">,),</span>
+            <span class="p">},</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="GrainSizeAdmin.save_model">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeAdmin.save_model">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">form</span><span class="p">,</span> <span class="n">change</span><span class="p">):</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="n">form</span><span class="o">.</span><span class="n">cleaned_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process_file</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message_user</span><span class="p">(</span>
+                <span class="n">request</span><span class="p">,</span>
+                <span class="s2">&quot;File uploaded and processed successfully&quot;</span><span class="p">,</span>
+                <span class="n">messages</span><span class="o">.</span><span class="n">SUCCESS</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">form</span><span class="p">,</span> <span class="n">change</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeAdmin.process_file">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeAdmin.process_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">process_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">file_path</span> <span class="o">=</span> <span class="n">default_storage</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tmp/</span><span class="si">{</span><span class="n">file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">ContentFile</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()))</span>
+        <span class="n">tmp_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">default_storage</span><span class="o">.</span><span class="n">location</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
+
+        <span class="n">grain_size_instance</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">tmp_file</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">method</span><span class="p">)</span>
+
+        <span class="n">obj</span><span class="o">.</span><span class="n">classes</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">classes</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">measured_data</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">measured_data</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">mean</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">mean</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">mode</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">median</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">median</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">std</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">std</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">skew</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">skew</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">kurtosis</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">kurtosis</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">fwmean</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">fwmean</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">fwmedian</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">fwmedian</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">fwsd</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">fwsd</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">fwskew</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">fwskew</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">fwkurt</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">fwkurt</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">sample_concentration</span> <span class="o">=</span> <span class="n">grain_size_instance</span><span class="o">.</span><span class="n">sample_concentration</span>
+        <span class="n">default_storage</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeAdmin.colored_sample_concentration">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeAdmin.colored_sample_concentration">[docs]</a>
+    <span class="k">def</span> <span class="nf">colored_sample_concentration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample_concentration</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;N/A&quot;</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample_concentration</span> <span class="o">&gt;=</span> <span class="mi">6</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">sample_concentration</span> <span class="o">&lt;=</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;green&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;red&quot;</span>
+        <span class="n">rounded_concentration</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">sample_concentration</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mark_safe</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;&lt;span style=&quot;color: </span><span class="si">{</span><span class="n">color</span><span class="si">}</span><span class="s1">;&quot;&gt;</span><span class="si">{</span><span class="n">rounded_concentration</span><span class="si">}</span><span class="s1">&lt;/span&gt;&#39;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="n">colored_sample_concentration</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s2">&quot;Sample concentration [%]&quot;</span>
+
+<div class="viewcode-block" id="GrainSizeAdmin.plot">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GrainSizeAdmin.plot">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">obj</span><span class="o">.</span><span class="n">measured_data</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">obj</span><span class="o">.</span><span class="n">classes</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;No data available for plotting&quot;</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">classes</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">measured_data</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">0.04</span><span class="p">,</span> <span class="mi">2000</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Grain Size (μm)&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;GSD (%)&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">which</span><span class="o">=</span><span class="s2">&quot;major&quot;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.63</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">6.3</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">630</span><span class="p">]:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=-</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">s</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+                <span class="n">fontsize</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span>
+                <span class="n">verticalalignment</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span>
+                <span class="n">horizontalalignment</span><span class="o">=</span><span class="s2">&quot;center&quot;</span><span class="p">,</span>
+                <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis_transform</span><span class="p">(),</span>
+            <span class="p">)</span>
+        <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;png&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+        <span class="n">buf</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">image_base64</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">buf</span><span class="o">.</span><span class="n">read</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mark_safe</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;img src=&quot;data:image/png;base64,</span><span class="si">{</span><span class="n">image_base64</span><span class="si">}</span><span class="s1">&quot; /&gt;&#39;</span><span class="p">)</span></div>
+
+
+    <span class="n">plot</span><span class="o">.</span><span class="n">allow_tags</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">plot</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s2">&quot;Plot of Measured Data vs Classes&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="GenericMeasurementAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.GenericMeasurementAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">GenericMeasurementAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">,</span> <span class="n">NestedProjectPermissionMixin</span><span class="p">):</span>
+    <span class="n">project_path</span> <span class="o">=</span> <span class="s2">&quot;sample__location__project&quot;</span>
+    <span class="n">resource_classes</span> <span class="o">=</span> <span class="p">[</span><span class="n">GenericMeasurementResource</span><span class="p">]</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;sample__location__project__label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sample__identifier&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;method&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;parameter__token&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;value&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="n">list_filter</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location__project&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;method&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;parameter&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">list_filter_sheet</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_filter_submit</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="ParameterAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.ParameterAdmin">[docs]</a>
+<span class="k">class</span> <span class="nc">ParameterAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">):</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;token&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;unit&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">resource_classes</span> <span class="o">=</span> <span class="p">[</span><span class="n">GeochemistryParameterResource</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="MicroXRFElementInline">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.MicroXRFElementInline">[docs]</a>
+<span class="k">class</span> <span class="nc">MicroXRFElementInline</span><span class="p">(</span><span class="n">admin</span><span class="o">.</span><span class="n">TabularInline</span><span class="p">):</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">MicroXRFElementMap</span>
+    <span class="n">hide_title</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">readonly_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;preview&quot;</span><span class="p">]</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;element&quot;</span><span class="p">,</span> <span class="s2">&quot;raster_file&quot;</span><span class="p">,</span> <span class="s2">&quot;preview&quot;</span><span class="p">]</span>
+    <span class="n">extra</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="MicroXRFElementInline.preview">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.MicroXRFElementInline.preview">[docs]</a>
+    <span class="k">def</span> <span class="nf">preview</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">raster_file</span> <span class="ow">and</span> <span class="n">obj</span><span class="o">.</span><span class="n">raster_file</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s2">&quot;.tif&quot;</span><span class="p">,</span> <span class="s2">&quot;.tiff&quot;</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">obj</span><span class="o">.</span><span class="n">raster_file</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                    <span class="n">img</span><span class="o">.</span><span class="n">thumbnail</span><span class="p">((</span><span class="mi">120</span><span class="p">,</span> <span class="mi">120</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">img</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
+                        <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+                        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+                        <span class="n">arr</span> <span class="o">=</span> <span class="n">arr</span> <span class="o">-</span> <span class="n">arr</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">arr</span> <span class="o">=</span> <span class="n">arr</span> <span class="o">/</span> <span class="n">arr</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+                        <span class="n">arr</span> <span class="o">=</span> <span class="p">(</span><span class="n">arr</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;uint8&quot;</span><span class="p">)</span>
+                        <span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;L&quot;</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">img</span><span class="o">.</span><span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;L&quot;</span><span class="p">,</span> <span class="s2">&quot;RGB&quot;</span><span class="p">):</span>
+                        <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;RGB&quot;</span><span class="p">)</span>
+                    <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+                    <span class="n">img</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;PNG&quot;</span><span class="p">)</span>
+                    <span class="n">image_base64</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">mark_safe</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s1">&#39;&lt;img src=&quot;data:image/png;base64,</span><span class="si">{</span><span class="n">image_base64</span><span class="si">}</span><span class="s1">&quot; style=&quot;max-width:120px; max-height:120px;&quot; /&gt;&#39;</span><span class="p">,</span>
+                    <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Fehler beim Laden: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;No preview&quot;</span></div>
+
+
+    <span class="n">preview</span><span class="o">.</span><span class="n">short_description</span> <span class="o">=</span> <span class="s2">&quot;Thumbnail&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="MicroXRFAdmin">
+<a class="viewcode-back" href="../../analysis.html#analysis.admin.MicroXRFAdmin">[docs]</a>
+<span class="nd">@admin</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">MicroXRFMeasurement</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">MicroXRFAdmin</span><span class="p">(</span><span class="n">ExportMixin</span><span class="p">,</span> <span class="n">ModelAdmin</span><span class="p">,</span> <span class="n">NestedProjectPermissionMixin</span><span class="p">):</span>
+    <span class="n">project_path</span> <span class="o">=</span> <span class="s2">&quot;sample__location__project&quot;</span>  <span class="c1"># Define the path to project</span>
+    <span class="n">list_display</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;sample__project&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="n">list_filter</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__project&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;sample__location&quot;</span><span class="p">,</span>
+            <span class="n">RelatedDropdownFilter</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">list_filter_sheet</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">list_filter_submit</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">raw_id_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;sample&quot;</span><span class="p">]</span>
+    <span class="n">inlines</span> <span class="o">=</span> <span class="p">[</span><span class="n">MicroXRFElementInline</span><span class="p">]</span></div>
+
+
+
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Algorithm</span><span class="p">,</span> <span class="n">AlgorithmAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">GrainSize</span><span class="p">,</span> <span class="n">GrainSizeAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">GenericMeasurement</span><span class="p">,</span> <span class="n">GenericMeasurementAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Parameter</span><span class="p">,</span> <span class="n">ParameterAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Counting</span><span class="p">,</span> <span class="n">CountingAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Pollen</span><span class="p">,</span> <span class="n">PollenAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">LuminescenceDating</span><span class="p">,</span> <span class="n">LuminescenceDatingAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">RadiocarbonDating</span><span class="p">,</span> <span class="n">RadiocarbonDatingAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">RawMeasurement</span><span class="p">,</span> <span class="n">RawMeasurementAdmin</span><span class="p">)</span>
+<span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">RawProcessing</span><span class="p">,</span> <span class="n">RawProcessingAdmin</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
