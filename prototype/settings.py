@@ -20,6 +20,20 @@ from .unfold_settings import UNFOLD as unfold_settings
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# GeoDjango on Windows: point to OSGeo4W if present.
+# os.add_dll_directory() is required in Python 3.8+ so that GDAL's own
+# dependencies (PROJ, GEOS, etc.) are found when ctypes loads gdal311.dll.
+_osgeo_bin = Path("C:/OSGeo4W/bin")
+if os.name == "nt" and _osgeo_bin.exists():
+    _osgeo_bin_str = str(_osgeo_bin)
+    if hasattr(os, "add_dll_directory"):
+        os.add_dll_directory(_osgeo_bin_str)
+    if _osgeo_bin_str not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _osgeo_bin_str + os.pathsep + os.environ.get("PATH", "")
+    GDAL_LIBRARY_PATH = str(_osgeo_bin / "gdal311.dll")
+    GEOS_LIBRARY_PATH = str(_osgeo_bin / "geos_c.dll")
+    os.environ.setdefault("PROJ_LIB", "C:/OSGeo4W/share/proj")
+
 
 # ==============================================================================
 # DATABASE CONFIGURATION
