@@ -1,12 +1,14 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeNumericFilter, RelatedDropdownFilter
 
 from .models import Author, Reference, ReferenceKeyword
 
 
 class ReferenceKeywordAdmin(ModelAdmin):
-    pass
+    list_display = ["keyword", "keyword_ger"]
+    search_fields = ["keyword", "keyword_ger"]
+    ordering = ["keyword"]
 
 
 class ReferenceAdmin(ModelAdmin):
@@ -104,16 +106,20 @@ class ReferenceAdmin(ModelAdmin):
         return request.user.has_perm(change_perm, obj)
 
 
+class LeadAuthorReferenceInline(TabularInline):
+    model = Reference
+    fk_name = "lead_author"
+    extra = 0
+    fields = ["title", "year", "type"]
+    show_change_link = True
+
+
 class AuthorAdmin(ModelAdmin):
-    list_display = [
-        "last_name",
-        "first_name",
-    ]
-    fields = [
-        "last_name",
-        "first_name",
-        "user",
-    ]
+    list_display = ["last_name", "first_name"]
+    search_fields = ["last_name", "first_name"]
+    ordering = ["last_name", "first_name"]
+    fields = ["last_name", "first_name", "user"]
+    inlines = [LeadAuthorReferenceInline]
 
 
 admin.site.register(Reference, ReferenceAdmin)

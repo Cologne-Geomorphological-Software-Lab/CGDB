@@ -25,6 +25,9 @@ class MeasurementInline(admin.TabularInline):
         "parameter",
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("method", "parameter")
+
 
 class SampleTabularInline(TabularInline):
     model = Sample
@@ -154,6 +157,9 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     ]
 
     search_fields = ["identifier", "campaign"]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("project", "campaign", "reference")
     fieldsets = (
         (
             "Metadata",
@@ -412,7 +418,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         accessible_project_ids = accessible_projects.values_list("id", flat=True)
         filtered_qs = Sample.objects.filter(
             location__project_id__in=accessible_project_ids,
-        )
+        ).select_related("location__project")
 
         return filtered_qs
 
@@ -450,11 +456,9 @@ class SampleTypeAdmin(ExportMixin, ModelAdmin):
 
 
 class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
-    list_display = [
-        "word",
-        "content_type",
-        "project",
-    ]
+    list_display = ["word", "content_type", "project"]
+    search_fields = ["word"]
+    ordering = ["word"]
     list_filter = [
         ("content_type", RelatedDropdownFilter),
         ("project", RelatedDropdownFilter),

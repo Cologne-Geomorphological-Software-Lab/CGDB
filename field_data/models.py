@@ -259,7 +259,7 @@ class StudyArea(BaseModel):
     )
 
     class Meta:
-        verbose_name_plural = "Study area"
+        verbose_name_plural = "Study areas"
 
     def __str__(self):
         return str(self.label)
@@ -644,7 +644,7 @@ class Location(BaseModel):
             "campaign",
             "identifier",
         )
-        verbose_name_plural = "Location"
+        verbose_name_plural = "Locations"
 
     def __str__(self):
         return f"{self.identifier}"

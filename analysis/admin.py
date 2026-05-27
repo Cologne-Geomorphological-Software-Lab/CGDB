@@ -17,7 +17,7 @@ from PIL import Image
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
 
-from prototype.mixins import NestedProjectPermissionMixin
+from prototype.mixins import CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin
 
 from .models import (
     Algorithm,
@@ -43,11 +43,9 @@ mpl.use("Agg")
 
 
 class AlgorithmAdmin(ExportMixin, ModelAdmin):
-    list_display = [
-        "name",
-        "version",
-        "programming_language",
-    ]
+    list_display = ["name", "version", "programming_language"]
+    search_fields = ["name", "version"]
+    ordering = ["name", "version"]
 
 
 class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
@@ -125,6 +123,9 @@ class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         ),
     ]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("sample__location__project")
+
     @admin.display(description="Location")
     def location(self, obj):
         return obj.sample.location if obj.sample else None
@@ -137,11 +138,9 @@ class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class PollenAdmin(ExportMixin, ModelAdmin):
-    list_display = [
-        "name",
-        "token",
-        "name_en",
-    ]
+    list_display = ["name", "token", "name_en"]
+    search_fields = ["name", "token", "name_en"]
+    ordering = ["name"]
 
 
 # ======================
@@ -149,7 +148,7 @@ class PollenAdmin(ExportMixin, ModelAdmin):
 # ======================
 
 
-class LuminescenceDatingAdmin(ImportExportMixin, ModelAdmin):
+class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, ModelAdmin):
     compressed_fields = True
     warn_unsaved_form = True
     list_filter_submit = False
@@ -294,11 +293,8 @@ class LuminescenceDatingAdmin(ImportExportMixin, ModelAdmin):
         ),
     )
 
-    def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.created_by = request.user
-        obj.updated_by = request.user
-        super().save_model(request, obj, form, change)
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("sample__location__project")
 
 
 class RadiocarbonDatingAdmin(
@@ -326,6 +322,11 @@ class RadiocarbonDatingAdmin(
         "lab",
         "age",
     ]
+    search_fields = ["sample__identifier"]
+    ordering = ["-id"]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("sample__location__project")
 
 
 # ======================
@@ -394,6 +395,9 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         "project",
         "colored_sample_concentration",
     ]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("sample__location__project")
 
     @admin.display(description="Location")
     def location(self, obj):
@@ -614,13 +618,16 @@ class GenericMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMi
     list_filter_sheet = False
     list_filter_submit = True
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            "sample__location__project", "method", "parameter"
+        )
+
 
 class ParameterAdmin(ExportMixin, ModelAdmin):
-    list_display = [
-        "token",
-        "id",
-        "unit",
-    ]
+    list_display = ["token", "id", "unit"]
+    search_fields = ["token"]
+    ordering = ["token"]
     resource_classes = [GeochemistryParameterResource]
 
 

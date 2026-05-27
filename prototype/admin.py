@@ -21,17 +21,15 @@ class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)
 
+        # view/change/delete are handled by the post_save signal in prototype/signals.py.
+        # Only add_* is assigned here as the signal does not cover it.
         if not change and obj.pk:
             from django.db import transaction
 
-            def assign_permissions() -> None:
-                model_name = self.opts.model_name
-                assign_perm(f"view_{model_name}", request.user, obj)
-                assign_perm(f"change_{model_name}", request.user, obj)
-                assign_perm(f"delete_{model_name}", request.user, obj)
-                assign_perm(f"add_{model_name}", request.user, obj)
+            def assign_add_permission() -> None:
+                assign_perm(f"add_{self.opts.model_name}", request.user, obj)
 
-            transaction.on_commit(assign_permissions)
+            transaction.on_commit(assign_add_permission)
 
 
 class ProjectUserObjectPermissionInline(TabularInline):

@@ -4,6 +4,16 @@ from guardian.shortcuts import get_objects_for_user
 from prototype.models import Project
 
 
+class CreatedUpdatedModelAdminMixin:
+    """Sets created_by and updated_by on save. Use as a base for admin classes that manage BaseModel objects."""
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
+
 class ProjectBasedPermissionMixin:
     """Mixin for admin classes that need project-based permissions.
 
