@@ -58,7 +58,7 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_filter = ["academic_rank"]
 
     def get_full_name(self, obj):
-        return obj.user.get_full_name()
+        return obj.user.get_full_name() if obj.user else "–"
 
     get_full_name.short_description = "Full Name"
 

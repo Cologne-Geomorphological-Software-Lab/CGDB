@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from calendar import monthrange
 from datetime import datetime, timedelta
@@ -16,6 +17,8 @@ from django.utils.translation import gettext_lazy as _
 from analysis.models import GenericMeasurement, GrainSize, LuminescenceDating, RadiocarbonDating
 from field_data.models import Location, Sample
 from prototype.models import Project
+
+logger = logging.getLogger(__name__)
 
 
 def documentation(request, filepath):
@@ -42,11 +45,11 @@ def dashboard_callback(request, context):
 def stat_data():
     now = timezone.now()
     month_ago = now - timedelta(days=30)
-    print("Month: " + str(month_ago))
+    logger.debug("stat_data called at %s", now)
 
     # Pre-compute totals and percentage changes for dashboard metrics
     project_total = Project.objects.count()
-    print("Projects: " + str(project_total))
+    logger.debug("Project total: %s", project_total)
     project_last_month_count = Project.objects.filter(
         start_date__gte=month_ago,
         start_date__lt=now,
@@ -54,7 +57,7 @@ def stat_data():
     project_last_month_pct = (
         round(project_last_month_count / project_total * 100, 2) if project_total > 0 else 0
     )
-    print(project_last_month_count)
+    logger.debug("Projects last month: %s", project_last_month_count)
 
     location_total = Location.objects.count()
     location_last_month_count = Location.objects.filter(
@@ -142,7 +145,7 @@ def stat_data():
                     {
                         "datasets": [
                             {
-                                "data": sed_performance,
+                                "data": _build_monthly_performance([GenericMeasurement, GrainSize]),
                                 "borderColor": "var(--color-primary-700)",
                             },
                         ],
@@ -159,7 +162,7 @@ def stat_data():
                     {
                         "datasets": [
                             {
-                                "data": geoch_performance,
+                                "data": _build_monthly_performance([LuminescenceDating, RadiocarbonDating]),
                                 "borderColor": "var(--color-primary-300)",
                             },
                         ],
@@ -185,51 +188,20 @@ MONTH_NAMES = [
     "December",
 ]
 
-performance = []
-geoch_performance = []
-sed_performance = []
-today = now()
 
-for i in range(11, -1, -1):
-    month_date = today - relativedelta(months=i)
-    year = month_date.year
-    month = month_date.month
-
-    start_date = datetime(year, month, 1)
-    end_day = monthrange(year, month)[1]
-    end_date = datetime(year, month, end_day, 23, 59, 59)
-
-    count = Location.objects.filter(
-        created_at__gte=start_date,
-        created_at__lte=end_date,
-    ).count()
-
-    performance.append([f"{MONTH_NAMES[month - 1]} {year}", count])
-
-    # Platzhalter
-    geoch_performance.append(
-        [
-            f"{MONTH_NAMES[month - 1]} {year}",
-            LuminescenceDating.objects.filter(
-                created_at__gte=start_date,
-                created_at__lte=end_date,
-            ).count()
-            + RadiocarbonDating.objects.filter(
-                created_at__gte=start_date,
-                created_at__lte=end_date,
-            ).count(),
-        ],
-    )
-    sed_performance.append(
-        [
-            f"{MONTH_NAMES[month - 1]} {year}",
-            GenericMeasurement.objects.filter(
-                created_at__gte=start_date,
-                created_at__lte=end_date,
-            ).count()
-            + GrainSize.objects.filter(
-                created_at__gte=start_date,
-                created_at__lte=end_date,
-            ).count(),
-        ],
-    )
+def _build_monthly_performance(model_classes: list) -> list:
+    """Return a list of [month_label, count] pairs for the last 12 months."""
+    today = now()
+    result = []
+    for i in range(11, -1, -1):
+        month_date = today - relativedelta(months=i)
+        year = month_date.year
+        month = month_date.month
+        start_date = datetime(year, month, 1)
+        end_date = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        count = sum(
+            model.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
+            for model in model_classes
+        )
+        result.append([f"{MONTH_NAMES[month - 1]} {year}", count])
+    return result

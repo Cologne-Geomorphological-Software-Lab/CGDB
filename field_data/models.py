@@ -675,6 +675,7 @@ class Location(BaseModel):
             )
         else:
             self.location = None
+        self.clean()
         super().save(*args, **kwargs)
 
 
@@ -954,27 +955,20 @@ class Sample(BaseModel):
     )
 
     def clean(self):
-        if self.pk:
-            if not self.project and not self.location:
-                raise ValidationError(
-                    "Sample must have either a project or a location.",
-                )
+        if not self.project and not self.location:
+            raise ValidationError(
+                "Sample must have either a project or a location.",
+            )
 
-            if self.project and self.location and self.location.project:
-                if self.location.project != self.project:
-                    raise ValidationError("Sample project must match location project.")
+        if self.project and self.location and self.location.project:
+            if self.location.project != self.project:
+                raise ValidationError("Sample project must match location project.")
 
     def save(self, *args, **kwargs):
-
         if self.location and self.location.project and not self.project:
             self.project = self.location.project
 
-        if not self.pk:
-            if not self.project and not self.location:
-                raise ValidationError(
-                    "Sample must have either a project or a location.",
-                )
-
+        self.clean()
         super().save(*args, **kwargs)
 
     def __str__(self):

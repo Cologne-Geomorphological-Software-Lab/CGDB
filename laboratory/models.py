@@ -152,7 +152,7 @@ class Calibration(BaseModel):
     )
 
     def __str__(self):
-        return self.name
+        return f"{self.device} – {self.date}"
 
 
 class Firmware(models.Model):

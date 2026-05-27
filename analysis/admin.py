@@ -127,11 +127,13 @@ class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
     @admin.display(description="Location")
     def location(self, obj):
-        return obj.sample.location
+        return obj.sample.location if obj.sample else None
 
     @admin.display(description="Project")
     def project(self, obj):
-        return obj.sample.location.project
+        if obj.sample and obj.sample.location:
+            return obj.sample.location.project
+        return None
 
 
 class PollenAdmin(ExportMixin, ModelAdmin):
@@ -395,11 +397,11 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
     @admin.display(description="Location")
     def location(self, obj):
-        return obj.sample.location
+        return obj.sample.location if obj.sample else None
 
     @admin.display(description="Project")
     def project(self, obj):
-        return obj.sample.project
+        return obj.sample.project if obj.sample else None
 
     list_filter = [
         (

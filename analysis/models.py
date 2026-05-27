@@ -90,7 +90,7 @@ class RawMeasurement(BaseModel):
     description = models.TextField(blank=True, null=True)
 
     def filename(self):
-        return Path.name(self.file.name)
+        return Path(self.file.name).name if self.file else None
 
     def __str__(self):
         return f"{self.device} - {self.created_at}"
@@ -150,7 +150,7 @@ class RawProcessing(BaseModel):
     )
 
     def processed_filename(self):
-        return Path.name(self.processed_file.name)
+        return Path(self.processed_file.name).name if self.processed_file else None
 
     def __str__(self):
         return f"Processed data for {self.raw_measurement}"
@@ -1207,7 +1207,7 @@ class GrainSize(BaseModel):
         elif isinstance(self.measured_data, list):
             pass
         else:
-            raise (TypeError("Measured data must be a string or a list."))
+            raise TypeError("Measured data must be a string or a list.")
         self.clay = 0
         self.fine_silt = 0
         self.medium_silt = 0
@@ -1233,6 +1233,8 @@ class GrainSize(BaseModel):
                 self.coarse_sand += data_value
 
         total = sum(self.measured_data)
+        if total == 0:
+            raise ValueError("measured_data must not sum to zero.")
         self.clay = self.clay / total * 100
         self.fine_silt = self.fine_silt / total * 100
         self.medium_silt = self.medium_silt / total * 100
