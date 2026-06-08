@@ -3,7 +3,6 @@
 Uses an empty DB so all counts start at zero – avoids ZeroDivisionError path
 being masked by leftover data.
 """
-import datetime
 
 from django.test import TestCase
 from django.utils import timezone
