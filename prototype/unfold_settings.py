@@ -71,6 +71,7 @@ UNFOLD = {
     "SIDEBAR": {
         "show_search": False,
         "show_all_applications": False,
+        "collapsible": False,
         "navigation": [
             {
                 "title": _("Navigation"),
