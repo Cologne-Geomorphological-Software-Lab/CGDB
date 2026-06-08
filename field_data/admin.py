@@ -37,7 +37,10 @@ class SampleTabularInline(TabularInline):
         "identifier",
         "depth_top",
         "depth_bottom",
+        "type",
+        "description",
     ]
+
 
 class SiteStackedInline(StackedInline):
     model = Site
@@ -48,44 +51,36 @@ class SiteStackedInline(StackedInline):
     extra = 0
 
 
-class LayerTabularInline(TabularInline):
+class LayerStackedInline(StackedInline):
     model = Layer
     tab = True
-    extra = 1
+    extra = 0
+    show_change_link = True
     fieldsets = (
         (
-            "Identifier",
+            None,
             {
-                "classes": ["tab"],
                 "fields": (
-                    "identifier",
-                    "token",
+                    ("identifier", "token"),
+                    ("depth_top", "depth_bottom"),
                 ),
             },
         ),
         (
-            "Parameter",
+            "Properties",
             {
-                "classes": ["tab"],
                 "fields": (
-                    "depth_top",
-                    "depth_bottom",
-                    "structure",
-                    "fine_soil_field",
-                    "calcite",
-                    "secondary_calcite",
+                    ("structure", "fine_soil_field"),
+                    ("calcite", "secondary_calcite"),
                 ),
             },
         ),
         (
             "Munsell Color",
             {
-                "classes": ["tab"],
                 "fields": (
-                    "munsell_hue_value",
-                    "munsell_hue",
-                    "munsell_value",
-                    "munsell_chroma",
+                    ("munsell_hue_value", "munsell_hue"),
+                    ("munsell_value", "munsell_chroma"),
                 ),
             },
         ),
@@ -157,7 +152,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_filter_submit = True
 
     inlines = [
-        LayerTabularInline,
+        LayerStackedInline,
         SampleTabularInline,
     ]
 
