@@ -2,7 +2,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator, StepValueValidator
+from django.core.validators import (
+    MaxValueValidator,
+    MinValueValidator,
+    StepValueValidator,
+)
 
 from prototype.models import BaseModel, Project, Researcher
 
@@ -825,9 +829,6 @@ class Layer(BaseModel):
     tags = models.ManyToManyField(
         Tag,
     )
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return str(f"{self.location}-{self.identifier}")
