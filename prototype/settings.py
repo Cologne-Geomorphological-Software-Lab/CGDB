@@ -260,7 +260,10 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Unfold Admin Interface
 UNFOLD = unfold_settings
-UNFOLD["STYLES"] = [lambda request: static("/css/dj_map.css")]
+UNFOLD["STYLES"] = [
+    lambda request: static("css/styles.css"),
+    lambda request: static("css/dj_map.css"),
+]
 
 
 # ==============================================================================

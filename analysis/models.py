@@ -986,6 +986,9 @@ class MeasurementSeries(BaseModel):
 
     datetime = models.DateTimeField()
 
+    def __str__(self):
+        return f"Series {self.pk} – {self.datetime}"
+
 
 class GenericMeasurement(BaseModel):
     """Lists all distinct generic measurements, independent of measured results.
