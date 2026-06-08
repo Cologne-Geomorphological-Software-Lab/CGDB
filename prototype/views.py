@@ -14,7 +14,12 @@ from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware, now
 from django.utils.translation import gettext_lazy as _
 
-from analysis.models import GenericMeasurement, GrainSize, LuminescenceDating, RadiocarbonDating
+from analysis.models import (
+    GenericMeasurement,
+    GrainSize,
+    LuminescenceDating,
+    RadiocarbonDating,
+)
 from field_data.models import Location, Sample
 from prototype.models import Project
 
@@ -55,7 +60,9 @@ def stat_data():
         start_date__lt=now,
     ).count()
     project_last_month_pct = (
-        round(project_last_month_count / project_total * 100, 2) if project_total > 0 else 0
+        round(project_last_month_count / project_total * 100, 2)
+        if project_total > 0
+        else 0
     )
     logger.debug("Projects last month: %s", project_last_month_count)
 
@@ -65,7 +72,9 @@ def stat_data():
         created_at__lt=now,
     ).count()
     location_last_month_pct = (
-        round(location_last_month_count / location_total * 100, 2) if location_total > 0 else 0
+        round(location_last_month_count / location_total * 100, 2)
+        if location_total > 0
+        else 0
     )
 
     sample_total = Sample.objects.count()
@@ -73,7 +82,11 @@ def stat_data():
         created_at__gte=month_ago,
         created_at__lt=now,
     ).count()
-    sample_last_month_pct = round(sample_last_month_count / sample_total * 100, 2) if sample_total > 0 else 0
+    sample_last_month_pct = (
+        round(sample_last_month_count / sample_total * 100, 2)
+        if sample_total > 0
+        else 0
+    )
 
     measurements_total = (
         GenericMeasurement.objects.count()
@@ -100,7 +113,9 @@ def stat_data():
         ).count()
     )
     measurements_last_month_pct = (
-        round(measurements_last_month_count / measurements_total * 100, 2) if measurements_total > 0 else 0
+        round(measurements_last_month_count / measurements_total * 100, 2)
+        if measurements_total > 0
+        else 0
     )
 
     return {
@@ -138,14 +153,13 @@ def stat_data():
             {
                 "title": _("Sedimentological Measurements"),
                 "metric": f"{GenericMeasurement.objects.count()+GrainSize.objects.count()}",
-                "footer": mark_safe(
-                    '<strong class="text-green-600 font-medium">+3.14%</strong>&nbsp;progress from last week',
-                ),
                 "chart": json.dumps(
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance([GenericMeasurement, GrainSize]),
+                                "data": _build_monthly_performance(
+                                    [GenericMeasurement, GrainSize]
+                                ),
                                 "borderColor": "var(--color-primary-700)",
                             },
                         ],
@@ -155,14 +169,13 @@ def stat_data():
             {
                 "title": _("Geochronological Measurements"),
                 "metric": f"{LuminescenceDating.objects.count()+ RadiocarbonDating.objects.count()}",
-                "footer": mark_safe(
-                    '<strong class="text-green-600 font-medium">+3.14%</strong>&nbsp;progress from last week',
-                ),
                 "chart": json.dumps(
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance([LuminescenceDating, RadiocarbonDating]),
+                                "data": _build_monthly_performance(
+                                    [LuminescenceDating, RadiocarbonDating]
+                                ),
                                 "borderColor": "var(--color-primary-300)",
                             },
                         ],
@@ -198,9 +211,13 @@ def _build_monthly_performance(model_classes: list) -> list:
         year = month_date.year
         month = month_date.month
         start_date = make_aware(datetime(year, month, 1))
-        end_date = make_aware(datetime(year, month, monthrange(year, month)[1], 23, 59, 59))
+        end_date = make_aware(
+            datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        )
         count = sum(
-            model.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
+            model.objects.filter(
+                created_at__gte=start_date, created_at__lte=end_date
+            ).count()
             for model in model_classes
         )
         result.append([f"{MONTH_NAMES[month - 1]} {year}", count])
