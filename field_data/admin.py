@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from import_export.admin import ExportMixin
@@ -460,6 +462,24 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
+        app_label = request.GET.get("app_label")
+        model_name = request.GET.get("model_name")
+        field_name = request.GET.get("field_name")
+        if app_label == "field_data" and model_name == "location" and field_name == "tags":
+            location_ct = ContentType.objects.get_for_model(Location)
+            queryset = queryset.filter(content_type=location_ct)
+            match = re.search(r"/location/(\d+)/change/", request.META.get("HTTP_REFERER", ""))
+            if match:
+                try:
+                    project_id = Location.objects.values_list("project", flat=True).get(pk=match.group(1))
+                    if project_id:
+                        queryset = queryset.filter(project=project_id)
+                except Location.DoesNotExist:
+                    pass
+        return queryset, may_have_duplicates
 
 
 class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
