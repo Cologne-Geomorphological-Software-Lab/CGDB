@@ -84,6 +84,7 @@ class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin)
 
 
 class RawProcessingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    project_path = "raw_measurement__project"
     list_display = [
         "raw_measurement",
     ]
@@ -148,7 +149,8 @@ class PollenAdmin(ExportMixin, ModelAdmin):
 # ======================
 
 
-class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, ModelAdmin):
+class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin, ModelAdmin):
+    project_path = "sample__location__project"
     compressed_fields = True
     warn_unsaved_form = True
     list_filter_submit = False
