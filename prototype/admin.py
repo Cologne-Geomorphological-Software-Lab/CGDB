@@ -1,6 +1,8 @@
 from django.contrib import admin
+from django.contrib.auth.models import Permission
 from guardian.shortcuts import assign_perm
-from unfold.admin import ModelAdmin, TabularInline
+from unfold.admin import ModelAdmin, StackedInline
+from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter
 from unfold.decorators import display
 
 from .mixins import GuardianPermissionMixin
@@ -33,15 +35,25 @@ class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
             transaction.on_commit(assign_add_permission)
 
 
-class ProjectUserObjectPermissionInline(TabularInline):
+class ProjectUserObjectPermissionInline(StackedInline):
     model = ProjectUserObjectPermission
     extra = 0
-    fields = ["user", "permission"]
     tab = True
+    autocomplete_fields = ["user"]
+    fieldsets = (
+        (None, {"fields": (("user", "permission"),)}),
+    )
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.select_related("user", "permission")
+        return super().get_queryset(request).select_related("user", "permission")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "permission":
+            kwargs["queryset"] = Permission.objects.filter(
+                content_type__app_label="prototype",
+                content_type__model="project",
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
@@ -72,15 +84,18 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
 class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     save_on_top = True
     change_form_show_cancel_button = True
+    compressed_fields = True
+    warn_unsaved_form = True
     list_display = ["title", "label", "colored_status", "start_date", "public"]
     search_fields = ["title", "label", "description"]
-    list_filter = ["status", "public", "start_date", "created_at"]
-    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
-    filter_horizontal = [
-        "principal_investigator",
-        "associated_investigator",
-        "research_group",
+    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
+    autocomplete_fields = ["principal_investigator", "associated_investigator", "research_group"]
+    list_filter = [
+        ("status", ChoicesDropdownFilter),
+        ("start_date", RangeDateFilter),
     ]
+    list_filter_sheet = False
+    list_filter_submit = True
     inlines = [ProjectUserObjectPermissionInline]
 
     @display(
@@ -89,6 +104,43 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     )
     def colored_status(self, obj):
         return obj.status
+
+    fieldsets = (
+        (
+            "Project",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    "id",
+                    ("title", "label"),
+                    "subtitle",
+                    ("status", "public"),
+                    ("start_date", "deadline"),
+                    "parent",
+                    ("created_by", "created_at"),
+                    ("updated_by", "modified_at"),
+                ),
+            },
+        ),
+        (
+            "Team",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    "principal_investigator",
+                    "associated_investigator",
+                    "research_group",
+                ),
+            },
+        ),
+        (
+            "Description",
+            {
+                "classes": ["tab"],
+                "fields": ("description",),
+            },
+        ),
+    )
 
 
 # Register the models
