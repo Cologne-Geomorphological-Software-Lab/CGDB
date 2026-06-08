@@ -7,7 +7,6 @@ from django.db.models import RestrictedError
 from django.test import TestCase
 
 from bibliography.models import Author, Reference, ReferenceKeyword
-from prototype.models import Project
 
 
 class _BibliographySetup(TestCase):
