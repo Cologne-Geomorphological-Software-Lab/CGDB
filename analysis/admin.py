@@ -25,6 +25,7 @@ from .models import (
     GenericMeasurement,
     GrainSize,
     LuminescenceDating,
+    MeasurementSeries,
     MicroXRFElementMap,
     MicroXRFMeasurement,
     Parameter,
@@ -151,6 +152,7 @@ class PollenAdmin(ExportMixin, ModelAdmin):
 
 class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin, ModelAdmin):
     project_path = "sample__location__project"
+    save_on_top = True
     compressed_fields = True
     warn_unsaved_form = True
     list_filter_submit = False
@@ -693,9 +695,16 @@ class MicroXRFAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     inlines = [MicroXRFElementInline]
 
 
+class MeasurementSeriesAdmin(ModelAdmin):
+    list_display = ["id", "datetime"]
+    ordering = ["-datetime"]
+    search_fields = ["id"]
+
+
 admin.site.register(Algorithm, AlgorithmAdmin)
 admin.site.register(GrainSize, GrainSizeAdmin)
 admin.site.register(GenericMeasurement, GenericMeasurementAdmin)
+admin.site.register(MeasurementSeries, MeasurementSeriesAdmin)
 admin.site.register(Parameter, ParameterAdmin)
 admin.site.register(Counting, CountingAdmin)
 admin.site.register(Pollen, PollenAdmin)

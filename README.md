@@ -97,7 +97,7 @@ brew install gdal proj spatialite-tools                                         
 ```
 
 #### Windows
-Install [OSGeo4W](https://trac.osgeo.org/osgeo4w/) (Network Installer → Express Install → GDAL). The default install path is `C:\OSGeo4W`.
+Install [OSGeo4W](https://trac.osgeo.org/osgeo4w/) (Network Installer → Express Install → GDAL). gThe default install path is `C:\OSGeo4W`.
 
 The `conftest.py` at the project root automatically registers the OSGeo4W DLL directory so that GeoDjango can load its C libraries. No manual environment setup is required.
 
@@ -160,17 +160,6 @@ pytest --cov=. --cov-report=term-missing
 | `analysis` | `analysis/tests/test_luminescence.py` | `LuminescenceDating` str, validators, fields, FK protection |
 | `analysis` | `analysis/tests/test_grainsize_fromfile.py` | `GrainSize.from_file()` parser (happy path, errors, integration) |
 | `analysis` | `analysis/tests/test_other_models.py` | Remaining analysis models and `GrainSize.save()` reclassification |
-
-### Troubleshooting
-
-**`WinError 127` / DLL not found (Windows)**
-OSGeo4W is not installed or not in the expected path. Verify that `C:\OSGeo4W\bin\mod_spatialite.dll` exists and adjust `conftest.py` and `prototype/test_settings.py` if needed.
-
-**`django.db.utils.OperationalError: unable to open database file`**
-The SpatiaLite module cannot be loaded. Ensure the system library is installed (Linux: `libsqlite3-mod-spatialite`; Windows: OSGeo4W).
-
-**`ModuleNotFoundError: No module named 'pytest'`**
-Activate the virtual environment first: `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
 
 ---
 
