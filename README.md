@@ -82,6 +82,98 @@ Start the local development server:
 python manage.py runserver
 ```
 
+## Running the Tests
+
+The test suite uses **pytest** with **pytest-django** and an in-memory SpatiaLite database — no PostgreSQL/PostGIS installation required.
+
+### Prerequisites
+
+#### Linux / macOS
+Install the geospatial system libraries (same as for development):
+
+```bash
+sudo apt-get install binutils libproj-dev gdal-bin libsqlite3-mod-spatialite   # Debian/Ubuntu
+brew install gdal proj spatialite-tools                                          # macOS
+```
+
+#### Windows
+Install [OSGeo4W](https://trac.osgeo.org/osgeo4w/) (Network Installer → Express Install → GDAL). The default install path is `C:\OSGeo4W`.
+
+The `conftest.py` at the project root automatically registers the OSGeo4W DLL directory so that GeoDjango can load its C libraries. No manual environment setup is required.
+
+If you installed OSGeo4W to a non-default path, adjust `SPATIALITE_LIBRARY_PATH` in `prototype/test_settings.py` and the paths in `conftest.py` accordingly.
+
+### Test settings
+
+Tests run against `prototype.test_settings`, which is already configured in `pytest.ini`. This settings module:
+- Uses an **in-memory SpatiaLite database** (no migrations required against a real DB)
+- Replaces the password hasher with MD5 to speed up user creation in fixtures
+- Sets a static `SECRET_KEY` safe for test use only
+
+### Running all tests
+
+From the `CGDB/` directory (where `manage.py` lives):
+
+```bash
+pytest
+```
+
+### Useful options
+
+```bash
+# Run a specific app's tests
+pytest prototype/tests/
+pytest analysis/tests/
+
+# Run a single test file
+pytest analysis/tests/test_luminescence.py
+
+# Run a single test class or method
+pytest prototype/tests/test_views.py::StatDataStructureTest
+pytest prototype/tests/test_views.py::StatDataStructureTest::test_project_count_reflects_db
+
+# Show verbose output with test names
+pytest -v
+
+# Show output (print / logging) from passing tests as well
+pytest -s
+
+# Stop after the first failure
+pytest -x
+
+# Run only tests matching a keyword
+pytest -k "grainsize"
+
+# Measure test coverage (requires pytest-cov)
+pytest --cov=. --cov-report=term-missing
+```
+
+### Test structure
+
+| App | Location | What is tested |
+|---|---|---|
+| `prototype` | `prototype/tests/test_models.py` | `Researcher`, `ResearchGroup`, `Project`, `Country`, `Province` models |
+| `prototype` | `prototype/tests/test_mixins.py` | All admin permission mixins (`ProjectBased`, `Nested`, `Hybrid`, `Guardian`, `CreatedUpdated`) |
+| `prototype` | `prototype/tests/test_views.py` | `stat_data()`, `_build_monthly_performance()`, `dashboard_callback()` |
+| `bibliography` | `bibliography/tests/test_models.py` | `Author`, `ReferenceKeyword`, `Reference` str, ordering, relations |
+| `laboratory` | `laboratory/tests/test_models.py` | `Manufacturer`, `Device`, `Accessory`, `Method`, `Calibration`, `Firmware`, `AccessoryParameter` |
+| `analysis` | `analysis/tests/test_luminescence.py` | `LuminescenceDating` str, validators, fields, FK protection |
+| `analysis` | `analysis/tests/test_grainsize_fromfile.py` | `GrainSize.from_file()` parser (happy path, errors, integration) |
+| `analysis` | `analysis/tests/test_other_models.py` | Remaining analysis models and `GrainSize.save()` reclassification |
+
+### Troubleshooting
+
+**`WinError 127` / DLL not found (Windows)**
+OSGeo4W is not installed or not in the expected path. Verify that `C:\OSGeo4W\bin\mod_spatialite.dll` exists and adjust `conftest.py` and `prototype/test_settings.py` if needed.
+
+**`django.db.utils.OperationalError: unable to open database file`**
+The SpatiaLite module cannot be loaded. Ensure the system library is installed (Linux: `libsqlite3-mod-spatialite`; Windows: OSGeo4W).
+
+**`ModuleNotFoundError: No module named 'pytest'`**
+Activate the virtual environment first: `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\activate` (Windows).
+
+---
+
 ## Data Orchestration (Optional)
 
 CGDB includes an optional data orchestration module that provides a boilerplate for implementing data pipelines with [Dagster](https://dagster.io/). This enables data ingestion, ETL processes, data quality checks, integration with OLAP systems like DuckDB or whole analysis pipelines.
