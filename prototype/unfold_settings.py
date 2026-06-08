@@ -23,15 +23,15 @@ UNFOLD = {
     "SHOW_VIEW_ON_SITE": False,  # show/hide "View on site" button, default: True
     "COLORS": {
         "font": {
-            "subtle-light":    "var(--color-base-500)",
-            "subtle-dark":     "var(--color-base-400)",
-            "default-light":   "var(--color-base-600)",
-            "default-dark":    "var(--color-base-300)",
+            "subtle-light": "var(--color-base-500)",
+            "subtle-dark": "var(--color-base-400)",
+            "default-light": "var(--color-base-600)",
+            "default-dark": "var(--color-base-300)",
             "important-light": "var(--color-base-900)",
-            "important-dark":  "var(--color-base-100)",
+            "important-dark": "var(--color-base-100)",
         },
         "primary": {
-            "50":  "oklch(93.5% 0.028 205)",
+            "50": "oklch(93.5% 0.028 205)",
             "100": "oklch(86.0% 0.040 210)",
             "200": "oklch(78.0% 0.060 210)",
             "300": "oklch(70.0% 0.075 215)",
@@ -44,9 +44,6 @@ UNFOLD = {
             "950": "oklch(14.0% 0.070 260)",
         },
     },
-    "STYLES": [
-        lambda request: static("css/styles.css"),
-    ],
     "SITE_DROPDOWN": [
         {
             "icon": "diamond",
@@ -95,7 +92,7 @@ UNFOLD = {
             },
             {
                 "title": _("Field Data"),
-                    "items": [
+                "items": [
                     {
                         "title": _("Campaigns"),
                         "icon": "route",
@@ -120,7 +117,7 @@ UNFOLD = {
             },
             {
                 "title": _("Raw Data"),
-                    "items": [
+                "items": [
                     {
                         "title": _("Raw Measurements"),
                         "icon": "storage",
@@ -142,7 +139,7 @@ UNFOLD = {
             },
             {
                 "title": _("Analyses"),
-                    "items": [
+                "items": [
                     {
                         "title": _("Generic Measurements"),
                         "icon": "experiment",
@@ -185,7 +182,7 @@ UNFOLD = {
             },
             {
                 "title": _("Laboratory"),
-                    "items": [
+                "items": [
                     {
                         "title": _("Devices"),
                         "icon": "precision_manufacturing",
@@ -222,41 +219,51 @@ UNFOLD = {
             },
             {
                 "title": _("Morphogrid"),
-                    "items": [
+                "items": [
                     {
                         "title": _("Grid cells"),
                         "icon": "person",
                         "link": reverse_lazy("admin:morphogrid_gridcell_changelist"),
-                        "permission": lambda request: request.user.has_perm("auth.view_user"),
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_user"
+                        ),
                     },
                     {
                         "title": _("Datacubes"),
                         "icon": "person",
                         "link": reverse_lazy("admin:morphogrid_datacube_changelist"),
-                        "permission": lambda request: request.user.has_perm("auth.view_user"),
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_user"
+                        ),
                     },
                 ],
             },
             {
                 "title": _("Users & Groups"),
-                    "items": [
+                "items": [
                     {
                         "title": _("Researchers"),
                         "icon": "school",
                         "link": reverse_lazy("admin:prototype_researcher_changelist"),
-                        "permission": lambda request: request.user.has_perm("auth.view_user"),
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_user"
+                        ),
                     },
                     {
                         "title": _("Users"),
                         "icon": "person",
                         "link": reverse_lazy("admin:auth_user_changelist"),
-                        "permission": lambda request: request.user.has_perm("auth.view_user"),
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_user"
+                        ),
                     },
                     {
                         "title": _("Groups"),
                         "icon": "group",
                         "link": reverse_lazy("admin:auth_group_changelist"),
-                        "permission": lambda request: request.user.has_perm("auth.view_group"),
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_group"
+                        ),
                     },
                 ],
             },
