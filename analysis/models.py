@@ -393,6 +393,7 @@ class LuminescenceDating(BaseModel):
     luminescence_age = models.DecimalField(
         max_digits=10,
         decimal_places=3,
+        verbose_name="Age [ka]",
         help_text="ka",
         blank=True,
         null=True,
@@ -401,6 +402,7 @@ class LuminescenceDating(BaseModel):
     age_error = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="Age error (1σ) [ka]",
         help_text="ka, 1σ",
         blank=True,
         null=True,
@@ -420,15 +422,16 @@ class LuminescenceDating(BaseModel):
     palaeodose_value = models.DecimalField(
         max_digits=10,
         decimal_places=4,
+        verbose_name="Palaeodose [Gy]",
         help_text="Gy",
         blank=True,
         null=True,
-        verbose_name="Palaeodose",
     )
 
     palaeodose_error = models.DecimalField(
         max_digits=10,
         decimal_places=4,
+        verbose_name="Palaeodose error (1σ) [Gy]",
         help_text="Gy, 1σ",
         blank=True,
         null=True,
@@ -437,6 +440,7 @@ class LuminescenceDating(BaseModel):
     dose_rate = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="Dose rate [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -445,6 +449,7 @@ class LuminescenceDating(BaseModel):
     dose_rate_error = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="Dose rate error (1σ) [Gy/ka]",
         help_text="Gy/ka, 1σ",
         blank=True,
         null=True,
@@ -480,11 +485,13 @@ class LuminescenceDating(BaseModel):
     )
 
     grain_size_min = models.IntegerField(
+        verbose_name="Min. grain size [µm]",
         blank=True,
         null=True,
     )
 
     grain_size_max = models.IntegerField(
+        verbose_name="Max. grain size [µm]",
         blank=True,
         null=True,
     )
@@ -503,6 +510,7 @@ class LuminescenceDating(BaseModel):
     od_percent = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="OD [%]",
         help_text="%",
         blank=True,
         null=True,
@@ -511,6 +519,7 @@ class LuminescenceDating(BaseModel):
     od_percent_error = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="OD error (1σ) [%]",
         help_text="%",
         blank=True,
         null=True,
@@ -519,6 +528,7 @@ class LuminescenceDating(BaseModel):
     od_gy = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="OD [Gy]",
         help_text="Gy",
         blank=True,
         null=True,
@@ -527,6 +537,7 @@ class LuminescenceDating(BaseModel):
     od_gy_error = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="OD error (1σ) [Gy]",
         help_text="Gy",
         blank=True,
         null=True,
@@ -547,11 +558,13 @@ class LuminescenceDating(BaseModel):
     instrumental_beta_source_error = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="β source error [%]",
         blank=True,
         null=True,
     )
 
     uncertainty_beta_source_calibration = models.PositiveIntegerField(
+        verbose_name="β calibration uncertainty [%]",
         blank=True,
         null=True,
     )
@@ -565,6 +578,7 @@ class LuminescenceDating(BaseModel):
     g_value = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="g-value [%/dec]",
         help_text="%/dec",
         blank=True,
         null=True,
@@ -573,6 +587,7 @@ class LuminescenceDating(BaseModel):
     g_value_error = models.DecimalField(
         max_digits=7,
         decimal_places=3,
+        verbose_name="g-value error (1σ) [%/dec]",
         help_text="%/dec",
         blank=True,
         null=True,
@@ -600,6 +615,7 @@ class LuminescenceDating(BaseModel):
     u_ppm = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="U [ppm]",
         help_text="ppm",
         blank=True,
         null=True,
@@ -608,6 +624,7 @@ class LuminescenceDating(BaseModel):
     u_ppm_error = models.DecimalField(
         max_digits=8,
         decimal_places=5,
+        verbose_name="U error (1σ) [ppm]",
         help_text="ppm",
         blank=True,
         null=True,
@@ -616,6 +633,7 @@ class LuminescenceDating(BaseModel):
     th_ppm = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="Th [ppm]",
         help_text="ppm",
         blank=True,
         null=True,
@@ -624,6 +642,7 @@ class LuminescenceDating(BaseModel):
     th_ppm_error = models.DecimalField(
         max_digits=8,
         decimal_places=5,
+        verbose_name="Th error (1σ) [ppm]",
         help_text="ppm",
         blank=True,
         null=True,
@@ -632,6 +651,7 @@ class LuminescenceDating(BaseModel):
     k_percent = models.DecimalField(
         max_digits=8,
         decimal_places=5,
+        verbose_name="K [%]",
         help_text="%",
         blank=True,
         null=True,
@@ -640,6 +660,7 @@ class LuminescenceDating(BaseModel):
     k_percent_error = models.DecimalField(
         max_digits=8,
         decimal_places=5,
+        verbose_name="K error (1σ) [%]",
         help_text="%",
         blank=True,
         null=True,
@@ -648,6 +669,7 @@ class LuminescenceDating(BaseModel):
     water_content_for_dating = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="Water content [%]",
         help_text="%",
         blank=True,
         null=True,
@@ -656,6 +678,7 @@ class LuminescenceDating(BaseModel):
     water_content_for_dating_error = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="Water content error (1σ) [%]",
         help_text="%",
         blank=True,
         null=True,
@@ -664,6 +687,7 @@ class LuminescenceDating(BaseModel):
     a_value = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="a-value",
         blank=True,
         null=True,
     )
@@ -671,6 +695,7 @@ class LuminescenceDating(BaseModel):
     a_value_error = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="a-value error (1σ)",
         blank=True,
         null=True,
     )
@@ -678,6 +703,7 @@ class LuminescenceDating(BaseModel):
     alpha_dose_rate = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="α dose rate [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -686,6 +712,7 @@ class LuminescenceDating(BaseModel):
     alpha_dose_rate_error = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="α dose rate error (1σ) [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -694,6 +721,7 @@ class LuminescenceDating(BaseModel):
     beta_dose_rate = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="β dose rate [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -702,6 +730,7 @@ class LuminescenceDating(BaseModel):
     beta_dose_rate_error = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="β dose rate error (1σ) [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -710,6 +739,7 @@ class LuminescenceDating(BaseModel):
     gamma_dose_rate = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="γ dose rate [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -718,6 +748,7 @@ class LuminescenceDating(BaseModel):
     gamma_dose_rate_error = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="γ dose rate error (1σ) [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -726,6 +757,7 @@ class LuminescenceDating(BaseModel):
     cosmic_dose_rate = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="Cosmic dose rate [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
@@ -734,6 +766,7 @@ class LuminescenceDating(BaseModel):
     cosmic_dose_rate_error = models.DecimalField(
         max_digits=8,
         decimal_places=4,
+        verbose_name="Cosmic dose rate error (1σ) [Gy/ka]",
         help_text="Gy/ka",
         blank=True,
         null=True,
