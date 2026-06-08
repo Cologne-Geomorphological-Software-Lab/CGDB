@@ -7,7 +7,7 @@ being masked by leftover data.
 from django.test import TestCase
 from django.utils import timezone
 
-from analysis.models import GenericMeasurement, GrainSize
+from analysis.models import GrainSize
 from field_data.models import Location, Sample
 from prototype.models import Project
 from prototype.views import _build_monthly_performance, dashboard_callback, stat_data
