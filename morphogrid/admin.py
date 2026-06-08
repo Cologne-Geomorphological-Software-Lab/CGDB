@@ -16,6 +16,7 @@ class CubeLayerInline(TabularInline):
 @admin.register(GridCell)
 class GridCellAdmin(ModelAdmin):
     change_form_template = "admin/morphogrid/gridcell/change_form.html"
+    change_form_show_cancel_button = True
     list_display = ("grid_id", "s2_level", "s2_token", "created_at")
     search_fields = ("grid_id", "s2_token")
     list_filter = ("s2_level",)
@@ -28,6 +29,7 @@ class GridCellAdmin(ModelAdmin):
 
 @admin.register(DataCube)
 class DataCubeAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ("cell", "layer_count", "created_at", "modified_at")
     search_fields = ("cell__grid_id",)
     readonly_fields = ("created_at", "modified_at")

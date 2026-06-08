@@ -1,6 +1,7 @@
 from django.contrib import admin
 from guardian.shortcuts import assign_perm
 from unfold.admin import ModelAdmin, TabularInline
+from unfold.decorators import display
 
 from .mixins import GuardianPermissionMixin
 from .models import Project, ProjectUserObjectPermission, Researcher, ResearchGroup
@@ -44,6 +45,7 @@ class ProjectUserObjectPermissionInline(TabularInline):
 
 
 class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["label", "head_of_group", "created_at"]
     search_fields = ["label"]
     list_filter = ["created_at"]
@@ -51,20 +53,26 @@ class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
 
 class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
-    list_display = ["user", "academic_rank", "get_full_name"]
+    change_form_show_cancel_button = True
+    list_display = ["user", "academic_rank", "display_researcher"]
     search_fields = ["user__username", "user__first_name", "user__last_name"]
     list_filter = ["academic_rank"]
     readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
 
-    def get_full_name(self, obj):
-        return obj.user.get_full_name() if obj.user else "–"
-
-    get_full_name.short_description = "Full Name"
+    @display(header=True, description="Researcher")
+    def display_researcher(self, obj):
+        if obj.user:
+            initials = "".join(
+                n[0].upper() for n in [obj.user.first_name, obj.user.last_name] if n
+            )
+            return [obj.user.get_full_name(), obj.get_position_display() or "", initials or "?"]
+        return [str(obj), "", "?"]
 
 
 class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     save_on_top = True
-    list_display = ["title", "label", "status", "start_date", "public"]
+    change_form_show_cancel_button = True
+    list_display = ["title", "label", "colored_status", "start_date", "public"]
     search_fields = ["title", "label", "description"]
     list_filter = ["status", "public", "start_date", "created_at"]
     readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
@@ -74,6 +82,13 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
         "research_group",
     ]
     inlines = [ProjectUserObjectPermissionInline]
+
+    @display(
+        label={"ACTIVE": "success", "COMPLETED": "info", "PAUSED": "warning", "CANCELLED": "danger"},
+        description="Status",
+    )
+    def colored_status(self, obj):
+        return obj.status
 
 
 # Register the models

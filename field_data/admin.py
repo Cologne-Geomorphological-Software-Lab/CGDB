@@ -2,6 +2,7 @@ from django.contrib.gis import admin
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter, RelatedDropdownFilter
+from unfold.decorators import display
 
 from analysis.models import GenericMeasurement
 from prototype.mixins import (
@@ -92,6 +93,7 @@ class LayerTabularInline(TabularInline):
 
 
 class ExposureTypeAdmin(ExportMixin, ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = [
         "name_en",
         "name_ger",
@@ -109,12 +111,13 @@ class ExposureTypeAdmin(ExportMixin, ModelAdmin):
 
 class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     save_on_top = True
+    change_form_show_cancel_button = True
     list_per_page = 20
     resource_classes = [LocationResource]
     readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
     list_display = [
         "identifier",
-        "data_source",
+        "colored_data_source",
         "project",
         "reference",
         "campaign",
@@ -157,8 +160,13 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
     search_fields = ["identifier", "campaign__label"]
 
+    @display(label={"internal": "success", "literature": "info"}, description="Data Source")
+    def colored_data_source(self, obj):
+        return obj.data_source
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("project", "campaign", "reference")
+
     fieldsets = (
         (
             "Metadata",
@@ -232,6 +240,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     save_on_top = True
+    change_form_show_cancel_button = True
     list_display = [
         "label",
         "project",
@@ -269,6 +278,7 @@ class SiteAdmin(
     admin.options.GeoModelAdminMixin,
     NestedProjectPermissionMixin,
 ):
+    change_form_show_cancel_button = True
     project_path = "study_area__project"
     list_display = [
         "label",
@@ -294,6 +304,7 @@ class SiteAdmin(
 
 
 class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    change_form_show_cancel_button = True
     list_display = [
         "id",
         "label",
@@ -336,6 +347,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 
 class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    change_form_show_cancel_button = True
     project_path = "location__project"
     list_display = [
         "location",
@@ -361,6 +373,7 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     save_on_top = True
+    change_form_show_cancel_button = True
     show_full_result_count = False
     readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
     fields = [
@@ -419,6 +432,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     list_filter_submit = True
 
 class SampleTypeAdmin(ExportMixin, ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = [
         "word",
         "label",
@@ -431,6 +445,7 @@ class SampleTypeAdmin(ExportMixin, ModelAdmin):
 
 
 class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    change_form_show_cancel_button = True
     list_display = ["word", "content_type", "project"]
     search_fields = ["word"]
     ordering = ["word"]
@@ -443,6 +458,7 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 
 class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    change_form_show_cancel_button = True
     project_path = "study_area__project"
     list_display = ["identifier", "study_area", "campaign"]
     search_fields = ["identifier", "study_area__label"]
