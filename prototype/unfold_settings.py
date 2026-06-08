@@ -95,8 +95,7 @@ UNFOLD = {
             },
             {
                 "title": _("Field Data"),
-                "collapsible": True,
-                "items": [
+                    "items": [
                     {
                         "title": _("Campaigns"),
                         "icon": "route",
@@ -121,8 +120,7 @@ UNFOLD = {
             },
             {
                 "title": _("Raw Data"),
-                "collapsible": True,
-                "items": [
+                    "items": [
                     {
                         "title": _("Raw Measurements"),
                         "icon": "storage",
@@ -144,8 +142,7 @@ UNFOLD = {
             },
             {
                 "title": _("Analyses"),
-                "collapsible": True,
-                "items": [
+                    "items": [
                     {
                         "title": _("Generic Measurements"),
                         "icon": "experiment",
@@ -188,8 +185,7 @@ UNFOLD = {
             },
             {
                 "title": _("Laboratory"),
-                "collapsible": True,
-                "items": [
+                    "items": [
                     {
                         "title": _("Devices"),
                         "icon": "precision_manufacturing",
@@ -226,8 +222,7 @@ UNFOLD = {
             },
             {
                 "title": _("Morphogrid"),
-                "collapsible": True,
-                "items": [
+                    "items": [
                     {
                         "title": _("Grid cells"),
                         "icon": "person",
@@ -244,8 +239,7 @@ UNFOLD = {
             },
             {
                 "title": _("Users & Groups"),
-                "collapsible": True,
-                "items": [
+                    "items": [
                     {
                         "title": _("Researchers"),
                         "icon": "school",
