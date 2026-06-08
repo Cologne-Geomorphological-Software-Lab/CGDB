@@ -42,80 +42,73 @@ def logout_view(request):
     return redirect("/")
 
 
+_PERIOD_OPTIONS = [
+    {"days": 30, "label": "30 days"},
+    {"days": 90, "label": "90 days"},
+    {"days": 365, "label": "1 year"},
+]
+
+
 def dashboard_callback(request, context):
-    context.update(stat_data())
+    try:
+        period_days = int(request.GET.get("period", 30))
+    except (ValueError, TypeError):
+        period_days = 30
+    if period_days not in {p["days"] for p in _PERIOD_OPTIONS}:
+        period_days = 30
+
+    context.update(stat_data(period_days))
+    context["navigation"] = [
+        {
+            "title": _("Overview"),
+            "link": "/",
+            "active": True,
+        },
+    ]
+    context["filters"] = [
+        {
+            "title": _(p["label"]),
+            "link": f"?period={p['days']}",
+            "active": period_days == p["days"],
+        }
+        for p in _PERIOD_OPTIONS
+    ]
     return context
 
 
-def stat_data():
+def stat_data(period_days: int = 30):
     now = timezone.now()
-    month_ago = now - timedelta(days=30)
-    logger.debug("stat_data called at %s", now)
+    since = now - timedelta(days=period_days)
+    logger.debug("stat_data called at %s (period=%d days)", now, period_days)
 
-    # Pre-compute totals and percentage changes for dashboard metrics
+    def _pct(count, total):
+        return round(count / total * 100, 2) if total > 0 else 0
+
+    def _footer(pct, period_days):
+        return mark_safe(
+            f'<strong class="text-green-700 font-semibold dark:text-green-400">'
+            f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days"
+        )
+
+    # Projects
     project_total = Project.objects.count()
+    project_period_count = Project.objects.filter(start_date__gte=since, start_date__lt=now).count()
     logger.debug("Project total: %s", project_total)
-    project_last_month_count = Project.objects.filter(
-        start_date__gte=month_ago,
-        start_date__lt=now,
-    ).count()
-    project_last_month_pct = (
-        round(project_last_month_count / project_total * 100, 2)
-        if project_total > 0
-        else 0
-    )
-    logger.debug("Projects last month: %s", project_last_month_count)
 
+    # Locations
     location_total = Location.objects.count()
-    location_last_month_count = Location.objects.filter(
-        created_at__gte=month_ago,
-        created_at__lt=now,
-    ).count()
-    location_last_month_pct = (
-        round(location_last_month_count / location_total * 100, 2)
-        if location_total > 0
-        else 0
-    )
+    location_period_count = Location.objects.filter(created_at__gte=since, created_at__lt=now).count()
 
+    # Samples
     sample_total = Sample.objects.count()
-    sample_last_month_count = Sample.objects.filter(
-        created_at__gte=month_ago,
-        created_at__lt=now,
-    ).count()
-    sample_last_month_pct = (
-        round(sample_last_month_count / sample_total * 100, 2)
-        if sample_total > 0
-        else 0
-    )
+    sample_period_count = Sample.objects.filter(created_at__gte=since, created_at__lt=now).count()
 
-    measurements_total = (
-        GenericMeasurement.objects.count()
-        + GrainSize.objects.count()
-        + LuminescenceDating.objects.count()
-        + RadiocarbonDating.objects.count()
-    )
-    measurements_last_month_count = (
-        GenericMeasurement.objects.filter(
-            created_at__gte=month_ago,
-            created_at__lt=now,
-        ).count()
-        + GrainSize.objects.filter(
-            created_at__gte=month_ago,
-            created_at__lt=now,
-        ).count()
-        + LuminescenceDating.objects.filter(
-            created_at__gte=month_ago,
-            created_at__lt=now,
-        ).count()
-        + RadiocarbonDating.objects.filter(
-            created_at__gte=month_ago,
-            created_at__lt=now,
-        ).count()
-    )
-    measurements_last_month_pct = (
-        round(measurements_last_month_count / measurements_total * 100, 2)
-        if measurements_total > 0
-        else 0
+    # Measurements
+    measurement_models = [GenericMeasurement, GrainSize, LuminescenceDating, RadiocarbonDating]
+    measurements_total = sum(m.objects.count() for m in measurement_models)
+    measurements_period_count = sum(
+        m.objects.filter(created_at__gte=since, created_at__lt=now).count()
+        for m in measurement_models
     )
 
     return {
@@ -123,43 +116,33 @@ def stat_data():
             {
                 "title": "Projects",
                 "metric": f"{project_total}",
-                "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(project_last_month_pct)}%</strong>&nbsp; last 30 days',
-                ),
+                "footer": _footer(_pct(project_period_count, project_total), period_days),
             },
             {
                 "title": "Locations",
                 "metric": f"{location_total}",
-                "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(location_last_month_pct)}%</strong>&nbsp; last 30 days',
-                ),
+                "footer": _footer(_pct(location_period_count, location_total), period_days),
             },
             {
                 "title": "Samples",
                 "metric": f"{sample_total}",
-                "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(sample_last_month_pct)}%</strong>&nbsp; last 30 days',
-                ),
+                "footer": _footer(_pct(sample_period_count, sample_total), period_days),
             },
             {
                 "title": "Measurements",
                 "metric": f"{measurements_total}",
-                "footer": mark_safe(
-                    f'<strong class="text-green-700 font-semibold dark:text-green-400">+{intcomma(measurements_last_month_pct)}%</strong>&nbsp; last 30 days',
-                ),
+                "footer": _footer(_pct(measurements_period_count, measurements_total), period_days),
             },
         ],
         "performance": [
             {
                 "title": _("Sedimentological Measurements"),
-                "metric": f"{GenericMeasurement.objects.count()+GrainSize.objects.count()}",
+                "metric": f"{GenericMeasurement.objects.count() + GrainSize.objects.count()}",
                 "chart": json.dumps(
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance(
-                                    [GenericMeasurement, GrainSize]
-                                ),
+                                "data": _build_monthly_performance([GenericMeasurement, GrainSize]),
                                 "borderColor": "var(--color-primary-700)",
                             },
                         ],
@@ -168,14 +151,12 @@ def stat_data():
             },
             {
                 "title": _("Geochronological Measurements"),
-                "metric": f"{LuminescenceDating.objects.count()+ RadiocarbonDating.objects.count()}",
+                "metric": f"{LuminescenceDating.objects.count() + RadiocarbonDating.objects.count()}",
                 "chart": json.dumps(
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance(
-                                    [LuminescenceDating, RadiocarbonDating]
-                                ),
+                                "data": _build_monthly_performance([LuminescenceDating, RadiocarbonDating]),
                                 "borderColor": "var(--color-primary-300)",
                             },
                         ],
