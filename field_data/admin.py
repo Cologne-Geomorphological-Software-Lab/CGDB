@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
@@ -125,7 +126,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         "reference",
         "campaign",
     ]
-    filter_horizontal = ["tags"]
+    autocomplete_fields = ["tags"]
     list_filter = [
         (
             "data_source",
@@ -164,6 +165,21 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("project", "campaign", "reference")
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "tags":
+            location_ct = ContentType.objects.get_for_model(Location)
+            qs = Tag.objects.filter(content_type=location_ct)
+            object_id = request.resolver_match.kwargs.get("object_id")
+            if object_id:
+                try:
+                    project = Location.objects.values_list("project", flat=True).get(pk=object_id)
+                    if project:
+                        qs = qs.filter(project=project)
+                except Location.DoesNotExist:
+                    pass
+            kwargs["queryset"] = qs
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     fieldsets = (
         (
