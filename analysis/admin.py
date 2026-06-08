@@ -168,20 +168,21 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
     list_filter_submit = True
     list_fullwidth = True
     list_filter_sheet = True
-    list_horizontal_scrollbar_top = False
+    list_horizontal_scrollbar_top = True
     list_disable_select_all = False
 
     list_display = [
         "sample__identifier",
         "laboratory_id",
-        "dating_approach",
+        "colored_dating_approach",
         "colored_mineral",
         "age",
         "total_dose_rate",
         "paleodose",
     ]
+    search_fields = ["laboratory_id", "sample_id_cll", "sample__identifier"]
 
-    raw_id_fields = ["sample"]
+    raw_id_fields = ["sample", "raw_data"]
     list_filter = [
         (
             "sample__location__project",
@@ -205,29 +206,23 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
         ),
     ]
 
+    @display(description="Luminescence age [ka]")
     def age(self, obj):
         if obj.luminescence_age:
-            entry = f"{round(obj.luminescence_age, 2)} ± {round(obj.age_error, 2)}"
-            return entry
-        return "Not available"
+            return f"{round(obj.luminescence_age, 2)} ± {round(obj.age_error, 2)}"
+        return "—"
 
-    age.short_description = "Luminescence age [ka]"
-
+    @display(description="Dose rate [Gy/ka]")
     def total_dose_rate(self, obj):
         if obj.dose_rate:
-            entry = f"{round(obj.dose_rate, 2)} ± {round(obj.dose_rate_error, 2)}"
-            return entry
-        return "Not available"
+            return f"{round(obj.dose_rate, 2)} ± {round(obj.dose_rate_error, 2)}"
+        return "—"
 
-    total_dose_rate.short_description = "Dose rate [Gy/ka]"
-
+    @display(description="Paleodose [Gy]")
     def paleodose(self, obj):
         if obj.palaeodose_value:
-            entry = f"{round(obj.palaeodose_value, 2)} ± {round(obj.palaeodose_error, 2)}"
-            return entry
-        return "Not available"
-
-    paleodose.short_description = "Paleodose [Gy]"
+            return f"{round(obj.palaeodose_value, 2)} ± {round(obj.palaeodose_error, 2)}"
+        return "—"
 
     @display(
         label={"Quartz": "success", "Feldspar": "info", "Polymineral": "warning", "Other": "default"},
@@ -236,50 +231,50 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
     def colored_mineral(self, obj):
         return obj.mineral
 
+    @display(
+        label={"Burial dating": "info", "Exposure dating": "success", "Other": "warning"},
+        description="Approach",
+    )
+    def colored_dating_approach(self, obj):
+        return obj.dating_approach
+
     fieldsets = (
         (
-            "Main information",
+            "Identification",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "sample",
-                    "laboratory_id",
-                    "sample_id_cll",
-                    "mineral",
-                    "dating_approach",
-                    "luminescence_age",
-                    "age_error",
-                    "signal",
-                    "protocol",
-                    "palaeodose_value",
-                    "palaeodose_error",
-                    "dose_rate",
-                    "dose_rate_error",
-                    "published",
-                    "thesis",
+                    ("sample", "raw_data"),
+                    ("laboratory_id", "sample_id_cll"),
+                    ("mineral", "dating_approach"),
+                    ("signal", "protocol"),
                 ),
             },
         ),
         (
-            "Palaeodoses",
+            "Results",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "grain_size_min",
-                    "grain_size_max",
-                    "aliquot_size",
-                    "aliquot_number_used_for_palaeodose",
-                    "od_percent",
-                    "od_percent_error",
-                    "od_gy",
-                    "od_gy_error",
+                    ("luminescence_age", "age_error"),
+                    ("palaeodose_value", "palaeodose_error"),
+                    ("dose_rate", "dose_rate_error"),
                     "age_model",
-                    "beta_source_calibration",
-                    "instrumental_beta_source_error",
-                    "uncertainty_beta_source_calibration",
-                    "fading_correction",
-                    "g_value",
-                    "g_value_error",
+                ),
+            },
+        ),
+        (
+            "Palaeodose Details",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("grain_size_min", "grain_size_max"),
+                    ("aliquot_size", "aliquot_number_used_for_palaeodose"),
+                    ("od_percent", "od_percent_error"),
+                    ("od_gy", "od_gy_error"),
+                    ("beta_source_calibration", "fading_correction"),
+                    ("instrumental_beta_source_error", "uncertainty_beta_source_calibration"),
+                    ("g_value", "g_value_error"),
                     "Lnat_Lsat_ratio",
                 ),
             },
@@ -289,26 +284,27 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
             {
                 "classes": ["tab"],
                 "fields": (
-                    "dose_rate_measurement_technique",
-                    "dose_rate_calculation_software",
-                    "u_ppm",
-                    "u_ppm_error",
-                    "th_ppm",
-                    "th_ppm_error",
-                    "k_percent",
-                    "k_percent_error",
-                    "water_content_for_dating",
-                    "water_content_for_dating_error",
-                    "a_value",
-                    "a_value_error",
-                    "alpha_dose_rate",
-                    "alpha_dose_rate_error",
-                    "beta_dose_rate",
-                    "beta_dose_rate_error",
-                    "gamma_dose_rate",
-                    "gamma_dose_rate_error",
-                    "cosmic_dose_rate",
-                    "cosmic_dose_rate_error",
+                    ("dose_rate_measurement_technique", "dose_rate_calculation_software"),
+                    ("u_ppm", "u_ppm_error"),
+                    ("th_ppm", "th_ppm_error"),
+                    ("k_percent", "k_percent_error"),
+                    ("water_content_for_dating", "water_content_for_dating_error"),
+                    ("a_value", "a_value_error"),
+                    ("alpha_dose_rate", "alpha_dose_rate_error"),
+                    ("beta_dose_rate", "beta_dose_rate_error"),
+                    ("gamma_dose_rate", "gamma_dose_rate_error"),
+                    ("cosmic_dose_rate", "cosmic_dose_rate_error"),
+                ),
+            },
+        ),
+        (
+            "Publication",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("published", "year_of_publication"),
+                    "thesis",
+                    "comments",
                 ),
             },
         ),
