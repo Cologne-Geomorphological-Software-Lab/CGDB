@@ -248,35 +248,44 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     save_on_top = True
     change_form_show_cancel_button = True
-    list_display = [
-        "label",
-        "project",
-        "province",
-    ]
+    compressed_fields = True
+    warn_unsaved_form = True
+    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
+    list_display = ["label", "project", "province", "climate_koeppen", "ecozone_schultz"]
     search_fields = ["label", "project__title"]
+    autocomplete_fields = ["project"]
     list_filter = [
         ("climate_koeppen", ChoicesDropdownFilter),
+        ("ecozone_schultz", ChoicesDropdownFilter),
         ("project", RelatedDropdownFilter),
     ]
     list_filter_sheet = False
     list_filter_submit = True
+    inlines = [SiteStackedInline]
+
     fieldsets = (
         (
-            "Data",
+            "Study Area",
             {
+                "classes": ["tab"],
                 "fields": (
-                    "label",
-                    "project",
+                    "id",
+                    ("label", "project"),
                     "province",
-                    "geometry",
-                    "climate_koeppen",
-                    "ecozone_schultz",
+                    ("climate_koeppen", "ecozone_schultz"),
+                    ("created_by", "created_at"),
+                    ("updated_by", "modified_at"),
                 ),
             },
         ),
+        (
+            "Geometry",
+            {
+                "classes": ["tab"],
+                "fields": ("geometry",),
+            },
+        ),
     )
-
-    inlines = [SiteStackedInline]
 
 
 class SiteAdmin(
@@ -311,43 +320,67 @@ class SiteAdmin(
 
 
 class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    save_on_top = True
     change_form_show_cancel_button = True
+    compressed_fields = True
+    warn_unsaved_form = True
+    list_per_page = 20
+    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
     list_display = [
-        "id",
         "label",
         "project",
         "date_start",
         "date_end",
+        "destination_country",
+        "colored_season",
     ]
     search_fields = ["label", "project__title"]
+    raw_id_fields = ["project"]
+    autocomplete_fields = ["study_areas"]
     list_filter = [
         ("project", RelatedDropdownFilter),
-        (
-            "date_start",
-            RangeDateFilter,
-        ),
-        (
-            "date_end",
-            RangeDateFilter,
-        ),
+        ("date_start", RangeDateFilter),
+        ("date_end", RangeDateFilter),
         ("destination_country", RelatedDropdownFilter),
     ]
     list_filter_sheet = False
     list_filter_submit = True
-    raw_id_fields = ["project"]
+
+    @display(
+        label={
+            "SP": "info",
+            "SU": "warning",
+            "AU": "danger",
+            "WI": "default",
+            "WS": "info",
+            "DS": "warning",
+            "NS": "default",
+        },
+        description="Season",
+    )
+    def colored_season(self, obj):
+        return obj.season
 
     fieldsets = (
         (
-            "Metadata",
+            "Campaign",
             {
+                "classes": ["tab"],
                 "fields": (
-                    "label",
-                    "project",
-                    "date_start",
-                    "date_end",
-                    "destination_country",
-                    "study_areas",
+                    "id",
+                    ("label", "project"),
+                    ("date_start", "date_end"),
+                    ("destination_country", "season"),
+                    ("created_by", "created_at"),
+                    ("updated_by", "modified_at"),
                 ),
+            },
+        ),
+        (
+            "Study Areas",
+            {
+                "classes": ["tab"],
+                "fields": ("study_areas",),
             },
         ),
     )
@@ -381,62 +414,72 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     save_on_top = True
     change_form_show_cancel_button = True
+    compressed_fields = True
+    warn_unsaved_form = True
     show_full_result_count = False
-    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
-    fields = [
-        "identifier",
-        "igsn",
-        "project",
-        "location",
-        "processor",
-        "parent",
-        "description",
-        "depth_top",
-        "depth_bottom",
-        "type",
-        "layer",
-        "tags",
-        "created_by",
-        "created_at",
-        "updated_by",
-        "modified_at",
-    ]
-
-    search_fields = [
-        "identifier",
-        "location__identifier",
-    ]
-
-    filter_horizontal = ["tags"]
-    list_display = [
-        "identifier",
-        "project",
-        "location",
-        "depth_mid",
-    ]
-    grouped = True
-    group_by = ["project", "location"]
-
-    raw_id_fields = [
-        "project",
-        "location",
-    ]
+    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
+    search_fields = ["identifier", "location__identifier"]
+    autocomplete_fields = ["project", "location", "processor", "parent", "layer", "type"]
+    list_display = ["identifier", "project", "location", "depth_mid"]
     list_filter = [
-        (
-            "project",
-            RelatedDropdownFilter,
-        ),
-        (
-            "location__campaign",
-            RelatedDropdownFilter,
-        ),
-        (
-            "location",
-            RelatedDropdownFilter,
-        ),
+        ("project", RelatedDropdownFilter),
+        ("location__campaign", RelatedDropdownFilter),
+        ("location", RelatedDropdownFilter),
     ]
     list_filter_sheet = False
     list_filter_submit = True
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "tags":
+            sample_ct = ContentType.objects.get_for_model(Sample)
+            qs = Tag.objects.filter(content_type=sample_ct)
+            object_id = request.resolver_match.kwargs.get("object_id")
+            if object_id:
+                try:
+                    project_id = Sample.objects.values_list("project", flat=True).get(pk=object_id)
+                    if project_id:
+                        qs = qs.filter(project=project_id)
+                except Sample.DoesNotExist:
+                    pass
+            kwargs["queryset"] = qs
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    fieldsets = (
+        (
+            "Sample",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    "id",
+                    ("identifier", "igsn"),
+                    ("project", "location"),
+                    ("processor", "date"),
+                    "parent",
+                    ("created_by", "created_at"),
+                    ("updated_by", "modified_at"),
+                ),
+            },
+        ),
+        (
+            "Properties",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("type", "material"),
+                    ("depth_top", "depth_bottom"),
+                    ("layer", "weight"),
+                    "description",
+                ),
+            },
+        ),
+        (
+            "Tags",
+            {
+                "classes": ["tab"],
+                "fields": ("tags",),
+            },
+        ),
+    )
 
 class SampleTypeAdmin(ExportMixin, ModelAdmin):
     change_form_show_cancel_button = True
@@ -466,18 +509,19 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     def get_search_results(self, request, queryset, search_term):
         queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
         app_label = request.GET.get("app_label")
-        model_name = request.GET.get("model_name")
         field_name = request.GET.get("field_name")
-        if app_label == "field_data" and model_name == "location" and field_name == "tags":
-            location_ct = ContentType.objects.get_for_model(Location)
-            queryset = queryset.filter(content_type=location_ct)
-            match = re.search(r"/location/(\d+)/change/", request.META.get("HTTP_REFERER", ""))
+        model_name = request.GET.get("model_name")
+        model_map = {"location": Location, "sample": Sample}
+        if app_label == "field_data" and field_name == "tags" and model_name in model_map:
+            model_class = model_map[model_name]
+            queryset = queryset.filter(content_type=ContentType.objects.get_for_model(model_class))
+            match = re.search(rf"/{model_name}/(\d+)/change/", request.META.get("HTTP_REFERER", ""))
             if match:
                 try:
-                    project_id = Location.objects.values_list("project", flat=True).get(pk=match.group(1))
+                    project_id = model_class.objects.values_list("project", flat=True).get(pk=match.group(1))
                     if project_id:
                         queryset = queryset.filter(project=project_id)
-                except Location.DoesNotExist:
+                except model_class.DoesNotExist:
                     pass
         return queryset, may_have_duplicates
 
