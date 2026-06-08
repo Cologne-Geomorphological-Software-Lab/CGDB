@@ -47,13 +47,14 @@ class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_display = ["label", "head_of_group", "created_at"]
     search_fields = ["label"]
     list_filter = ["created_at"]
-    readonly_fields = ["created_at", "created_by"]
+    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
 
 
 class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_display = ["user", "academic_rank", "get_full_name"]
     search_fields = ["user__username", "user__first_name", "user__last_name"]
     list_filter = ["academic_rank"]
+    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
 
     def get_full_name(self, obj):
         return obj.user.get_full_name() if obj.user else "–"
@@ -62,10 +63,11 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
 
 class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
+    save_on_top = True
     list_display = ["title", "label", "status", "start_date", "public"]
     search_fields = ["title", "label", "description"]
     list_filter = ["status", "public", "start_date", "created_at"]
-    readonly_fields = ["created_at", "created_by"]
+    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
     filter_horizontal = [
         "principal_investigator",
         "associated_investigator",

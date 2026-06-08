@@ -77,10 +77,12 @@ class ReferenceAdmin(ModelAdmin):
         ),
     ]
     filter_horizontal = ["second_author", "supervisor", "keywords"]
+    search_fields = ["title", "doi", "issn", "isbn_print", "lead_author__last_name"]
     list_display = [
         "lead_author",
         "year",
         "title",
+        "type",
     ]
     list_filter = [
         ("type", ChoicesDropdownFilter),
@@ -93,8 +95,7 @@ class ReferenceAdmin(ModelAdmin):
     list_filter_submit = True
 
     def get_queryset(self, request):
-        qs = self.model._default_manager.all()
-        return qs
+        return super().get_queryset(request)
 
     def has_view_permission(self, request, obj=None):
         return True

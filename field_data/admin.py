@@ -10,13 +10,13 @@ from prototype.mixins import (
     ProjectBasedPermissionMixin,
 )
 
-from .models import Campaign, ExposureType, Layer, Location, Sample, SampleType, Site, StudyArea, Tag
+from .models import Campaign, ExposureType, Layer, Location, Sample, SampleType, Site, StudyArea, Tag, Transect
 from .resources import LocationResource
 
 
 class MeasurementInline(admin.TabularInline):
     model = GenericMeasurement
-    extra = 1
+    extra = 0
     readonly_fields = (
         "method",
         "value",
@@ -30,7 +30,7 @@ class MeasurementInline(admin.TabularInline):
 class SampleTabularInline(TabularInline):
     model = Sample
     tab = True
-    extra = 1
+    extra = 0
     show_change_link = True
     fields = [
         "identifier",
@@ -44,7 +44,7 @@ class SiteStackedInline(StackedInline):
     fields = [
         "label",
     ]
-    extra = 1
+    extra = 0
 
 
 class LayerTabularInline(TabularInline):
@@ -108,9 +108,10 @@ class ExposureTypeAdmin(ExportMixin, ModelAdmin):
 
 
 class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    save_on_top = True
     list_per_page = 20
     resource_classes = [LocationResource]
-    readonly_fields = ["id"]
+    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
     list_display = [
         "identifier",
         "data_source",
@@ -154,7 +155,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         SampleTabularInline,
     ]
 
-    search_fields = ["identifier", "campaign"]
+    search_fields = ["identifier", "campaign__label"]
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("project", "campaign", "reference")
@@ -172,6 +173,10 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
                     "identifier",
                     "date_of_record",
                     "processor",
+                    "created_by",
+                    "created_at",
+                    "updated_by",
+                    "modified_at",
                 ),
             },
         ),
@@ -226,13 +231,16 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 
 class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    save_on_top = True
     list_display = [
         "label",
         "project",
         "province",
     ]
+    search_fields = ["label", "project__title"]
     list_filter = [
         ("climate_koeppen", ChoicesDropdownFilter),
+        ("project", RelatedDropdownFilter),
     ]
     list_filter_sheet = False
     list_filter_submit = True
@@ -266,6 +274,12 @@ class SiteAdmin(
         "label",
         "study_area",
     ]
+    search_fields = ["label", "study_area__label"]
+    list_filter = [
+        ("study_area", RelatedDropdownFilter),
+    ]
+    list_filter_sheet = False
+    list_filter_submit = True
     fieldsets = (
         (
             "Data",
@@ -287,6 +301,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         "date_start",
         "date_end",
     ]
+    search_fields = ["label", "project__title"]
     list_filter = [
         ("project", RelatedDropdownFilter),
         (
@@ -301,11 +316,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
-    raw_id_fields = [
-        "project",
-        # "destination_country",
-        # "study_areas",
-    ]
+    raw_id_fields = ["project"]
 
     fieldsets = (
         (
@@ -332,6 +343,7 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         "depth_top",
         "depth_bottom",
     ]
+    search_fields = ["identifier", "location__identifier"]
     list_filter = [
         (
             "location__project",
@@ -344,10 +356,13 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
+    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
 
 
 class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
+    save_on_top = True
     show_full_result_count = False
+    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
     fields = [
         "identifier",
         "igsn",
@@ -361,6 +376,10 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         "type",
         "layer",
         "tags",
+        "created_by",
+        "created_at",
+        "updated_by",
+        "modified_at",
     ]
 
     search_fields = [
@@ -404,6 +423,8 @@ class SampleTypeAdmin(ExportMixin, ModelAdmin):
         "word",
         "label",
     ]
+    search_fields = ["word", "label"]
+    ordering = ["word"]
     list_filter = []
     list_filter_sheet = False
     list_filter_submit = True
@@ -421,10 +442,24 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_filter_submit = True
 
 
+class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    project_path = "study_area__project"
+    list_display = ["identifier", "study_area", "campaign"]
+    search_fields = ["identifier", "study_area__label"]
+    list_filter = [
+        ("study_area", RelatedDropdownFilter),
+        ("campaign", RelatedDropdownFilter),
+    ]
+    list_filter_sheet = False
+    list_filter_submit = True
+    raw_id_fields = ["study_area", "campaign"]
+
+
 admin.site.register(ExposureType, ExposureTypeAdmin)
 admin.site.register(Campaign, CampaignAdmin)
 admin.site.register(StudyArea, StudyAreaAdmin)
 admin.site.register(Site, SiteAdmin)
+admin.site.register(Transect, TransectAdmin)
 admin.site.register(Location, LocationAdmin)
 admin.site.register(Layer, LayerAdmin)
 admin.site.register(Sample, SampleAdmin)

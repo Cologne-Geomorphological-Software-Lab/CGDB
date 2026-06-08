@@ -52,6 +52,8 @@ class DeviceAdmin(ModelAdmin):
 
 class AccessoryParameterInline(TabularInline):
     model = AccessoryParameter
+    extra = 0
+    fields = ["method", "parameter_name", "parameter_value", "parameter_unit"]
 
 
 class AccessoryAdmin(ModelAdmin):
