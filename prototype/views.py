@@ -11,7 +11,7 @@ from django.contrib.humanize.templatetags.humanize import intcomma
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.safestring import mark_safe
-from django.utils.timezone import now
+from django.utils.timezone import make_aware, now
 from django.utils.translation import gettext_lazy as _
 
 from analysis.models import GenericMeasurement, GrainSize, LuminescenceDating, RadiocarbonDating
@@ -197,8 +197,8 @@ def _build_monthly_performance(model_classes: list) -> list:
         month_date = today - relativedelta(months=i)
         year = month_date.year
         month = month_date.month
-        start_date = datetime(year, month, 1)
-        end_date = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        start_date = make_aware(datetime(year, month, 1))
+        end_date = make_aware(datetime(year, month, monthrange(year, month)[1], 23, 59, 59))
         count = sum(
             model.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
             for model in model_classes
