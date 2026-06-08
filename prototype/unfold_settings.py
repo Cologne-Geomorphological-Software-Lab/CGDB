@@ -21,6 +21,8 @@ UNFOLD = {
     ],
     "SHOW_HISTORY": True,  # show/hide "History" button, default: True
     "SHOW_VIEW_ON_SITE": False,  # show/hide "View on site" button, default: True
+    "SHOW_BACK_BUTTON": True,
+    "BORDER_RADIUS": "6px",
     "COLORS": {
         "font": {
             "subtle-light": "var(--color-base-500)",

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
+from unfold.decorators import display
 
 from .models import Accessory, AccessoryParameter, Calibration, Device, Firmware, Manufacturer, Method
 
@@ -13,6 +14,7 @@ class DeviceInline(TabularInline):
 
 
 class ManufacturerAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["name", "website"]
     search_fields = ["name"]
     ordering = ["name"]
@@ -41,6 +43,7 @@ class CalibrationInline(TabularInline):
 
 
 class DeviceAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["name", "manufacturer"]
     search_fields = ["name"]
     ordering = ["manufacturer__name", "name"]
@@ -57,6 +60,7 @@ class AccessoryParameterInline(TabularInline):
 
 
 class AccessoryAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["device", "name"]
     search_fields = ["name", "device__name"]
     ordering = ["device__name", "name"]
@@ -67,6 +71,7 @@ class AccessoryAdmin(ModelAdmin):
 
 
 class FirmwareAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["device", "version", "installation_date"]
     search_fields = ["device__name", "version"]
     ordering = ["device__name", "-installation_date"]
@@ -76,6 +81,7 @@ class FirmwareAdmin(ModelAdmin):
 
 
 class CalibrationAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["device", "date", "researcher"]
     search_fields = ["device__name"]
     ordering = ["device__name", "-date"]
@@ -88,7 +94,8 @@ class CalibrationAdmin(ModelAdmin):
 
 
 class MethodAdmin(ModelAdmin):
-    list_display = ["name", "category", "device", "laboratory"]
+    change_form_show_cancel_button = True
+    list_display = ["name", "colored_category", "device", "laboratory"]
     search_fields = ["name", "token"]
     ordering = ["name"]
     list_filter = [
@@ -98,6 +105,13 @@ class MethodAdmin(ModelAdmin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
+
+    @display(
+        label={"CHEM": "success", "PHY": "info", "CHRO": "warning"},
+        description="Category",
+    )
+    def colored_category(self, obj):
+        return obj.category
 
 
 admin.site.register(Manufacturer, ManufacturerAdmin)

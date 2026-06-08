@@ -1,17 +1,20 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeNumericFilter, RelatedDropdownFilter
+from unfold.decorators import display
 
 from .models import Author, Reference, ReferenceKeyword
 
 
 class ReferenceKeywordAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["keyword", "keyword_ger"]
     search_fields = ["keyword", "keyword_ger"]
     ordering = ["keyword"]
 
 
 class ReferenceAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     fieldsets = [
         (
             "General Information",
@@ -82,7 +85,7 @@ class ReferenceAdmin(ModelAdmin):
         "lead_author",
         "year",
         "title",
-        "type",
+        "colored_type",
     ]
     list_filter = [
         ("type", ChoicesDropdownFilter),
@@ -93,6 +96,21 @@ class ReferenceAdmin(ModelAdmin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
+
+    @display(
+        label={
+            "Paper": "success",
+            "PhD thesis": "info",
+            "Master's thesis": "warning",
+            "Bachelor's thesis": "warning",
+            "Monography": "default",
+            "Chapter": "default",
+            "Collection": "default",
+        },
+        description="Type",
+    )
+    def colored_type(self, obj):
+        return obj.type
 
     def get_queryset(self, request):
         return super().get_queryset(request)
@@ -116,6 +134,7 @@ class LeadAuthorReferenceInline(TabularInline):
 
 
 class AuthorAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["last_name", "first_name"]
     search_fields = ["last_name", "first_name"]
     ordering = ["last_name", "first_name"]

@@ -16,6 +16,7 @@ from import_export.admin import ExportMixin, ImportExportMixin
 from PIL import Image
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
+from unfold.decorators import display
 
 from prototype.mixins import CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin
 
@@ -44,12 +45,15 @@ mpl.use("Agg")
 
 
 class AlgorithmAdmin(ExportMixin, ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["name", "version", "programming_language"]
     search_fields = ["name", "version"]
     ordering = ["name", "version"]
 
 
 class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    change_form_show_cancel_button = True
+    warn_unsaved_form = True
     project_path = "sample__location__project"
     list_display = [
         "device",
@@ -85,6 +89,8 @@ class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin)
 
 
 class RawProcessingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    change_form_show_cancel_button = True
+    warn_unsaved_form = True
     project_path = "raw_measurement__project"
     list_display = [
         "raw_measurement",
@@ -102,6 +108,8 @@ class PollenCountInline(TabularInline):
 
 
 class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    change_form_show_cancel_button = True
+    warn_unsaved_form = True
     project_path = "sample__location__project"
     inlines = [PollenCountInline]
     list_display = [
@@ -140,6 +148,7 @@ class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class PollenAdmin(ExportMixin, ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["name", "token", "name_en"]
     search_fields = ["name", "token", "name_en"]
     ordering = ["name"]
@@ -153,10 +162,11 @@ class PollenAdmin(ExportMixin, ModelAdmin):
 class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin, ModelAdmin):
     project_path = "sample__location__project"
     save_on_top = True
+    change_form_show_cancel_button = True
     compressed_fields = True
     warn_unsaved_form = True
-    list_filter_submit = False
-    list_fullwidth = False
+    list_filter_submit = True
+    list_fullwidth = True
     list_filter_sheet = True
     list_horizontal_scrollbar_top = False
     list_disable_select_all = False
@@ -165,7 +175,7 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
         "sample__identifier",
         "laboratory_id",
         "dating_approach",
-        "mineral",
+        "colored_mineral",
         "age",
         "total_dose_rate",
         "paleodose",
@@ -218,6 +228,13 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
         return "Not available"
 
     paleodose.short_description = "Paleodose [Gy]"
+
+    @display(
+        label={"Quartz": "success", "Feldspar": "info", "Polymineral": "warning", "Other": "default"},
+        description="Mineral",
+    )
+    def colored_mineral(self, obj):
+        return obj.mineral
 
     fieldsets = (
         (
@@ -306,6 +323,7 @@ class RadiocarbonDatingAdmin(
     ModelAdmin,
     NestedProjectPermissionMixin,
 ):
+    change_form_show_cancel_button = True
     project_path = "sample__location__project"
     raw_id_fields = ["sample"]
     list_filter = [
@@ -390,6 +408,8 @@ class GrainSizeImportForm(forms.ModelForm):
 
 
 class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    change_form_show_cancel_button = True
+    warn_unsaved_form = True
     project_path = "sample__location__project"
     form = GrainSizeImportForm
 
@@ -397,6 +417,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         "sample",
         "location",
         "project",
+        "colored_method",
         "colored_sample_concentration",
     ]
 
@@ -410,6 +431,10 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     @admin.display(description="Project")
     def project(self, obj):
         return obj.sample.project if obj.sample else None
+
+    @display(label={"L": "success", "C": "info", "S": "warning"}, description="Method")
+    def colored_method(self, obj):
+        return obj.method
 
     list_filter = [
         (
@@ -594,6 +619,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class GenericMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    change_form_show_cancel_button = True
     project_path = "sample__location__project"
     resource_classes = [GenericMeasurementResource]
     list_display = [
@@ -629,6 +655,7 @@ class GenericMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMi
 
 
 class ParameterAdmin(ExportMixin, ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["token", "id", "unit"]
     search_fields = ["token"]
     ordering = ["token"]
@@ -674,7 +701,8 @@ class MicroXRFElementInline(admin.TabularInline):
 
 @admin.register(MicroXRFMeasurement)
 class MicroXRFAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
-    project_path = "sample__location__project"  # Define the path to project
+    change_form_show_cancel_button = True
+    project_path = "sample__location__project"
     list_display = [
         "sample",
         "sample__project",
@@ -696,6 +724,7 @@ class MicroXRFAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class MeasurementSeriesAdmin(ModelAdmin):
+    change_form_show_cancel_button = True
     list_display = ["id", "datetime"]
     ordering = ["-datetime"]
     search_fields = ["id"]
