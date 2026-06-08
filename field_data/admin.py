@@ -112,6 +112,8 @@ class ExposureTypeAdmin(ExportMixin, ModelAdmin):
 class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     save_on_top = True
     change_form_show_cancel_button = True
+    compressed_fields = True
+    warn_unsaved_form = True
     list_per_page = 20
     resource_classes = [LocationResource]
     readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
@@ -128,6 +130,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         "reference",
         "campaign",
     ]
+    filter_horizontal = ["tags"]
     list_filter = [
         (
             "data_source",
@@ -169,69 +172,60 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
     fieldsets = (
         (
-            "Metadata",
+            "Identification",
             {
                 "classes": ["tab"],
                 "fields": (
                     "id",
-                    "data_source",
-                    "project",
-                    "reference",
-                    "campaign",
-                    "identifier",
-                    "date_of_record",
+                    ("identifier", "data_source"),
+                    ("project", "reference"),
+                    ("campaign", "date_of_record"),
                     "processor",
-                    "created_by",
-                    "created_at",
-                    "updated_by",
-                    "modified_at",
+                    "tags",
+                    ("created_by", "created_at"),
+                    ("updated_by", "modified_at"),
                 ),
             },
         ),
         (
-            "Spatial Metadata",
+            "Coordinates",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "easting",
-                    "northing",
-                    "altitude",
-                    "srid",
+                    ("easting", "northing"),
+                    ("altitude", "srid"),
                     "location",
                 ),
             },
         ),
         (
-            "Data Acquisiton",
+            "Field Setting",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "study_site",
+                    ("study_site", "transect"),
                     "exposure_type",
-                    "liner",
-                    "sampling",
+                    ("liner", "sampling"),
                 ),
             },
         ),
         (
-            "Landform and topography",
+            "Topography",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "gradient_upslope",
-                    "gradient_downslope",
+                    ("gradient_upslope", "gradient_downslope"),
                     "slope_aspect",
                     "relief_description",
                 ),
             },
         ),
         (
-            "Climate and Weather",
+            "Weather",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "current_weather_conditions",
-                    "past_weather_conditions",
+                    ("current_weather_conditions", "past_weather_conditions"),
                 ),
             },
         ),
