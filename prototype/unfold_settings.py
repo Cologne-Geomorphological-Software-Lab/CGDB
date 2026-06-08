@@ -69,8 +69,8 @@ UNFOLD = {
         },
     },
     "SIDEBAR": {
-        "show_search": True,
-        "show_all_applications": True,
+        "show_search": False,
+        "show_all_applications": False,
         "navigation": [
             {
                 "title": _("Navigation"),

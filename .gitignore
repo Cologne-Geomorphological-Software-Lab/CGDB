@@ -71,6 +71,10 @@ staticfiles/
 db.sqlite3
 media/
 
+# Test file upload artifacts
+analysis/algorithms/*.txt
+analysis/raw_data/*.txt
+
 # Flask stuff:
 instance/
 .webassets-cache
