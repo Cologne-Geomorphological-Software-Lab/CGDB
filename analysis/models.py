@@ -1180,6 +1180,19 @@ class GrainSize(BaseModel):
         blank=True,
         null=True,
     )
+    gravel = models.FloatField(
+        blank=True,
+        null=True,
+        verbose_name="Gravel (≥ 2000 µm) [%]",
+    )
+
+    SOURCE_CHOICES = [("file", "Imported from file"), ("manual", "Entered manually")]
+    source = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default="manual",
+        editable=False,
+    )
 
     mean = models.FloatField(
         blank=True,
@@ -1251,6 +1264,7 @@ class GrainSize(BaseModel):
         self.fine_sand = 0
         self.medium_sand = 0
         self.coarse_sand = 0
+        self.gravel = 0
 
         for class_value, data_value in zip(self.classes, self.measured_data):
             if class_value < 2:
@@ -1267,6 +1281,8 @@ class GrainSize(BaseModel):
                 self.medium_sand += data_value
             elif class_value < 2000:
                 self.coarse_sand += data_value
+            else:
+                self.gravel += data_value
 
         total = sum(self.measured_data)
         if total == 0:
@@ -1278,6 +1294,7 @@ class GrainSize(BaseModel):
         self.fine_sand = self.fine_sand / total * 100
         self.medium_sand = self.medium_sand / total * 100
         self.coarse_sand = self.coarse_sand / total * 100
+        self.gravel = self.gravel / total * 100
 
         return (
             self.fine_silt,
@@ -1287,6 +1304,7 @@ class GrainSize(BaseModel):
             self.medium_sand,
             self.coarse_sand,
             self.clay,
+            self.gravel,
         )
 
     def save(self, *args, **kwargs):
@@ -1299,6 +1317,7 @@ class GrainSize(BaseModel):
                 self.medium_sand,
                 self.coarse_sand,
                 self.clay,
+                self.gravel,
             ) = self._reclassify()
         super().save(*args, **kwargs)
 

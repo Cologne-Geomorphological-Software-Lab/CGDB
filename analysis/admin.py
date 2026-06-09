@@ -406,6 +406,7 @@ class GrainSizeImportForm(forms.ModelForm):
 class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     change_form_show_cancel_button = True
     warn_unsaved_form = True
+    compressed_fields = True
     project_path = "sample__location__project"
     form = GrainSizeImportForm
 
@@ -416,9 +417,111 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         "colored_method",
         "colored_sample_concentration",
     ]
+    list_filter_submit = True
+    list_filter_sheet = False
+    list_filter = [
+        ("method", ChoicesDropdownFilter),
+        ("sample__location__project", RelatedDropdownFilter),
+        ("sample__location", RelatedDropdownFilter),
+        ("sample__location__campaign", RelatedDropdownFilter),
+        ("sample", RelatedDropdownFilter),
+    ]
+
+    autocomplete_fields = ["sample"]
+    raw_id_fields = ["raw_data"]
+
+    readonly_fields = [
+        "source",
+        "classes_summary",
+        "measured_data_summary",
+        "colored_sample_concentration",
+        "clay",
+        "fine_silt",
+        "medium_silt",
+        "coarse_silt",
+        "fine_sand",
+        "medium_sand",
+        "coarse_sand",
+        "gravel",
+        "plot",
+    ]
+
+    _STAT_FIELDS = [
+        "mean", "mode", "median", "std", "skew", "kurtosis",
+        "fwmean", "fwmedian", "fwsd", "fwskew", "fwkurt",
+    ]
+
+    fieldsets = (
+        (
+            "Identification",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("sample", "raw_data"),
+                    ("method", "sample_weight"),
+                    "source",
+                ),
+            },
+        ),
+        (
+            "Import",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    "file",
+                    "classes_summary",
+                    "measured_data_summary",
+                    "colored_sample_concentration",
+                ),
+            },
+        ),
+        (
+            "Fractions",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("clay", "fine_silt", "medium_silt", "coarse_silt"),
+                    ("fine_sand", "medium_sand", "coarse_sand", "gravel"),
+                ),
+            },
+        ),
+        (
+            "Statistics — Standard",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("mean", "median", "mode"),
+                    ("std", "skew", "kurtosis"),
+                ),
+            },
+        ),
+        (
+            "Statistics — Folk & Ward",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("fwmean", "fwmedian"),
+                    ("fwsd", "fwskew", "fwkurt"),
+                ),
+            },
+        ),
+        (
+            "Plot",
+            {
+                "classes": ["tab"],
+                "fields": ("plot",),
+            },
+        ),
+    )
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("sample__location__project")
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.source == "file":
+            readonly += [f for f in self._STAT_FIELDS if f not in readonly]
+        return readonly
 
     @admin.display(description="Location")
     def location(self, obj):
@@ -432,117 +535,39 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     def colored_method(self, obj):
         return obj.method
 
-    list_filter = [
-        (
-            "sample",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location__project",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location__campaign",
-            RelatedDropdownFilter,
-        ),
-    ]
-    list_filter_submit = True
-    list_filter_sheet = False
-    readonly_fields = [
-        "classes",
-        "colored_sample_concentration",
-        "measured_data",
-        "clay",
-        "fine_silt",
-        "medium_silt",
-        "coarse_silt",
-        "fine_sand",
-        "medium_sand",
-        "coarse_sand",
-        "plot",
-    ]
-    raw_id_fields = ["sample"]
+    @display(description="Sample concentration [%]")
+    def colored_sample_concentration(self, obj):
+        if obj.sample_concentration is None:
+            return "N/A"
+        color = "success" if 6 <= obj.sample_concentration <= 20 else "danger"
+        rounded = round(obj.sample_concentration, 1)
+        return mark_safe(
+            f'<span class="text-{color}-600 dark:text-{color}-400 font-semibold">{rounded} %</span>'
+        )
 
-    fieldsets = (
-        (
-            "Metadata",
-            {
-                "classes": ["tab"],
-                "fields": (
-                    "sample",
-                    "sample_weight",
-                    "method",
-                    "file",
-                ),
-            },
-        ),
-        (
-            "Data",
-            {
-                "classes": ["tab"],
-                "fields": (
-                    "classes",
-                    "measured_data",
-                    "colored_sample_concentration",
-                ),
-            },
-        ),
-        (
-            "Classes",
-            {
-                "classes": ["tab"],
-                "fields": (
-                    "clay",
-                    "fine_silt",
-                    "medium_silt",
-                    "coarse_silt",
-                    "fine_sand",
-                    "medium_sand",
-                    "coarse_sand",
-                ),
-            },
-        ),
-        (
-            "Size Stats",
-            {
-                "classes": ["tab"],
-                "fields": (
-                    "mean",
-                    "mode",
-                    "median",
-                    "std",
-                    "skew",
-                    "kurtosis",
-                    "fwmean",
-                    "fwmedian",
-                    "fwsd",
-                    "fwskew",
-                    "fwkurt",
-                ),
-            },
-        ),
-        (
-            "Plot",
-            {
-                "classes": ["tab"],
-                "fields": ("plot",),
-            },
-        ),
-    )
+    @admin.display(description="Classes")
+    def classes_summary(self, obj):
+        if not obj.classes:
+            return "—"
+        n = len(obj.classes)
+        mn = min(obj.classes)
+        mx = max(obj.classes)
+        return f"{n} classes, {mn}–{mx} µm"
+
+    @admin.display(description="Measured data")
+    def measured_data_summary(self, obj):
+        if not obj.measured_data:
+            return "—"
+        n = len(obj.measured_data)
+        total = sum(obj.measured_data)
+        return f"{n} data points, sum = {round(total, 1)}"
 
     def save_model(self, request, obj, form, change):
         file = form.cleaned_data.get("file")
         if file:
             self.process_file(file, obj)
-            self.message_user(
-                request,
-                "File uploaded and processed successfully",
-                messages.SUCCESS,
-            )
+            obj.source = "file"
+            self.message_user(request, "File uploaded and processed successfully.", messages.SUCCESS)
         super().save_model(request, obj, form, change)
 
     def process_file(self, file, obj):
@@ -567,23 +592,9 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         obj.sample_concentration = grain_size_instance.sample_concentration
         default_storage.delete(file_path)
 
-    def colored_sample_concentration(self, obj):
-        if obj.sample_concentration is None:
-            return "N/A"
-        if obj.sample_concentration >= 6 and obj.sample_concentration <= 20:
-            color = "green"
-        else:
-            color = "red"
-        rounded_concentration = round(obj.sample_concentration, 1)
-        return mark_safe(
-            f'<span style="color: {color};">{rounded_concentration}</span>',
-        )
-
-    colored_sample_concentration.short_description = "Sample concentration [%]"
-
     def plot(self, obj):
         if not obj.measured_data or not obj.classes:
-            return "No data available for plotting"
+            return "No data available for plotting."
         fig, ax = plt.subplots(figsize=(30, 10))
         ax.plot(obj.classes, obj.measured_data, marker="")
         ax.set_xscale("log")
@@ -591,16 +602,11 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         ax.set_xlabel("Grain Size (μm)", fontsize=21)
         ax.set_ylabel("GSD (%)", fontsize=21)
         ax.tick_params(axis="both", which="major", labelsize=12)
-
         for x in [0.2, 0.63, 2, 6.3, 20, 63, 200, 630]:
-            ax.axvline(x=x, color="black", linestyle="--", linewidth=0.5, label=x)
+            ax.axvline(x=x, color="black", linestyle="--", linewidth=0.5)
             ax.text(
-                x=x,
-                y=-0.1,
-                s=str(x),
-                fontsize=21,
-                verticalalignment="top",
-                horizontalalignment="center",
+                x=x, y=-0.1, s=str(x), fontsize=21,
+                verticalalignment="top", horizontalalignment="center",
                 transform=ax.get_xaxis_transform(),
             )
         buf = io.BytesIO()
@@ -610,8 +616,7 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         image_base64 = base64.b64encode(buf.read()).decode("utf-8")
         return mark_safe(f'<img src="data:image/png;base64,{image_base64}" />')
 
-    plot.allow_tags = True
-    plot.short_description = "Plot of Measured Data vs Classes"
+    plot.short_description = "Grain size distribution"
 
 
 class GenericMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
