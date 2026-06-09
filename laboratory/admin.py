@@ -18,6 +18,8 @@ class ManufacturerAdmin(ModelAdmin):
     list_display = ["name", "website"]
     search_fields = ["name"]
     ordering = ["name"]
+    list_filter_sheet = False
+    list_filter_submit = True
     inlines = [DeviceInline]
 
 

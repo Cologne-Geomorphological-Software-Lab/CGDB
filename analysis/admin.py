@@ -686,7 +686,7 @@ class MicroXRFElementInline(admin.TabularInline):
                         f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />',
                     )
             except Exception as e:
-                return f"Fehler beim Laden: {e}"
+                return f"Preview unavailable: {e}"
         return "No preview"
 
     preview.short_description = "Thumbnail"

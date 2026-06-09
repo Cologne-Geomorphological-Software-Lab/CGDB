@@ -460,7 +460,7 @@ class LuminescenceDating(BaseModel):
     )
 
     year_of_publication = models.PositiveIntegerField(
-        default=2025,
+        default=current_year,
         validators=[MinValueValidator(1984), MaxValueValidator(current_year())],
         blank=True,
         null=True,
@@ -820,7 +820,8 @@ class RadiocarbonDating(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.lab_id} ({self.age} ka)"
+        age_str = f"{self.age} ka" if self.age is not None else "undated"
+        return f"{self.lab_id} ({age_str})"
 
 
 CLASSES = [
@@ -1253,9 +1254,7 @@ class GrainSize(BaseModel):
     def _reclassify(self) -> tuple[float, float, float, float, float, float, float]:
         if isinstance(self.measured_data, str):
             self.measured_data = json.loads(self.measured_data)
-        elif isinstance(self.measured_data, list):
-            pass
-        else:
+        elif not isinstance(self.measured_data, list):
             raise TypeError("Measured data must be a string or a list.")
         self.clay = 0
         self.fine_silt = 0
