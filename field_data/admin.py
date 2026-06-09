@@ -10,8 +10,6 @@ from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter, RelatedDropdownFilter
 from unfold.decorators import display
 
-from analysis.models import GenericMeasurement, Parameter
-from laboratory.models import Method
 from prototype.mixins import (
     HybridProjectPermissionMixin,
     NestedProjectPermissionMixin,
