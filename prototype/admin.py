@@ -1,7 +1,9 @@
 from django.contrib import admin
-from django.contrib.auth.models import Permission
-from guardian.shortcuts import assign_perm
-from unfold.admin import ModelAdmin, StackedInline
+from django.contrib.auth.admin import GroupAdmin as DjangoGroupAdmin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import Group, Permission, User
+from guardian.shortcuts import assign_perm, remove_perm
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter
 from unfold.decorators import display
 
@@ -10,39 +12,45 @@ from .models import Project, ProjectUserObjectPermission, Researcher, ResearchGr
 
 
 class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
-    """The base class inherits object-level permissions for data objects via Guardian."""
+    """Base admin class with object-level Guardian permissions."""
 
-    def has_add_permission(self, request, obj=None):
-
+    def has_add_permission(self, request):
+        if request.user.is_superuser:
+            return True
         add_perm = f"{self.opts.app_label}.add_{self.opts.model_name}"
-        return request.user.has_perm(add_perm, obj)
+        return request.user.has_perm(add_perm)
 
     def save_model(self, request, obj, form, change):
         if not obj.pk:
             obj.created_by = request.user
         obj.updated_by = request.user
-
         super().save_model(request, obj, form, change)
 
-        # view/change/delete are handled by the post_save signal in prototype/signals.py.
-        # Only add_* is assigned here as the signal does not cover it.
-        if not change and obj.pk:
-            from django.db import transaction
 
-            def assign_add_permission() -> None:
-                assign_perm(f"add_{self.opts.model_name}", request.user, obj)
+_PERMISSION_LABELS = {
+    "view_project":   "View data",
+    "add_project":    "Add data",
+    "change_project": "Edit data",
+    "delete_project": "Delete data",
+}
 
-            transaction.on_commit(assign_add_permission)
+_MEMBER_PERMS = ["view_project", "add_project", "change_project"]
 
 
-class ProjectUserObjectPermissionInline(StackedInline):
+class ProjectUserObjectPermissionInline(TabularInline):
     model = ProjectUserObjectPermission
-    extra = 0
+    extra = 1
     tab = True
+    verbose_name = "User Permission"
+    verbose_name_plural = "User Permissions"
     autocomplete_fields = ["user"]
-    fieldsets = (
-        (None, {"fields": (("user", "permission"),)}),
-    )
+    fields = ["user", "permission", "permission_label"]
+    readonly_fields = ["permission_label"]
+    ordering = ["user__last_name", "user__first_name", "permission__codename"]
+
+    @display(description="Access level")
+    def permission_label(self, obj):
+        return _PERMISSION_LABELS.get(obj.permission.codename, obj.permission.codename)
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("user", "permission")
@@ -52,8 +60,23 @@ class ProjectUserObjectPermissionInline(StackedInline):
             kwargs["queryset"] = Permission.objects.filter(
                 content_type__app_label="prototype",
                 content_type__model="project",
-            )
+            ).order_by("codename")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def has_add_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser or (
+            obj is not None
+            and request.user.has_perm("prototype.change_project", obj)
+        )
 
 
 class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
@@ -89,7 +112,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_display = ["title", "label", "colored_status", "start_date", "public"]
     search_fields = ["title", "label", "description"]
     readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
-    autocomplete_fields = ["principal_investigator", "associated_investigator", "research_group"]
+    autocomplete_fields = ["principal_investigator", "associated_investigator", "research_group", "members"]
     list_filter = [
         ("status", ChoicesDropdownFilter),
         ("start_date", RangeDateFilter),
@@ -97,6 +120,37 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_filter_sheet = False
     list_filter_submit = True
     inlines = [ProjectUserObjectPermissionInline]
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        self._sync_member_permissions(form.instance)
+
+    def _sync_member_permissions(self, project):
+        """Sync Guardian object-permissions to match the current members M2M.
+
+        Called after save_related so that project.members already reflects the
+        new state saved by the form. Reads the old permission state from
+        ProjectUserObjectPermission to compute the diff.
+        """
+        new_members = set(project.members.all())
+
+        existing_user_ids = set(
+            ProjectUserObjectPermission.objects.filter(
+                content_object=project,
+                permission__codename__in=_MEMBER_PERMS,
+            ).values_list("user", flat=True)
+        )
+        existing_member_users = set(User.objects.filter(pk__in=existing_user_ids))
+
+        for user in new_members:
+            for perm in _MEMBER_PERMS:
+                assign_perm(perm, user, project)
+
+        creator = project.created_by
+        for user in existing_member_users - new_members:
+            if user != creator:
+                for perm in _MEMBER_PERMS:
+                    remove_perm(perm, user, project)
 
     @display(
         label={"ACTIVE": "success", "COMPLETED": "info", "PAUSED": "warning", "CANCELLED": "danger"},
@@ -130,6 +184,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
                     "principal_investigator",
                     "associated_investigator",
                     "research_group",
+                    "members",
                 ),
             },
         ),
@@ -143,7 +198,76 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     )
 
 
-# Register the models
+# ---------------------------------------------------------------------------
+# Django Auth — User and Group
+# ---------------------------------------------------------------------------
+
+class GroupAdmin(DjangoGroupAdmin, ModelAdmin):
+    search_fields = ["name"]
+    list_display = ["name"]
+    filter_horizontal = ["permissions"]
+
+
+class UserAdmin(DjangoUserAdmin, ModelAdmin):
+    compressed_fields = True
+    change_form_show_cancel_button = True
+    list_display = ["username", "email", "first_name", "last_name", "is_staff", "is_active"]
+    search_fields = ["username", "first_name", "last_name", "email"]
+    readonly_fields = ["date_joined", "last_login"]
+    autocomplete_fields = ["groups"]
+    filter_horizontal = ["user_permissions"]
+    fieldsets = (
+        (
+            "Account",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    "username",
+                    ("first_name", "last_name"),
+                    "email",
+                    ("is_active", "is_staff", "is_superuser"),
+                    ("date_joined", "last_login"),
+                ),
+            },
+        ),
+        (
+            "Password",
+            {
+                "classes": ["tab"],
+                "fields": ("password",),
+            },
+        ),
+        (
+            "Groups",
+            {
+                "classes": ["tab"],
+                "description": (
+                    "Assign pre-built permission groups. "
+                    "Use the management command 'create_permission_groups' to create them."
+                ),
+                "fields": ("groups",),
+            },
+        ),
+        (
+            "Individual Permissions",
+            {
+                "classes": ["tab"],
+                "description": "Only use this for permissions not covered by a group.",
+                "fields": ("user_permissions",),
+            },
+        ),
+    )
+
+
+admin.site.unregister(User)
+admin.site.unregister(Group)
+admin.site.register(User, UserAdmin)
+admin.site.register(Group, GroupAdmin)
+
+# ---------------------------------------------------------------------------
+# CGDB models
+# ---------------------------------------------------------------------------
+
 admin.site.register(ResearchGroup, ResearchGroupAdmin)
 admin.site.register(Researcher, ResearcherAdmin)
 admin.site.register(Project, ProjectAdmin)

@@ -207,6 +207,17 @@ class Project(BaseModel):
         help_text="Is the project currently public?",
     )
 
+    members = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="member_projects",
+        help_text=(
+            "Team members with working access to this project. "
+            "Members automatically receive view, add, and change permissions. "
+            "Delete access must be granted explicitly via the Permissions tab."
+        ),
+    )
+
     def __str__(self):
         """Returns a human-readable representation of the research project."""
         return str(self.label)

@@ -58,8 +58,17 @@ class PermissionSignalTest(TestCase):
             )
         self.assertIn("delete_project", get_perms(self.user, project))
 
-    def test_all_three_permissions_assigned_together(self):
-        """All three permissions are assigned in a single signal call."""
+    def test_add_permission_assigned_on_create(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            project = Project.objects.create(
+                title="SigTest4a",
+                label="SIG004A",
+                status="ACTIVE",
+                created_by=self.user,
+            )
+        self.assertIn("add_project", get_perms(self.user, project))
+
+    def test_all_four_permissions_assigned_together(self):
         with self.captureOnCommitCallbacks(execute=True):
             project = Project.objects.create(
                 title="SigTest4",
@@ -69,6 +78,7 @@ class PermissionSignalTest(TestCase):
             )
         perms = get_perms(self.user, project)
         self.assertIn("view_project", perms)
+        self.assertIn("add_project", perms)
         self.assertIn("change_project", perms)
         self.assertIn("delete_project", perms)
 
@@ -148,6 +158,7 @@ class PermissionSignalTest(TestCase):
             )
         perms = get_perms(user_for_researcher, researcher)
         self.assertIn("view_researcher", perms)
+        self.assertIn("add_researcher", perms)
         self.assertIn("change_researcher", perms)
         self.assertIn("delete_researcher", perms)
 

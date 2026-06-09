@@ -328,6 +328,68 @@ class HybridProjectPermissionMixinTest(_MixinSetup):
 
 
 # ===========================================================================
+# has_add_permission — checks add_project, not view_project
+# ===========================================================================
+
+
+class HasAddPermissionTest(_MixinSetup):
+    """has_add_permission returns True only when the user has add_project on at
+    least one project via Guardian (object-level), regardless of view_project."""
+
+    def setUp(self):
+        super().setUp()
+        # regular_user gets view/change/delete in _MixinSetup.setUp but NOT add_project.
+        # Confirm that: has_add_permission must be False until add_project is granted.
+        self.loc_admin = _LocationProjectAdmin(Location, self.site)
+        self.nested_admin = _LocationAdmin(Location, self.site)
+
+    def test_has_add_false_without_add_project(self):
+        """User with only view/change/delete on a project cannot add objects."""
+        request = _make_request(self.regular_user)
+        self.assertFalse(self.loc_admin.has_add_permission(request))
+
+    def test_has_add_true_with_add_project(self):
+        """User with add_project on at least one project can add objects."""
+        assign_perm("prototype.add_project", self.regular_user, self.project)
+        request = _make_request(self.regular_user)
+        self.assertTrue(self.loc_admin.has_add_permission(request))
+
+    def test_superuser_always_can_add(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(self.loc_admin.has_add_permission(request))
+
+    def test_user_without_any_perm_cannot_add(self):
+        request = _make_request(self.other_user)
+        self.assertFalse(self.loc_admin.has_add_permission(request))
+
+    def test_nested_mixin_has_add_false_without_add_project(self):
+        request = _make_request(self.regular_user)
+        self.assertFalse(self.nested_admin.has_add_permission(request))
+
+    def test_nested_mixin_has_add_true_with_add_project(self):
+        assign_perm("prototype.add_project", self.regular_user, self.project)
+        request = _make_request(self.regular_user)
+        self.assertTrue(self.nested_admin.has_add_permission(request))
+
+    def test_hybrid_mixin_has_add_false_without_add_project(self):
+        request = _make_request(self.regular_user)
+        self.assertFalse(self.sample_admin.has_add_permission(request))
+
+    def test_hybrid_mixin_has_add_true_with_add_project(self):
+        assign_perm("prototype.add_project", self.regular_user, self.project)
+        request = _make_request(self.regular_user)
+        self.assertTrue(self.sample_admin.has_add_permission(request))
+
+    def test_view_only_perm_does_not_grant_add(self):
+        """Regression: view_project alone must NOT be sufficient for has_add_permission."""
+        # regular_user already has view_project (from _MixinSetup.setUp) but NOT add_project.
+        request = _make_request(self.regular_user)
+        self.assertFalse(self.loc_admin.has_add_permission(request))
+        self.assertFalse(self.nested_admin.has_add_permission(request))
+        self.assertFalse(self.sample_admin.has_add_permission(request))
+
+
+# ===========================================================================
 # GuardianPermissionMixin
 # ===========================================================================
 
