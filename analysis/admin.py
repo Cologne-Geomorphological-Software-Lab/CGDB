@@ -148,6 +148,7 @@ class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin)
     ]
     ordering = ["sample__location__project", "sample__location", "sample"]
 
+    search_fields = ["description", "sample__identifier"]
     raw_id_fields = ["device", "accessories", "researcher"]
     list_filter_sheet = False
     list_filter_submit = True
@@ -421,8 +422,7 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
 
     list_fullwidth = True
     list_display = ["colored_method", "colored_sample_concentration"]
-    autocomplete_fields = ["sample"]
-    raw_id_fields = ["raw_data"]
+    autocomplete_fields = ["sample", "raw_data"]
 
     readonly_fields = [
         "source",
