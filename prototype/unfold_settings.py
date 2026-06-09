@@ -289,27 +289,6 @@ UNFOLD = {
                 ],
             },
             {
-                "title": _("Morphogrid"),
-                "items": [
-                    {
-                        "title": _("Grid cells"),
-                        "icon": "person",
-                        "link": reverse_lazy("admin:morphogrid_gridcell_changelist"),
-                        "permission": lambda request: request.user.has_perm(
-                            "auth.view_user"
-                        ),
-                    },
-                    {
-                        "title": _("Datacubes"),
-                        "icon": "person",
-                        "link": reverse_lazy("admin:morphogrid_datacube_changelist"),
-                        "permission": lambda request: request.user.has_perm(
-                            "auth.view_user"
-                        ),
-                    },
-                ],
-            },
-            {
                 "title": _("Users & Groups"),
                 "items": [
                     {
