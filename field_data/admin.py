@@ -2,12 +2,16 @@ import re
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404
+from django.urls import path, reverse
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter, RelatedDropdownFilter
 from unfold.decorators import display
 
-from analysis.models import GenericMeasurement
+from analysis.models import GenericMeasurement, Parameter
+from laboratory.models import Method
 from prototype.mixins import (
     HybridProjectPermissionMixin,
     NestedProjectPermissionMixin,
@@ -18,17 +22,7 @@ from .models import Campaign, ExposureType, Layer, Location, Sample, SampleType,
 from .resources import LocationResource
 
 
-class MeasurementInline(admin.TabularInline):
-    model = GenericMeasurement
-    extra = 0
-    readonly_fields = (
-        "method",
-        "value",
-        "parameter",
-    )
 
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("method", "parameter")
 
 
 class SampleTabularInline(TabularInline):
@@ -421,6 +415,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     search_fields = ["identifier", "location__identifier"]
     autocomplete_fields = ["project", "location", "processor", "parent", "layer", "type"]
     list_display = ["identifier", "project", "location", "depth_mid"]
+    inlines = []
     list_filter = [
         ("project", RelatedDropdownFilter),
         ("location__campaign", RelatedDropdownFilter),
@@ -428,21 +423,6 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
-
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == "tags":
-            sample_ct = ContentType.objects.get_for_model(Sample)
-            qs = Tag.objects.filter(content_type=sample_ct)
-            object_id = request.resolver_match.kwargs.get("object_id")
-            if object_id:
-                try:
-                    project_id = Sample.objects.values_list("project", flat=True).get(pk=object_id)
-                    if project_id:
-                        qs = qs.filter(project=project_id)
-                except Sample.DoesNotExist:
-                    pass
-            kwargs["queryset"] = qs
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     fieldsets = (
         (
@@ -480,6 +460,130 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
             },
         ),
     )
+
+    # Registry: (url_slug, model_import_path) — drives get_urls() without 18 delegates.
+    _ANALYSIS_REGISTRY = [
+        ("genericmeasurement", "analysis.models.GenericMeasurement"),
+        ("grainsize", "analysis.models.GrainSize"),
+        ("luminescencedating", "analysis.models.LuminescenceDating"),
+        ("radiocarbondating", "analysis.models.RadiocarbonDating"),
+        ("counting", "analysis.models.Counting"),
+        ("microxrfmeasurement", "analysis.models.MicroXRFMeasurement"),
+    ]
+
+    def get_urls(self):
+        from importlib import import_module
+
+        def _load(dotted):
+            mod, cls = dotted.rsplit(".", 1)
+            return getattr(import_module(mod), cls)
+
+        custom_urls = []
+        for slug, model_path in self._ANALYSIS_REGISTRY:
+            model_class = _load(model_path)
+            prefix = f"field_data_sample_{slug}"
+
+            def make_views(m):
+                def cl_view(request, sample_pk):
+                    return self._analysis_changelist_view(request, sample_pk, m)
+                def add_view(request, sample_pk):
+                    return self._analysis_add_view(request, sample_pk, m)
+                def change_view(request, sample_pk, object_id):
+                    return self._analysis_change_view(request, sample_pk, m, object_id)
+                return cl_view, add_view, change_view
+
+            cl_view, add_view, change_view = make_views(model_class)
+            custom_urls += [
+                path(f"<int:sample_pk>/{slug}/",
+                     self.admin_site.admin_view(cl_view),
+                     name=prefix),
+                path(f"<int:sample_pk>/{slug}/add/",
+                     self.admin_site.admin_view(add_view),
+                     name=f"{prefix}_add"),
+                path(f"<int:sample_pk>/{slug}/<path:object_id>/change/",
+                     self.admin_site.admin_view(change_view),
+                     name=f"{prefix}_change"),
+            ]
+        return custom_urls + super().get_urls()
+
+    def _get_accessible_sample(self, request, sample_pk):
+        """Return Sample if accessible; raise 404 if missing, 403 if forbidden."""
+        get_object_or_404(Sample, pk=sample_pk)
+        if not self.get_queryset(request).filter(pk=sample_pk).exists():
+            raise PermissionDenied
+
+    def _analysis_changelist_view(self, request, sample_pk, model_class):
+        """Render an analysis model's changelist filtered for sample_pk."""
+        self._get_accessible_sample(request, sample_pk)
+        analysis_admin = self.admin_site._registry[model_class]
+
+        # Inject the sample filter — changelist reads this from GET params
+        mutable_get = request.GET.copy()
+        mutable_get["sample__id__exact"] = str(sample_pk)
+        request.GET = mutable_get
+
+        response = analysis_admin.changelist_view(request)
+
+        # get_preserved_filters() checks current_url == changelist_url — fails for
+        # our custom sub-view URLs. Patch both the context variable AND cl.preserved_filters
+        # (used by the empty-state template via {% include ... with preserved_filters=cl.preserved_filters %}).
+        if hasattr(response, "context_data"):
+            from urllib.parse import urlencode
+            pf = urlencode({"_changelist_filters": f"sample__id__exact={sample_pk}"})
+            response.context_data["preserved_filters"] = pf
+            cl = response.context_data.get("cl")
+            if cl is not None:
+                cl.preserved_filters = pf
+
+        return response
+
+    # ------------------------------------------------------------------
+    # Add-view helpers
+    # ------------------------------------------------------------------
+
+    def _analysis_add_view(self, request, sample_pk, model_class):
+        self._get_accessible_sample(request, sample_pk)
+        analysis_admin = self.admin_site._registry[model_class]
+        mutable_get = request.GET.copy()
+        mutable_get["sample"] = str(sample_pk)
+        request.GET = mutable_get
+        response = analysis_admin.add_view(request)
+        if hasattr(response, "context_data"):
+            from urllib.parse import urlencode
+            response.context_data["preserved_filters"] = urlencode(
+                {"_changelist_filters": f"sample__id__exact={sample_pk}"}
+            )
+        return response
+
+    # ------------------------------------------------------------------
+    # Change-view helpers
+    # ------------------------------------------------------------------
+
+    def _analysis_change_view(self, request, sample_pk, model_class, object_id):
+        self._get_accessible_sample(request, sample_pk)
+        analysis_admin = self.admin_site._registry[model_class]
+        response = analysis_admin.change_view(request, str(object_id))
+        if hasattr(response, "context_data"):
+            from urllib.parse import urlencode
+            response.context_data["preserved_filters"] = urlencode(
+                {"_changelist_filters": f"sample__id__exact={sample_pk}"}
+            )
+        return response
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "tags":
+            sample_ct = ContentType.objects.get_for_model(Sample)
+            qs = Tag.objects.filter(content_type=sample_ct)
+            object_id = request.resolver_match.kwargs.get("object_id")
+            if object_id:
+                try:
+                    project_id = Sample.objects.values_list("project", flat=True).get(pk=object_id)
+                    if project_id:
+                        qs = qs.filter(project=project_id)
+                except Sample.DoesNotExist:
+                    pass
+            kwargs["queryset"] = qs
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 class SampleTypeAdmin(ExportMixin, ModelAdmin):
     change_form_show_cancel_button = True

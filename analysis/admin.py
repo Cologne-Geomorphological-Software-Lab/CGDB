@@ -9,13 +9,15 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.shortcuts import redirect
+from django.urls import NoReverseMatch, reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from import_export import resources
 from import_export.admin import ExportMixin, ImportExportMixin
 from PIL import Image
 from unfold.admin import ModelAdmin, TabularInline
-from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
+from unfold.contrib.filters.admin import RelatedDropdownFilter
 from unfold.decorators import display
 
 from prototype.mixins import CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin
@@ -38,6 +40,88 @@ from .models import (
 )
 
 mpl.use("Agg")
+
+
+class SampleContextMixin:
+    """Keeps all measurement forms under the Sample URL hierarchy.
+
+    - add_view / change_view: redirect to the sample-scoped URL when accessed
+      via the standard /admin/analysis/... paths.
+    - get_changeform_initial_data: pre-fills the sample FK.
+    - response_add / response_change: after saving, return to the Sample form.
+    """
+
+    def _is_sample_scoped(self, request):
+        url_name = getattr(getattr(request, "resolver_match", None), "url_name", "") or ""
+        return url_name.startswith("field_data_sample_")
+
+    def _sample_pk_from_add_request(self, request):
+        from field_data.utils import extract_sample_pk_from_get
+        return extract_sample_pk_from_get(request.GET)
+
+    def changelist_view(self, request, extra_context=None):
+        if not self._is_sample_scoped(request):
+            sample_pk = request.GET.get("sample__id__exact", "")
+            if sample_pk and sample_pk.isdigit():
+                model_name = self.model._meta.model_name
+                try:
+                    url = reverse(f"admin:field_data_sample_{model_name}", args=[sample_pk])
+                    return redirect(url)
+                except NoReverseMatch:
+                    pass
+        return super().changelist_view(request, extra_context)
+
+    def add_view(self, request, form_url="", extra_context=None):
+        if request.method == "GET" and not self._is_sample_scoped(request):
+            sample_pk = self._sample_pk_from_add_request(request)
+            if sample_pk:
+                model_name = self.model._meta.model_name
+                try:
+                    url = reverse(f"admin:field_data_sample_{model_name}_add", args=[sample_pk])
+                    return redirect(url)
+                except NoReverseMatch:
+                    pass
+        return super().add_view(request, form_url, extra_context)
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        if request.method == "GET" and not self._is_sample_scoped(request):
+            obj = self.get_object(request, object_id)
+            if obj and obj.sample_id:
+                model_name = self.model._meta.model_name
+                try:
+                    url = reverse(
+                        f"admin:field_data_sample_{model_name}_change",
+                        args=[obj.sample_id, object_id],
+                    )
+                    return redirect(url)
+                except NoReverseMatch:
+                    pass
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        if "sample" not in initial:
+            from urllib.parse import parse_qs
+            cl_filters = request.GET.get("_changelist_filters", "")
+            if cl_filters:
+                params = parse_qs(cl_filters)
+                pk_list = params.get("sample__id__exact", [])
+                if pk_list:
+                    initial["sample"] = pk_list[0]
+        return initial
+
+    def _redirect_to_sample(self, request, obj):
+        if "_save" in request.POST and getattr(obj, "sample_id", None):
+            return redirect(reverse("admin:field_data_sample_change", args=[obj.sample_id]))
+        return None
+
+    def response_add(self, request, obj, post_url_continue=None):
+        r = self._redirect_to_sample(request, obj)
+        return r if r else super().response_add(request, obj, post_url_continue)
+
+    def response_change(self, request, obj):
+        r = self._redirect_to_sample(request, obj)
+        return r if r else super().response_change(request, obj)
 
 # ======================
 # RAW DATA ADMIN
@@ -107,44 +191,14 @@ class PollenCountInline(TabularInline):
     extra = 0
 
 
-class CountingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class CountingAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     project_path = "sample__location__project"
     inlines = [PollenCountInline]
-    list_display = [
-        "project",
-        "location",
-        "sample",
-    ]
-    ordering = ["sample__location__project", "sample__location", "sample"]
-
+    list_display = ["type"]
+    list_fullwidth = True
     raw_id_fields = ["sample"]
-    list_filter_sheet = False
-    list_filter_submit = True
-    list_filter = [
-        (
-            "sample__location__project",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location",
-            RelatedDropdownFilter,
-        ),
-    ]
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("sample__location__project")
-
-    @admin.display(description="Location")
-    def location(self, obj):
-        return obj.sample.location if obj.sample else None
-
-    @admin.display(description="Project")
-    def project(self, obj):
-        if obj.sample and obj.sample.location:
-            return obj.sample.location.project
-        return None
 
 
 class PollenAdmin(ExportMixin, ModelAdmin):
@@ -159,20 +213,17 @@ class PollenAdmin(ExportMixin, ModelAdmin):
 # ======================
 
 
-class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin, ModelAdmin):
+class LuminescenceDatingAdmin(SampleContextMixin, ImportExportMixin, CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin, ModelAdmin):
     project_path = "sample__location__project"
     save_on_top = True
     change_form_show_cancel_button = True
     compressed_fields = True
     warn_unsaved_form = True
-    list_filter_submit = True
     list_fullwidth = True
-    list_filter_sheet = True
     list_horizontal_scrollbar_top = True
     list_disable_select_all = False
 
     list_display = [
-        "sample__identifier",
         "laboratory_id",
         "colored_dating_approach",
         "colored_mineral",
@@ -180,31 +231,8 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
         "total_dose_rate",
         "paleodose",
     ]
-    search_fields = ["laboratory_id", "sample_id_cll", "sample__identifier"]
 
     raw_id_fields = ["sample", "raw_data"]
-    list_filter = [
-        (
-            "sample__location__project",
-            RelatedDropdownFilter,
-        ),
-        (
-            "mineral",
-            ChoicesDropdownFilter,
-        ),
-        (
-            "dating_approach",
-            ChoicesDropdownFilter,
-        ),
-        (
-            "published",
-            ChoicesDropdownFilter,
-        ),
-        (
-            "thesis",
-            ChoicesDropdownFilter,
-        ),
-    ]
 
     @display(description="Luminescence age [ka]")
     def age(self, obj):
@@ -315,6 +343,7 @@ class LuminescenceDatingAdmin(ImportExportMixin, CreatedUpdatedModelAdminMixin, 
 
 
 class RadiocarbonDatingAdmin(
+    SampleContextMixin,
     ImportExportMixin,
     ModelAdmin,
     NestedProjectPermissionMixin,
@@ -322,29 +351,9 @@ class RadiocarbonDatingAdmin(
     change_form_show_cancel_button = True
     project_path = "sample__location__project"
     raw_id_fields = ["sample"]
-    list_filter = [
-        (
-            "lab",
-            ChoicesDropdownFilter,
-        ),
-        (
-            "sample__location__project",
-            RelatedDropdownFilter,
-        ),
-    ]
-    list_filter_sheet = False
-    list_filter_submit = True
-    list_display = [
-        "sample",
-        "sample__location__project__label",
-        "lab",
-        "age",
-    ]
-    search_fields = ["sample__identifier"]
+    list_fullwidth = True
+    list_display = ["lab_id", "lab", "age"]
     ordering = ["-id"]
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("sample__location__project")
 
 
 # ======================
@@ -403,59 +412,23 @@ class GrainSizeImportForm(forms.ModelForm):
         fields = "__all__"
 
 
-class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     change_form_show_cancel_button = True
     warn_unsaved_form = True
+    compressed_fields = True
     project_path = "sample__location__project"
     form = GrainSizeImportForm
 
-    list_display = [
-        "sample",
-        "location",
-        "project",
-        "colored_method",
-        "colored_sample_concentration",
-    ]
+    list_fullwidth = True
+    list_display = ["colored_method", "colored_sample_concentration"]
+    autocomplete_fields = ["sample"]
+    raw_id_fields = ["raw_data"]
 
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related("sample__location__project")
-
-    @admin.display(description="Location")
-    def location(self, obj):
-        return obj.sample.location if obj.sample else None
-
-    @admin.display(description="Project")
-    def project(self, obj):
-        return obj.sample.project if obj.sample else None
-
-    @display(label={"L": "success", "C": "info", "S": "warning"}, description="Method")
-    def colored_method(self, obj):
-        return obj.method
-
-    list_filter = [
-        (
-            "sample",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location__project",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location__campaign",
-            RelatedDropdownFilter,
-        ),
-    ]
-    list_filter_submit = True
-    list_filter_sheet = False
     readonly_fields = [
-        "classes",
+        "source",
+        "classes_summary",
+        "measured_data_summary",
         "colored_sample_concentration",
-        "measured_data",
         "clay",
         "fine_silt",
         "medium_silt",
@@ -463,65 +436,66 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         "fine_sand",
         "medium_sand",
         "coarse_sand",
+        "gravel",
         "plot",
     ]
-    raw_id_fields = ["sample"]
+
+    _STAT_FIELDS = [
+        "mean", "mode", "median", "std", "skew", "kurtosis",
+        "fwmean", "fwmedian", "fwsd", "fwskew", "fwkurt",
+    ]
 
     fieldsets = (
         (
-            "Metadata",
+            "Identification",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "sample",
-                    "sample_weight",
-                    "method",
-                    "file",
+                    ("sample", "raw_data"),
+                    ("method", "sample_weight"),
+                    "source",
                 ),
             },
         ),
         (
-            "Data",
+            "Import",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "classes",
-                    "measured_data",
+                    "file",
+                    "classes_summary",
+                    "measured_data_summary",
                     "colored_sample_concentration",
                 ),
             },
         ),
         (
-            "Classes",
+            "Fractions",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "clay",
-                    "fine_silt",
-                    "medium_silt",
-                    "coarse_silt",
-                    "fine_sand",
-                    "medium_sand",
-                    "coarse_sand",
+                    ("clay", "fine_silt", "medium_silt", "coarse_silt"),
+                    ("fine_sand", "medium_sand", "coarse_sand", "gravel"),
                 ),
             },
         ),
         (
-            "Size Stats",
+            "Statistics — Standard",
             {
                 "classes": ["tab"],
                 "fields": (
-                    "mean",
-                    "mode",
-                    "median",
-                    "std",
-                    "skew",
-                    "kurtosis",
-                    "fwmean",
-                    "fwmedian",
-                    "fwsd",
-                    "fwskew",
-                    "fwkurt",
+                    ("mean", "median", "mode"),
+                    ("std", "skew", "kurtosis"),
+                ),
+            },
+        ),
+        (
+            "Statistics — Folk & Ward",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("fwmean", "fwmedian"),
+                    ("fwsd", "fwskew", "fwkurt"),
                 ),
             },
         ),
@@ -534,15 +508,49 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         ),
     )
 
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.source == "file":
+            readonly += [f for f in self._STAT_FIELDS if f not in readonly]
+        return readonly
+
+    @display(label={"L": "success", "C": "info", "S": "warning"}, description="Method")
+    def colored_method(self, obj):
+        return obj.method
+
+    @display(description="Sample concentration [%]")
+    def colored_sample_concentration(self, obj):
+        if obj.sample_concentration is None:
+            return "N/A"
+        color = "success" if 6 <= obj.sample_concentration <= 20 else "danger"
+        rounded = round(obj.sample_concentration, 1)
+        return mark_safe(
+            f'<span class="text-{color}-600 dark:text-{color}-400 font-semibold">{rounded} %</span>'
+        )
+
+    @admin.display(description="Classes")
+    def classes_summary(self, obj):
+        if not obj.classes:
+            return "—"
+        n = len(obj.classes)
+        mn = min(obj.classes)
+        mx = max(obj.classes)
+        return f"{n} classes, {mn}–{mx} µm"
+
+    @admin.display(description="Measured data")
+    def measured_data_summary(self, obj):
+        if not obj.measured_data:
+            return "—"
+        n = len(obj.measured_data)
+        total = sum(obj.measured_data)
+        return f"{n} data points, sum = {round(total, 1)}"
+
     def save_model(self, request, obj, form, change):
         file = form.cleaned_data.get("file")
         if file:
             self.process_file(file, obj)
-            self.message_user(
-                request,
-                "File uploaded and processed successfully",
-                messages.SUCCESS,
-            )
+            obj.source = "file"
+            self.message_user(request, "File uploaded and processed successfully.", messages.SUCCESS)
         super().save_model(request, obj, form, change)
 
     def process_file(self, file, obj):
@@ -567,23 +575,9 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         obj.sample_concentration = grain_size_instance.sample_concentration
         default_storage.delete(file_path)
 
-    def colored_sample_concentration(self, obj):
-        if obj.sample_concentration is None:
-            return "N/A"
-        if obj.sample_concentration >= 6 and obj.sample_concentration <= 20:
-            color = "green"
-        else:
-            color = "red"
-        rounded_concentration = round(obj.sample_concentration, 1)
-        return mark_safe(
-            f'<span style="color: {color};">{rounded_concentration}</span>',
-        )
-
-    colored_sample_concentration.short_description = "Sample concentration [%]"
-
     def plot(self, obj):
         if not obj.measured_data or not obj.classes:
-            return "No data available for plotting"
+            return "No data available for plotting."
         fig, ax = plt.subplots(figsize=(30, 10))
         ax.plot(obj.classes, obj.measured_data, marker="")
         ax.set_xscale("log")
@@ -591,16 +585,11 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         ax.set_xlabel("Grain Size (μm)", fontsize=21)
         ax.set_ylabel("GSD (%)", fontsize=21)
         ax.tick_params(axis="both", which="major", labelsize=12)
-
         for x in [0.2, 0.63, 2, 6.3, 20, 63, 200, 630]:
-            ax.axvline(x=x, color="black", linestyle="--", linewidth=0.5, label=x)
+            ax.axvline(x=x, color="black", linestyle="--", linewidth=0.5)
             ax.text(
-                x=x,
-                y=-0.1,
-                s=str(x),
-                fontsize=21,
-                verticalalignment="top",
-                horizontalalignment="center",
+                x=x, y=-0.1, s=str(x), fontsize=21,
+                verticalalignment="top", horizontalalignment="center",
                 transform=ax.get_xaxis_transform(),
             )
         buf = io.BytesIO()
@@ -610,44 +599,52 @@ class GrainSizeAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
         image_base64 = base64.b64encode(buf.read()).decode("utf-8")
         return mark_safe(f'<img src="data:image/png;base64,{image_base64}" />')
 
-    plot.allow_tags = True
-    plot.short_description = "Plot of Measured Data vs Classes"
+    plot.short_description = "Grain size distribution"
 
 
-class GenericMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class GenericMeasurementAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     change_form_show_cancel_button = True
+    warn_unsaved_form = True
+    compressed_fields = True
     project_path = "sample__location__project"
     resource_classes = [GenericMeasurementResource]
-    list_display = [
-        "sample__location__project__label",
-        "sample__identifier",
-        "method",
-        "parameter__token",
-        "value",
-        "id",
-    ]
 
-    list_filter = [
+    list_display = ["parameter__token", "method", "value_with_error"]
+    list_fullwidth = True
+    autocomplete_fields = ["sample", "parameter", "method"]
+    raw_id_fields = ["raw_data", "MeasurementSeries"]
+
+    fieldsets = (
         (
-            "sample__location__project",
-            RelatedDropdownFilter,
+            "Identification",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    ("sample", "method"),
+                    ("parameter", "sample_weight"),
+                    ("raw_data", "MeasurementSeries"),
+                ),
+            },
         ),
         (
-            "method",
-            RelatedDropdownFilter,
+            "Result",
+            {
+                "classes": ["tab"],
+                "fields": (("value", "error"),),
+            },
         ),
-        (
-            "parameter",
-            RelatedDropdownFilter,
-        ),
-    ]
-    list_filter_sheet = False
-    list_filter_submit = True
+    )
+
+    @admin.display(description="Value")
+    def value_with_error(self, obj):
+        if obj.value is None:
+            return "—"
+        if obj.error:
+            return f"{round(obj.value, 4)} ± {round(obj.error, 4)}"
+        return round(obj.value, 4)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            "sample__location__project", "method", "parameter"
-        )
+        return super().get_queryset(request).select_related("method", "parameter")
 
 
 class ParameterAdmin(ExportMixin, ModelAdmin):
@@ -696,25 +693,11 @@ class MicroXRFElementInline(admin.TabularInline):
 
 
 @admin.register(MicroXRFMeasurement)
-class MicroXRFAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class MicroXRFAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     change_form_show_cancel_button = True
     project_path = "sample__location__project"
-    list_display = [
-        "sample",
-        "sample__project",
-    ]
-    list_filter = [
-        (
-            "sample__project",
-            RelatedDropdownFilter,
-        ),
-        (
-            "sample__location",
-            RelatedDropdownFilter,
-        ),
-    ]
-    list_filter_sheet = False
-    list_filter_submit = True
+    list_fullwidth = True
+    list_display = ["measurement_date", "method"]
     raw_id_fields = ["sample"]
     inlines = [MicroXRFElementInline]
 

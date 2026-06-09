@@ -1,7 +1,119 @@
+import re
+
 from django.conf import settings
 from django.templatetags.static import static
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
+
+_UNSET = object()
+
+
+def _sample_pk_from_request(request):
+    """Extract the current sample PK from the request URL context.
+
+    Covers four cases:
+    1. On the Sample changeform or custom sub-view: /admin/field_data/sample/<pk>/...
+    2. On a measurement changelist/add form: ?sample__id__exact=<pk> or ?sample=<pk>
+    3. On a measurement add form reached via "Add" button: ?_changelist_filters=sample__id__exact%3D<pk>
+    4. On a measurement changeform: look up the FK via DB
+
+    Result is cached on the request object so the 7 link functions (called once
+    per tab render) do not each trigger a separate DB query.
+    """
+    cached = getattr(request, "_cgdb_sample_pk", _UNSET)
+    if cached is not _UNSET:
+        return cached
+
+    result = _compute_sample_pk(request)
+    request._cgdb_sample_pk = result
+    return result
+
+
+def _compute_sample_pk(request):
+    m = re.search(r"/field_data/sample/(\d+)/", request.path)
+    if m:
+        return m.group(1)
+
+    from field_data.utils import extract_sample_pk_from_get
+
+    pk = extract_sample_pk_from_get(request.GET)
+    if pk:
+        return pk
+
+    for url_frag, model_name in (
+        ("grainsize", "GrainSize"),
+        ("luminescencedating", "LuminescenceDating"),
+        ("radiocarbondating", "RadiocarbonDating"),
+        ("counting", "Counting"),
+        ("microxrfmeasurement", "MicroXRFMeasurement"),
+        ("genericmeasurement", "GenericMeasurement"),
+    ):
+        m = re.search(rf"/analysis/{url_frag}/(\d+)/", request.path)
+        if m:
+            try:
+                from django.apps import apps
+                from django.core.exceptions import ObjectDoesNotExist
+
+                obj = (
+                    apps.get_model("analysis", model_name)
+                    .objects.only("sample_id")
+                    .get(pk=m.group(1))
+                )
+                return str(obj.sample_id)
+            except (LookupError, ObjectDoesNotExist, ValueError):
+                return None
+
+    return None
+
+
+def _sample_link(request):
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_change", args=[pk])
+    return reverse("admin:field_data_sample_changelist")
+
+
+def _generic_measurement_link(request):
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_genericmeasurement", args=[pk])
+    return reverse("admin:analysis_genericmeasurement_changelist")
+
+
+def _grainsize_link(request):
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_grainsize", args=[pk])
+    return reverse("admin:analysis_grainsize_changelist")
+
+
+def _luminescence_link(request):
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_luminescencedating", args=[pk])
+    return reverse("admin:analysis_luminescencedating_changelist")
+
+
+def _radiocarbon_link(request):
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_radiocarbondating", args=[pk])
+    return reverse("admin:analysis_radiocarbondating_changelist")
+
+
+def _counting_link(request):
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_counting", args=[pk])
+    return reverse("admin:analysis_counting_changelist")
+
+
+def _microxrf_link(request):
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_microxrfmeasurement", args=[pk])
+    return reverse("admin:analysis_microxrfmeasurement_changelist")
+
 
 UNFOLD = {
     "SITE_HEADER": "CGDB Dashboard",
@@ -81,11 +193,6 @@ UNFOLD = {
                         "link": reverse_lazy("admin:index"),
                     },
                     {
-                        "title": _("Map"),
-                        "icon": "map",
-                        "link": "/map/",
-                    },
-                    {
                         "title": _("Projects"),
                         "icon": "workspaces",
                         "link": reverse_lazy("admin:prototype_project_changelist"),
@@ -141,49 +248,6 @@ UNFOLD = {
                         "title": _("Algorithms"),
                         "icon": "code_blocks",
                         "link": reverse_lazy("admin:analysis_algorithm_changelist"),
-                    },
-                ],
-            },
-            {
-                "title": _("Analyses"),
-                "items": [
-                    {
-                        "title": _("Generic Measurements"),
-                        "icon": "experiment",
-                        "link": reverse_lazy(
-                            "admin:analysis_genericmeasurement_changelist",
-                        ),
-                    },
-                    {
-                        "title": _("Grain sizes"),
-                        "icon": "grain",
-                        "link": reverse_lazy("admin:analysis_grainsize_changelist"),
-                    },
-                    {
-                        "title": _("MicroXRF"),
-                        "icon": "process_chart",
-                        "link": reverse_lazy(
-                            "admin:analysis_microxrfmeasurement_changelist",
-                        ),
-                    },
-                    {
-                        "title": _("Pollen"),
-                        "icon": "nature",
-                        "link": reverse_lazy("admin:analysis_counting_changelist"),
-                    },
-                    {
-                        "title": _("Luminescence"),
-                        "icon": "brightness_7",
-                        "link": reverse_lazy(
-                            "admin:analysis_luminescencedating_changelist",
-                        ),
-                    },
-                    {
-                        "title": _("Radiocarbon"),
-                        "icon": "schedule",
-                        "link": reverse_lazy(
-                            "admin:analysis_radiocarbondating_changelist",
-                        ),
                     },
                 ],
             },
@@ -276,6 +340,68 @@ UNFOLD = {
             },
         ],
     },
+    "TABS": [
+        {
+            "models": [
+                # Sample changeform
+                {"name": "field_data.sample", "detail": True},
+                # Analysis changelists (rendered by our custom Sample sub-views)
+                "analysis.genericmeasurement",
+                "analysis.grainsize",
+                "analysis.luminescencedating",
+                "analysis.radiocarbondating",
+                "analysis.counting",
+                "analysis.microxrfmeasurement",
+                # Analysis changeforms (add/edit individual records)
+                {"name": "analysis.genericmeasurement", "detail": True},
+                {"name": "analysis.grainsize", "detail": True},
+                {"name": "analysis.luminescencedating", "detail": True},
+                {"name": "analysis.radiocarbondating", "detail": True},
+                {"name": "analysis.counting", "detail": True},
+                {"name": "analysis.microxrfmeasurement", "detail": True},
+            ],
+            "items": [
+                {
+                    "title": _("Sample"),
+                    "link": _sample_link,
+                    # Match only /field_data/sample/<pk>/change/ — not measurement sub-paths
+                    "active": lambda request: bool(
+                        re.search(r"/field_data/sample/\d+/change/?$", request.path)
+                    ),
+                },
+                {
+                    "title": _("Generic Measurements"),
+                    "link": _generic_measurement_link,
+                    "active": lambda request: "/genericmeasurement/" in request.path,
+                },
+                {
+                    "title": _("Grain Size"),
+                    "link": _grainsize_link,
+                    "active": lambda request: "/grainsize/" in request.path,
+                },
+                {
+                    "title": _("Luminescence Dating"),
+                    "link": _luminescence_link,
+                    "active": lambda request: "/luminescencedating/" in request.path,
+                },
+                {
+                    "title": _("Radiocarbon Dating"),
+                    "link": _radiocarbon_link,
+                    "active": lambda request: "/radiocarbondating/" in request.path,
+                },
+                {
+                    "title": _("Pollen"),
+                    "link": _counting_link,
+                    "active": lambda request: "/counting/" in request.path,
+                },
+                {
+                    "title": _("MicroXRF"),
+                    "link": _microxrf_link,
+                    "active": lambda request: "/microxrfmeasurement/" in request.path,
+                },
+            ],
+        },
+    ],
 }
 
 ######################################################################
