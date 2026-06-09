@@ -1469,6 +1469,10 @@ class MicroXRFMeasurement(BaseModel):
     def __str__(self):
         return f"MicroXRF {self.sample} ({self.measurement_date})"
 
+    class Meta:
+        verbose_name = "MicroXRF"
+        verbose_name_plural = "MicroXRF"
+
 
 class MicroXRFElementMap(BaseModel):
     """Represents an element map from a MicroXRF measurement.
