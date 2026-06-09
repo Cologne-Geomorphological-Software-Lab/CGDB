@@ -260,11 +260,6 @@ UNFOLD = {
                         "link": reverse_lazy("admin:laboratory_device_changelist"),
                     },
                     {
-                        "title": _("Accessories"),
-                        "icon": "rule_settings",
-                        "link": reverse_lazy("admin:laboratory_accessory_changelist"),
-                    },
-                    {
                         "title": _("Methods"),
                         "icon": "science",
                         "link": reverse_lazy("admin:laboratory_method_changelist"),
@@ -275,16 +270,6 @@ UNFOLD = {
                         "link": reverse_lazy(
                             "admin:laboratory_manufacturer_changelist",
                         ),
-                    },
-                    {
-                        "title": _("Calibrations"),
-                        "icon": "track_changes",
-                        "link": reverse_lazy("admin:laboratory_calibration_changelist"),
-                    },
-                    {
-                        "title": _("Firmwares"),
-                        "icon": "memory",
-                        "link": reverse_lazy("admin:laboratory_firmware_changelist"),
                     },
                 ],
             },
