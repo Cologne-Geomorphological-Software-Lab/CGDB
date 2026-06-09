@@ -2,7 +2,11 @@
 
 ## Welcome
 
+<<<<<<< HEAD
 Welcome to the CGDB (Cologne Geomorphological Database) Contributing Guide. CGDB is a research database for geomorphological and geoarchaeological data, developed at the Institute of Geography, University of Cologne.
+=======
+Welcome to the CGDB (Cologne Geomorphological Database) Contributing Guide. CGDB is a research database for geomorphological, geochronological and geoarchaeological data, developed in the Cologne Geomorphological Software Laboratory at the Institute of Geography, University of Cologne.
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 
 Contributions we accept:
 
@@ -11,9 +15,13 @@ Contributions we accept:
   * Admin interface regressions
   * Import/export failures
 * **Feature development**
+<<<<<<< HEAD
   * New analytical measurement types
   * Admin UX improvements
   * Orchestration pipelines
+=======
+  * Admin UX improvements
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 * **Tests**
   * Unit tests for model logic
   * Integration tests for admin views
@@ -27,12 +35,15 @@ At this time, we do not accept:
 * New third-party dependencies without prior agreement
 * Frontend JavaScript frameworks (the project uses django-unfold's built-in UI)
 
+<<<<<<< HEAD
 ## Project overview
 
 CGDB is a Django-based research database that stores field data (campaigns, locations, samples) and analytical results (luminescence dating, radiocarbon dating, grain size analysis, geochemistry, pollen) collected in the context of geomorphological and geoarchaeological research. Access control is managed at the project level via django-guardian.
 
 The admin interface is the primary user-facing application. All measurement types are accessible exclusively through the Sample model at `/admin/field_data/sample/`.
 
+=======
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 ## Ground rules
 
 * Be respectful in all written communication — issues, pull requests, and commit messages.
@@ -42,10 +53,14 @@ The admin interface is the primary user-facing application. All measurement type
 
 ## Issue management
 
+<<<<<<< HEAD
 Issues are tracked in the GitHub issue tracker and follow a structured format:
 
 * **BUG-XX** — a reproducible defect with a concrete failure scenario
 * **FEAT-XX** — a clearly scoped feature request
+=======
+Issues are tracked in the GitHub issue tracker and follow a structured format.
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 
 When filing a bug:
 1. State the expected and actual behaviour.
@@ -57,6 +72,7 @@ When filing a feature request:
 2. Describe the proposed change at the level of model fields, admin classes, or URL routes.
 3. Note any prerequisites (other features, migrations, new dependencies).
 
+<<<<<<< HEAD
 ## Before you start
 
 * Python 3.12 or 3.13
@@ -64,6 +80,8 @@ When filing a feature request:
 * OSGeo4W (Windows) or GDAL/GEOS system packages (Linux/macOS)
 * Git
 
+=======
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 ## Environment setup
 
 1. Clone the repository and create a virtual environment:
@@ -77,7 +95,11 @@ When filing a feature request:
    pip install -r requirements.txt
    ```
 
+<<<<<<< HEAD
 2. Create `prototype/local_settings.py` with your database credentials, `SECRET_KEY`, `DEBUG = True`, and `ALLOWED_HOSTS`. Use `prototype/local_settings.example.py` as a template.
+=======
+2. Create `CGDB/prototype/local_settings.py` with your database credentials, `SECRET_KEY`, `DEBUG = True`, and `ALLOWED_HOSTS`. Use `prototype/local_settings.example.py` as a template.
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 
 3. Apply migrations and create a superuser:
 
@@ -92,18 +114,22 @@ When filing a feature request:
    python manage.py runserver
    ```
 
+<<<<<<< HEAD
 ### Troubleshoot
 
 * **Windows — GDAL not found**: Install [OSGeo4W](https://trac.osgeo.org/osgeo4w/) and ensure `C:\OSGeo4W\bin` is on your `PATH`. `settings.py` configures the DLL paths automatically if OSGeo4W is installed at the default location.
 * **SpatiaLite not found**: Required for tests only. Install via your system package manager (`libsqlite3-mod-spatialite` on Debian/Ubuntu).
 * **`ModuleNotFoundError: No module named 'import_export'`**: Run `pip install -r requirements.txt` — some packages may not be installed in fresh environments.
 
+=======
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 ## Best practices
 
 * **No unnecessary comments.** Only add a comment when the *why* is non-obvious: a hidden constraint, a subtle invariant, or a workaround for a specific bug. Do not describe what the code does.
 * **No speculative abstractions.** Three similar lines are better than a premature helper. Only generalise when there are three or more concrete call sites.
 * **No broad exception handling.** Catch only the specific exception types that can actually occur. Never use `except Exception`.
 * **Validate at system boundaries only.** Trust Django ORM guarantees and framework behaviour internally. Validate user input and data from external sources.
+<<<<<<< HEAD
 * **Admin changes must be tested.** Every new admin view, redirect, or form behaviour requires an integration test using the Django test client.
 
 ### Testing
@@ -174,6 +200,8 @@ To run a single file:
 ```
 python -m pytest analysis/tests/test_admin.py -v
 ```
+=======
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 
 ## Contribution workflow
 
@@ -208,6 +236,23 @@ Add search_fields to RawMeasurementAdmin to enable autocomplete
 * Link the corresponding issue (`Closes #XX`).
 * At least one approving review is required before merging.
 
+<<<<<<< HEAD
+=======
+### Tests
+
+Run the test suite with:
+
+```
+python -m pytest
+```
+
+The test settings use an in-memory SpatiaLite database (`prototype/test_settings.py`) — no PostgreSQL/PostGIS installation is required for tests.
+
+GeoDjango must be available on the system for the test suite to run. On Windows this requires OSGeo4W.
+
+Pre-existing test failures unrelated to your change are acceptable — document them in the pull request description.
+
+>>>>>>> 2cadeae5a10b383238ce1db8175ffc4e4423cb24
 ### Code organisation
 
 | App | Scope |
