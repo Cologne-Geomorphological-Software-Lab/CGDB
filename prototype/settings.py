@@ -85,7 +85,6 @@ INSTALLED_APPS = [
     "bibliography",
     "laboratory",
     "orchestration",
-    "morphogrid",
 ]
 
 # ==============================================================================
