@@ -8,7 +8,10 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
+from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware, now
@@ -21,6 +24,7 @@ from analysis.models import (
     RadiocarbonDating,
 )
 from field_data.models import Location, Sample
+from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
 logger = logging.getLogger(__name__)
@@ -49,6 +53,55 @@ _PERIOD_OPTIONS = [
 ]
 
 
+_DASHBOARD_NAV = [
+    {"title": _("Overview"), "link": "/",     "active_path": "/"},
+    {"title": _("Map"),      "link": "/map/", "active_path": "/map/"},
+]
+
+
+def _nav(request):
+    return [
+        {"title": n["title"], "link": n["link"], "active": request.path == n["active_path"]}
+        for n in _DASHBOARD_NAV
+    ]
+
+
+def map_dashboard(request):
+    from django.contrib import admin as _admin
+    context = _admin.site.each_context(request)
+    context["navigation"] = _nav(request)
+    return render(request, "admin/map_dashboard.html", context)
+
+
+@require_GET
+def locations_geojson(request):
+    if request.user.is_superuser:
+        qs = Location.objects.exclude(location__isnull=True)
+    else:
+        project_ids = _accessible_projects(request.user).values_list("id", flat=True)
+        qs = Location.objects.filter(
+            Q(project_id__in=project_ids) | Q(data_source="literature")
+        ).exclude(location__isnull=True)
+
+    features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [loc.location.x, loc.location.y]},
+            "properties": {
+                "id": loc.id,
+                "identifier": loc.identifier,
+                "project": str(loc.project) if loc.project else None,
+                "data_source": loc.data_source,
+                "admin_url": f"/field_data/location/{loc.id}/change/",
+            },
+        }
+        for loc in qs.select_related("project").only(
+            "id", "identifier", "location", "data_source", "project__label"
+        )
+    ]
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
 def dashboard_callback(request, context):
     try:
         period_days = int(request.GET.get("period", 30))
@@ -58,13 +111,7 @@ def dashboard_callback(request, context):
         period_days = 30
 
     context.update(stat_data(period_days))
-    context["navigation"] = [
-        {
-            "title": _("Overview"),
-            "link": "/",
-            "active": True,
-        },
-    ]
+    context["navigation"] = _nav(request)
     context["filters"] = [
         {
             "title": _(p["label"]),

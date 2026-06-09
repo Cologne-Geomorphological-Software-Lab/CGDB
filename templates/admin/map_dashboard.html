@@ -1,0 +1,144 @@
+{% extends 'admin/base.html' %}
+{% load i18n unfold %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block title %}{% trans 'Map' %} | {{ site_title|default:_('CGDB') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="anonymous" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
+<style>
+  #cgdb-map {
+    height: calc(100vh - 220px);
+    min-height: 400px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .cgdb-popup strong { display: block; margin-bottom: 4px; }
+  .cgdb-popup a { color: #3b82f6; text-decoration: none; }
+  .cgdb-popup a:hover { text-decoration: underline; }
+  .cgdb-popup .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .cgdb-popup .badge-internal   { background: #dbeafe; color: #1e40af; }
+  .cgdb-popup .badge-literature { background: #f3f4f6; color: #374151; }
+</style>
+{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+{% include "unfold/helpers/messages.html" %}
+
+{% component "unfold/components/container.html" %}
+    <div class="flex flex-col gap-4 sm:flex-row mb-6">
+        {% component "unfold/components/navigation.html" with items=navigation %}{% endcomponent %}
+    </div>
+    <div id="cgdb-map"></div>
+{% endcomponent %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function esc(str) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(str == null ? '' : String(str)));
+        return d.innerHTML;
+    }
+    var dark = document.documentElement.classList.contains('dark');
+
+    var lightTile = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 19,
+        }
+    );
+    var darkTile = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>',
+            maxZoom: 19,
+        }
+    );
+    var satelliteTile = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            maxZoom: 19,
+        }
+    );
+
+    var map = L.map('cgdb-map', {
+        center: [30, 10],
+        zoom: 2,
+        layers: [satelliteTile],
+    });
+
+    L.control.layers(
+        { 'Light': lightTile, 'Dark': darkTile, 'Satellite': satelliteTile },
+        {},
+        { position: 'topright' }
+    ).addTo(map);
+
+    var clusters = L.markerClusterGroup({ chunkedLoading: true });
+
+    fetch('/api/locations.geojson')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            var layer = L.geoJSON(data, {
+                pointToLayer: function (feature, latlng) {
+                    var isLit = feature.properties.data_source === 'literature';
+                    return L.circleMarker(latlng, {
+                        radius: 7,
+                        fillColor: isLit ? '#9ca3af' : '#3b82f6',
+                        color: isLit ? '#6b7280' : '#1d4ed8',
+                        weight: 1.5,
+                        opacity: 1,
+                        fillOpacity: 0.8,
+                    });
+                },
+                onEachFeature: function (feature, layer) {
+                    var p = feature.properties;
+                    var badge = p.data_source === 'literature'
+                        ? '<span class="badge badge-literature">Literature</span>'
+                        : '<span class="badge badge-internal">Internal</span>';
+                    layer.bindPopup(
+                        '<div class="cgdb-popup">' +
+                        '<strong>' + esc(p.identifier || '—') + '</strong>' +
+                        (p.project ? '<div>' + esc(p.project) + '</div>' : '') +
+                        badge +
+                        '<div style="margin-top:6px">' +
+                        '<a href="' + esc(p.admin_url) + '">Open in admin →</a>' +
+                        '</div></div>'
+                    );
+                },
+            });
+
+            clusters.addLayer(layer);
+            map.addLayer(clusters);
+
+            if (data.features.length > 0) {
+                var bounds = layer.getBounds();
+                if (bounds.isValid()) {
+                    map.fitBounds(bounds, { padding: [40, 40] });
+                }
+            }
+        })
+        .catch(function (err) {
+            console.error('Failed to load locations:', err);
+        });
+});
+</script>
+{% endblock %}

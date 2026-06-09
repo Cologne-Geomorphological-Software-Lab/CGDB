@@ -18,9 +18,14 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 
+from prototype.views import locations_geojson, map_dashboard
+
 urlpatterns = [
+    path("map/", staff_member_required(map_dashboard), name="map_dashboard"),
+    path("api/locations.geojson", staff_member_required(locations_geojson), name="locations_geojson"),
     path("", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
 ]
