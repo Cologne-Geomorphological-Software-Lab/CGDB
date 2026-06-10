@@ -4,7 +4,6 @@ from .models import Location, Sample
 
 
 class LocationFilter(filters.FilterSet):
-
     class Meta:
         model = Location
         fields = [

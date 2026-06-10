@@ -24,6 +24,7 @@ ANALYSIS_SLUGS = [
     "radiocarbondating",
     "counting",
     "microxrfmeasurement",
+    "cosmogenicnuclidedating",
 ]
 
 

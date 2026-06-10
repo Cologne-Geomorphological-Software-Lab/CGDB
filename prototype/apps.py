@@ -6,5 +6,5 @@ class PrototypeConfig(AppConfig):
     name = "prototype"
     verbose_name = "Core Management"
 
-    def ready(self):
+    def ready(self) -> None:
         import prototype.signals  # noqa: F401

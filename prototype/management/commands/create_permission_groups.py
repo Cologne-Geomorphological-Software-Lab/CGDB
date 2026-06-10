@@ -13,6 +13,7 @@ Usage:
     --reset  Clears all permissions from each group before re-adding.
              Safe to re-run after adding new models or renaming permissions.
 """
+
 from django.core.management.base import BaseCommand
 
 from prototype.permissions import create_permission_groups
@@ -21,12 +22,12 @@ from prototype.permissions import create_permission_groups
 class Command(BaseCommand):
     help = "Create predefined permission groups for CGDB."
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "--reset",
             action="store_true",
             help="Clear all permissions from each group before re-adding them.",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options) -> None:
         create_permission_groups(reset=options["reset"], stdout=self.stdout)

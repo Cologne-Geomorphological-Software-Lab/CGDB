@@ -79,7 +79,7 @@ class ResearchGroup(BaseModel):
         blank=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a human-readable representation of the research group."""
         return f"{self.label}"
 
@@ -134,7 +134,7 @@ class Researcher(BaseModel):
     class Meta:
         verbose_name_plural = "Researchers"
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a human-readable representation of the researcher."""
         return f"{self.user.last_name}, {self.user.first_name}"
 
@@ -218,7 +218,7 @@ class Project(BaseModel):
         ),
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a human-readable representation of the research project."""
         return str(self.label)
 

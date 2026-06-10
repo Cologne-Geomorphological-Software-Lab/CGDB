@@ -1,7 +1,7 @@
 import json
 import logging
-import os
 from calendar import monthrange
+from pathlib import Path
 from datetime import datetime, timedelta
 
 from dateutil.relativedelta import relativedelta
@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET
 from django.utils import timezone
@@ -30,9 +30,9 @@ from prototype.models import Project
 logger = logging.getLogger(__name__)
 
 
-def documentation(request, filepath):
-    doc_path = os.path.join(settings.BASE_DIR, "static", "docs", filepath)
-    if not os.path.exists(doc_path):
+def documentation(request, filepath) -> HttpResponse:
+    doc_path = Path(settings.BASE_DIR) / "static" / "docs" / filepath
+    if not doc_path.exists():
         return render(request, "404.html", status=404)
     return render(
         request,
@@ -41,7 +41,7 @@ def documentation(request, filepath):
     )
 
 
-def logout_view(request):
+def logout_view(request) -> HttpResponse:
     logout(request)
     return redirect("/")
 
@@ -54,34 +54,35 @@ _PERIOD_OPTIONS = [
 
 
 _DASHBOARD_NAV = [
-    {"title": _("Overview"), "link": "/",     "active_path": "/"},
-    {"title": _("Map"),      "link": "/map/", "active_path": "/map/"},
+    {"title": _("Overview"), "link": "/", "active_path": "/"},
+    {"title": _("Map"), "link": "/map/", "active_path": "/map/"},
 ]
 
 
-def _nav(request):
+def _nav(request) -> list:
     return [
         {"title": n["title"], "link": n["link"], "active": request.path == n["active_path"]}
         for n in _DASHBOARD_NAV
     ]
 
 
-def map_dashboard(request):
+def map_dashboard(request) -> HttpResponse:
     from django.contrib import admin as _admin
+
     context = _admin.site.each_context(request)
     context["navigation"] = _nav(request)
     return render(request, "admin/map_dashboard.html", context)
 
 
 @require_GET
-def locations_geojson(request):
+def locations_geojson(request) -> HttpResponse:
     if request.user.is_superuser:
         qs = Location.objects.exclude(location__isnull=True)
     else:
         project_ids = _accessible_projects(request.user).values_list("id", flat=True)
-        qs = Location.objects.filter(
-            Q(project_id__in=project_ids) | Q(data_source="literature")
-        ).exclude(location__isnull=True)
+        qs = Location.objects.filter(Q(project_id__in=project_ids) | Q(data_source="literature")).exclude(
+            location__isnull=True
+        )
 
     features = [
         {
@@ -102,7 +103,7 @@ def locations_geojson(request):
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
-def dashboard_callback(request, context):
+def dashboard_callback(request, context) -> dict:
     try:
         period_days = int(request.GET.get("period", 30))
     except (ValueError, TypeError):
@@ -123,15 +124,15 @@ def dashboard_callback(request, context):
     return context
 
 
-def stat_data(period_days: int = 30):
+def stat_data(period_days: int = 30) -> dict:
     now = timezone.now()
     since = now - timedelta(days=period_days)
     logger.debug("stat_data called at %s (period=%d days)", now, period_days)
 
-    def _pct(count, total):
+    def _pct(count, total) -> float:
         return round(count / total * 100, 2) if total > 0 else 0
 
-    def _footer(pct, period_days):
+    def _footer(pct, period_days) -> str:
         return mark_safe(
             f'<strong class="text-green-700 font-semibold dark:text-green-400">'
             f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days"
@@ -154,8 +155,7 @@ def stat_data(period_days: int = 30):
     measurement_models = [GenericMeasurement, GrainSize, LuminescenceDating, RadiocarbonDating]
     measurements_total = sum(m.objects.count() for m in measurement_models)
     measurements_period_count = sum(
-        m.objects.filter(created_at__gte=since, created_at__lt=now).count()
-        for m in measurement_models
+        m.objects.filter(created_at__gte=since, created_at__lt=now).count() for m in measurement_models
     )
 
     return {
@@ -239,13 +239,9 @@ def _build_monthly_performance(model_classes: list) -> list:
         year = month_date.year
         month = month_date.month
         start_date = make_aware(datetime(year, month, 1))
-        end_date = make_aware(
-            datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
-        )
+        end_date = make_aware(datetime(year, month, monthrange(year, month)[1], 23, 59, 59))
         count = sum(
-            model.objects.filter(
-                created_at__gte=start_date, created_at__lte=end_date
-            ).count()
+            model.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
             for model in model_classes
         )
         result.append([f"{MONTH_NAMES[month - 1]} {year}", count])

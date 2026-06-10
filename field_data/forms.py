@@ -45,7 +45,7 @@ class CampaignForm(forms.ModelForm):
             "season": forms.Select(attrs={"class": "form-control"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         project_id = kwargs.pop("project_id", None)
         super().__init__(*args, **kwargs)
         self.fields["project"].widget.attrs["readonly"] = True
@@ -90,7 +90,7 @@ class LocationForm(forms.ModelForm):
             "date_of_record": forms.DateInput(attrs={"type": "date"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self.fields["processor"].widget.attrs["readonly"] = True
@@ -112,7 +112,7 @@ class StudyAreaForm(forms.ModelForm):
         ]
         widgets = {"area": forms.OSMWidget(attrs={"map_width": 800, "map_height": 500})}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -151,7 +151,7 @@ class SampleForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         location = kwargs.pop("location", None)
         super().__init__(*args, **kwargs)
         if location:
@@ -166,7 +166,7 @@ class TagForm(forms.ModelForm):
         model = Tag
         fields = ["word", "slug", "project", "content_type"]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.add_input(Submit("submit", "Submit"))
@@ -193,7 +193,7 @@ class LayerForm(forms.ModelForm):
             "tags",
         ]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.add_input(Submit("submit", "Submit"))

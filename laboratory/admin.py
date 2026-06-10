@@ -112,7 +112,7 @@ class MethodAdmin(ModelAdmin):
         label={"CHEM": "success", "PHY": "info", "CHRO": "warning"},
         description="Category",
     )
-    def colored_category(self, obj):
+    def colored_category(self, obj) -> str:
         return obj.category
 
 

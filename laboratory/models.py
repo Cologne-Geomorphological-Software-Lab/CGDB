@@ -7,7 +7,7 @@ class Manufacturer(models.Model):
     name = models.CharField(max_length=100)
     website = models.URLField(blank=True, null=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -38,7 +38,7 @@ class Device(models.Model):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name}"
 
 
@@ -55,7 +55,7 @@ class Accessory(models.Model):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.device.name} - {self.name}"
 
     class Meta:
@@ -78,7 +78,7 @@ class AccessoryParameter(models.Model):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.accessory.name} - {self.parameter_name}: {self.parameter_value}"
 
 
@@ -131,7 +131,7 @@ class Method(models.Model):
     )
     available = models.BooleanField(default=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name}"
 
 
@@ -151,7 +151,7 @@ class Calibration(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.device} – {self.date}"
 
 
@@ -167,5 +167,5 @@ class Firmware(models.Model):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.device.name} - {self.version}"

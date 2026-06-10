@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import json
-import os
 from pathlib import Path
 from typing import Self
 from zoneinfo import ZoneInfo
@@ -46,7 +45,7 @@ class Algorithm(models.Model):
         choices=CHOICES,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -89,10 +88,10 @@ class RawMeasurement(BaseModel):
     file = models.FileField(upload_to="analysis/raw_data/")
     description = models.TextField(blank=True, null=True)
 
-    def filename(self):
+    def filename(self) -> str | None:
         return Path(self.file.name).name if self.file else None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.device} - {self.created_at}"
 
 
@@ -149,10 +148,10 @@ class RawProcessing(BaseModel):
         null=True,
     )
 
-    def processed_filename(self):
+    def processed_filename(self) -> str | None:
         return Path(self.processed_file.name).name if self.processed_file else None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Processed data for {self.raw_measurement}"
 
 
@@ -198,7 +197,7 @@ class Counting(BaseModel):
         verbose_name = "Counting"
         verbose_name_plural = "Countings"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.sample}"
 
 
@@ -238,7 +237,7 @@ class Pollen(BaseModel):
         verbose_name = "Pollen"
         verbose_name_plural = "Pollen"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name}"
 
 
@@ -267,7 +266,7 @@ class PollenCount(BaseModel):
         verbose_name = "Pollen Count"
         verbose_name_plural = "Pollen Counts"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.counting} - {self.pollen}"
 
 
@@ -276,11 +275,11 @@ class PollenCount(BaseModel):
 # ======================
 
 
-def current_year():
+def current_year() -> int:
     return datetime.datetime.now(tz=ZoneInfo("Europe/Berlin")).date().year
 
 
-def max_value_current_year(value):
+def max_value_current_year(value) -> None:
     return MaxValueValidator(current_year())(value)
 
 
@@ -772,12 +771,9 @@ class LuminescenceDating(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         mineral_str = self.mineral or "Unknown"
-        if self.pk:
-            lab_id = self.laboratory_id or f"ID-{self.pk}"
-        else:
-            lab_id = self.laboratory_id or "Unsaved"
+        lab_id = (self.laboratory_id or f"ID-{self.pk}") if self.pk else (self.laboratory_id or "Unsaved")
         return f"{lab_id} {mineral_str}"
 
 
@@ -819,9 +815,295 @@ class RadiocarbonDating(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         age_str = f"{self.age} ka" if self.age is not None else "undated"
         return f"{self.lab_id} ({age_str})"
+
+
+class CosmogenicNuclideDating(BaseModel):
+    NUCLIDE_CHOICES = [
+        ("10Be", "¹⁰Be"),
+        ("26Al", "²⁶Al"),
+        ("36Cl", "³⁶Cl"),
+        ("3He", "³He"),
+        ("21Ne", "²¹Ne"),
+        ("14C", "in-situ ¹⁴C"),
+    ]
+    MINERAL_CHOICES = [
+        ("qtz", "Quartz"),
+        ("fsp", "Feldspar"),
+        ("px", "Pyroxene"),
+        ("ol", "Olivine"),
+        ("cc", "Calcite"),
+        ("wr", "Whole rock"),
+        ("other", "Other"),
+    ]
+    APPROACH_CHOICES = [
+        ("exposure", "Exposure dating"),
+        ("burial", "Burial dating"),
+        ("denudation", "Denudation rate"),
+    ]
+    SCALING_CHOICES = [
+        ("LSD", "LSD / Lifton-Sato-Dunai"),
+        ("LSDn", "LSDn / Lifton-Sato-Dunai (updated)"),
+        ("St", "St / Stone"),
+        ("Lm", "Lm / Lal modified"),
+        ("Du", "Du / Dunai"),
+        ("De", "De / Desilets"),
+    ]
+
+    # --- Identification ---
+    sample = models.ForeignKey(
+        Sample,
+        on_delete=models.RESTRICT,
+        related_name="cosmogenic_nuclide_datings",
+    )
+    raw_data = models.ForeignKey(
+        RawMeasurement,
+        on_delete=models.RESTRICT,
+        related_name="cosmogenic_nuclide_datings",
+        blank=True,
+        null=True,
+    )
+    lab_id = models.CharField(max_length=30, blank=True)
+    nuclide = models.CharField(max_length=5, choices=NUCLIDE_CHOICES, blank=True)
+    mineral = models.CharField(max_length=10, choices=MINERAL_CHOICES, blank=True)
+    dating_approach = models.CharField(max_length=10, choices=APPROACH_CHOICES, blank=True)
+
+    # --- Concentration (published + standardized) ---
+    # Concentrations are large integers (1e4–1e7 atoms/g); decimal_places=0
+    nuclide_concentration = models.DecimalField(
+        max_digits=14,
+        decimal_places=0,
+        blank=True,
+        null=True,
+        verbose_name="Published concentration [atoms/g]",
+        help_text="As reported in publication (OCTOPUS: BE10NP / AL26NP)",
+    )
+    nuclide_concentration_error = models.DecimalField(
+        max_digits=14,
+        decimal_places=0,
+        blank=True,
+        null=True,
+        verbose_name="Concentration error (1σ) [atoms/g]",
+    )
+    ams_standard = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="AMS standard",
+        help_text="e.g. 07KNSTD, KNSTD, NIST_27900 (OCTOPUS: BESTND / ALSTND)",
+    )
+    normalized_concentration = models.DecimalField(
+        max_digits=14,
+        decimal_places=0,
+        blank=True,
+        null=True,
+        verbose_name="Normalized concentration [atoms/g]",
+        help_text="Standard-corrected for inter-lab comparison (OCTOPUS: BE10NC / AL26NC)",
+    )
+    normalized_concentration_error = models.DecimalField(
+        max_digits=14,
+        decimal_places=0,
+        blank=True,
+        null=True,
+        verbose_name="Normalized concentration error (1σ) [atoms/g]",
+    )
+
+    # --- Age results ---
+    exposure_age = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="Exposure age [ka]",
+    )
+    exposure_age_error_internal = models.DecimalField(
+        max_digits=7,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="Internal age error (1σ) [ka]",
+        help_text="AMS measurement uncertainty only",
+    )
+    exposure_age_error_external = models.DecimalField(
+        max_digits=7,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="External age error (1σ) [ka]",
+        help_text="Includes production rate uncertainty",
+    )
+    burial_age = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="Burial age [ka]",
+    )
+    burial_age_error = models.DecimalField(
+        max_digits=7,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="Burial age error (1σ) [ka]",
+    )
+
+    # --- Denudation rate ---
+    # OCTOPUS distinguishes published (BE10EP) vs. CAIRN-recalculated (EBE_MMKYR).
+    # We store only the published value; CAIRN-recalculated can be added later.
+    denudation_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="Published denudation rate [mm/ka]",
+        help_text="As reported in publication (OCTOPUS: BE10EP / AL26EP)",
+    )
+    denudation_rate_error = models.DecimalField(
+        max_digits=7,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="Denudation rate error (1σ) [mm/ka]",
+    )
+
+    # --- Production rate & scaling ---
+    scaling_method = models.CharField(max_length=10, choices=SCALING_CHOICES, blank=True)
+    calculation_software = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="e.g. CRONUS-Earth, CRONUScalc, CAIRN",
+    )
+    production_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name="Total production rate [atoms/g/a]",
+    )
+    production_rate_error = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name="Production rate error (1σ) [atoms/g/a]",
+    )
+    spallation_production_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name="Spallation production rate [atoms/g/a]",
+    )
+    muon_production_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name="Muon production rate [atoms/g/a]",
+    )
+
+    # --- Shielding (OCTOPUS: BETOPO, BESELF, BESNOW, BETOTS / ALTOPO, ALSELF, ALSNOW, ALTOTS) ---
+    topographic_shielding = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name="Topographic shielding (0–1)",
+    )
+    self_shielding = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name="Self-shielding (0–1)",
+    )
+    snow_shielding = models.DecimalField(
+        max_digits=5,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name="Snow shielding (0–1)",
+    )
+    combined_shielding = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Combined shielding & scaling correction",
+        help_text="Product of all shielding and production scaling factors (OCTOPUS: BETOTS / ALTOTS)",
+    )
+    erosion_rate_assumed = models.DecimalField(
+        max_digits=7,
+        decimal_places=3,
+        blank=True,
+        null=True,
+        verbose_name="Assumed erosion rate [mm/ka]",
+        help_text="Steady-state erosion assumption for age calculation",
+    )
+    inheritance = models.DecimalField(
+        max_digits=14,
+        decimal_places=0,
+        blank=True,
+        null=True,
+        verbose_name="Inheritance [atoms/g]",
+    )
+
+    # --- Error budget (OCTOPUS: ERRBE_AMS/MUON/PROD/TOT in g·cm⁻²·yr⁻¹) ---
+    # Units are approach-dependent: g·cm⁻²·yr⁻¹ for denudation, ka for exposure age.
+    error_ams = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="AMS measurement error",
+    )
+    error_muon = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Muon production error",
+    )
+    error_production_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Production rate error",
+    )
+    error_total = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        verbose_name="Total error (combined)",
+        help_text="Quadrature sum of AMS + muon + production rate errors (OCTOPUS: ERRBE_TOT / ERRAL_TOT)",
+    )
+
+    # --- Publication ---
+    published = models.BooleanField(default=False)
+    year_of_publication = models.PositiveIntegerField(
+        default=current_year,
+        validators=[MinValueValidator(1984), max_value_current_year],
+        blank=True,
+        null=True,
+    )
+    thesis = models.CharField(
+        max_length=4,
+        choices=[("BSc", "BSc"), ("MSc", "MSc"), ("PhD", "PhD"), ("None", "None")],
+        default="None",
+    )
+    comments = models.TextField(blank=True, null=True)
+
+    def __str__(self) -> str:
+        lab_id = self.lab_id or (f"ID-{self.pk}" if self.pk else "Unsaved")
+        nuclide_str = self.nuclide or "Unknown"
+        return f"{lab_id} ({nuclide_str})"
+
+    class Meta:
+        verbose_name = "Cosmogenic Nuclide Dating"
+        verbose_name_plural = "Cosmogenic Nuclide Datings"
 
 
 CLASSES = [
@@ -956,7 +1238,7 @@ CLASSES = [
 ]
 
 
-def default_classes():
+def default_classes() -> list:
     return list(CLASSES)
 
 
@@ -1007,7 +1289,7 @@ class Parameter(BaseModel):
         help_text="This field is for determining the classes of unstructured list data.",
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name} - [{self.unit}]"
 
 
@@ -1020,7 +1302,7 @@ class MeasurementSeries(BaseModel):
 
     datetime = models.DateTimeField()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Series {self.pk} – {self.datetime}"
 
 
@@ -1080,7 +1362,7 @@ class GenericMeasurement(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.sample} - {self.method} - {self.parameter}"
 
 
@@ -1265,7 +1547,7 @@ class GrainSize(BaseModel):
         self.coarse_sand = 0
         self.gravel = 0
 
-        for class_value, data_value in zip(self.classes, self.measured_data):
+        for class_value, data_value in zip(self.classes, self.measured_data, strict=False):
             if class_value < 2:
                 self.clay += data_value
             elif class_value < 6.3:
@@ -1303,10 +1585,9 @@ class GrainSize(BaseModel):
             self.medium_sand,
             self.coarse_sand,
             self.clay,
-            self.gravel,
         )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if self.classes is not None and self.measured_data is not None:
             (
                 self.fine_silt,
@@ -1316,11 +1597,10 @@ class GrainSize(BaseModel):
                 self.medium_sand,
                 self.coarse_sand,
                 self.clay,
-                self.gravel,
             ) = self._reclassify()
         super().save(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.sample) + ", " + str(self.method)
 
     class Meta:
@@ -1465,7 +1745,7 @@ class MicroXRFMeasurement(BaseModel):
     )
     notes = models.TextField(blank=True, null=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"MicroXRF {self.sample} ({self.measurement_date})"
 
     class Meta:
@@ -1561,8 +1841,8 @@ class MicroXRFElementMap(BaseModel):
         help_text="Einheit (z.B. counts, ppm, %)",
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.element} map ({self.measurement})"
 
-    def get_raster_path(self):
-        return os.path.join(settings.MEDIA_ROOT, self.raster_file.name)
+    def get_raster_path(self) -> Path:
+        return Path(settings.MEDIA_ROOT) / self.raster_file.name

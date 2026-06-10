@@ -3,15 +3,16 @@
 Called from both the post_migrate signal (automatic) and the
 create_permission_groups management command (manual/reset).
 """
+
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 
 
-def _q(*specs, actions=None):
+def _q(*specs, actions=None) -> Q:
     """Build a Q-filter for the given model specs and actions.
 
-    specs   – "app_label.model_name" strings
-    actions – list of verbs; defaults to all four CRUD actions
+    specs   - "app_label.model_name" strings
+    actions - list of verbs; defaults to all four CRUD actions
     """
     if actions is None:
         actions = ["view", "add", "change", "delete"]
@@ -73,11 +74,8 @@ GROUPS = {
     # Academic roles — assign exactly one per user
     # ------------------------------------------------------------------
     "Viewer": _q(*_ALL_DOMAIN, actions=["view"]),
-
     "Researcher": _q(*_ALL_DOMAIN, actions=["view", "add", "change"]),
-
     "Principal Investigator": _q(*_ALL_DOMAIN),
-
     # ------------------------------------------------------------------
     # Domain groups — stack on top of the academic role
     # ------------------------------------------------------------------
@@ -91,34 +89,27 @@ GROUPS = {
         "field_data.transect",
         "field_data.tag",
     ),
-
     "Luminescence": _q(
         "analysis.luminescencedating",
         "analysis.rawmeasurement",
         "analysis.rawprocessing",
     ),
-
     "Radiocarbon": _q("analysis.radiocarbondating"),
-
     "Grain Size": _q("analysis.grainsize"),
-
     "Pollen": _q(
         "analysis.counting",
         "analysis.pollen",
     ),
-
     "Geochemistry": _q(
         "analysis.genericmeasurement",
         "analysis.microxrfmeasurement",
         "analysis.parameter",
     ),
-
     "Bibliography": _q(
         "bibliography.reference",
         "bibliography.author",
         "bibliography.referencekeyword",
     ),
-
     "Laboratory": _q(
         "laboratory.device",
         "laboratory.accessory",
@@ -130,7 +121,7 @@ GROUPS = {
 }
 
 
-def create_permission_groups(reset=False, stdout=None):
+def create_permission_groups(reset=False, stdout=None) -> tuple:
     """Create or update predefined permission groups. Idempotent.
 
     reset=True clears all permissions from each group before re-adding —
@@ -160,8 +151,6 @@ def create_permission_groups(reset=False, stdout=None):
             updated_count += 1
 
     if stdout:
-        stdout.write(
-            f"\nDone. {created_count} group(s) created, {updated_count} group(s) updated.\n"
-        )
+        stdout.write(f"\nDone. {created_count} group(s) created, {updated_count} group(s) updated.\n")
 
     return created_count, updated_count

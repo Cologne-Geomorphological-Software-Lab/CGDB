@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from urllib.parse import parse_qs
 
 
-def extract_sample_pk_from_get(get_params):
+def extract_sample_pk_from_get(get_params) -> str | None:
     """Return sample PK string from GET params, or None.
 
     Checks ``?sample=``, ``?sample__id__exact=``, and the encoded

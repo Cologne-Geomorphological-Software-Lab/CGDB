@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import re
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
+from django.db.models import QuerySet
+from django.forms import Field
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.urls import path, reverse
+from django.urls import path
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter, RelatedDropdownFilter
@@ -16,11 +21,19 @@ from prototype.mixins import (
     ProjectBasedPermissionMixin,
 )
 
-from .models import Campaign, ExposureType, Layer, Location, Sample, SampleType, Site, StudyArea, Tag, Transect
+from .models import (
+    Campaign,
+    ExposureType,
+    Layer,
+    Location,
+    Sample,
+    SampleType,
+    Site,
+    StudyArea,
+    Tag,
+    Transect,
+)
 from .resources import LocationResource
-
-
-
 
 
 class SampleTabularInline(TabularInline):
@@ -154,13 +167,13 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     search_fields = ["identifier", "campaign__label"]
 
     @display(label={"internal": "success", "literature": "info"}, description="Data Source")
-    def colored_data_source(self, obj):
+    def colored_data_source(self, obj) -> str:
         return obj.data_source
 
-    def get_queryset(self, request):
+    def get_queryset(self, request) -> QuerySet:
         return super().get_queryset(request).select_related("project", "campaign", "reference")
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
+    def formfield_for_manytomany(self, db_field, request, **kwargs) -> Field | None:
         if db_field.name == "tags":
             location_ct = ContentType.objects.get_for_model(Location)
             qs = Tag.objects.filter(content_type=location_ct)
@@ -229,9 +242,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
             "Weather",
             {
                 "classes": ["tab"],
-                "fields": (
-                    ("current_weather_conditions", "past_weather_conditions"),
-                ),
+                "fields": (("current_weather_conditions", "past_weather_conditions"),),
             },
         ),
     )
@@ -350,7 +361,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         },
         description="Season",
     )
-    def colored_season(self, obj):
+    def colored_season(self, obj) -> str:
         return obj.season
 
     fieldsets = (
@@ -467,12 +478,13 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         ("radiocarbondating", "analysis.models.RadiocarbonDating"),
         ("counting", "analysis.models.Counting"),
         ("microxrfmeasurement", "analysis.models.MicroXRFMeasurement"),
+        ("cosmogenicnuclidedating", "analysis.models.CosmogenicNuclideDating"),
     ]
 
-    def get_urls(self):
+    def get_urls(self) -> list:
         from importlib import import_module
 
-        def _load(dotted):
+        def _load(dotted) -> type:
             mod, cls = dotted.rsplit(".", 1)
             return getattr(import_module(mod), cls)
 
@@ -481,36 +493,39 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
             model_class = _load(model_path)
             prefix = f"field_data_sample_{slug}"
 
-            def make_views(m):
-                def cl_view(request, sample_pk):
+            def make_views(m) -> tuple:
+                def _cl(request, sample_pk) -> HttpResponse:
                     return self._analysis_changelist_view(request, sample_pk, m)
-                def add_view(request, sample_pk):
+
+                def _add(request, sample_pk) -> HttpResponse:
                     return self._analysis_add_view(request, sample_pk, m)
-                def change_view(request, sample_pk, object_id):
+
+                def _change(request, sample_pk, object_id) -> HttpResponse:
                     return self._analysis_change_view(request, sample_pk, m, object_id)
-                return cl_view, add_view, change_view
+
+                return _cl, _add, _change
 
             cl_view, add_view, change_view = make_views(model_class)
             custom_urls += [
-                path(f"<int:sample_pk>/{slug}/",
-                     self.admin_site.admin_view(cl_view),
-                     name=prefix),
-                path(f"<int:sample_pk>/{slug}/add/",
-                     self.admin_site.admin_view(add_view),
-                     name=f"{prefix}_add"),
-                path(f"<int:sample_pk>/{slug}/<path:object_id>/change/",
-                     self.admin_site.admin_view(change_view),
-                     name=f"{prefix}_change"),
+                path(f"<int:sample_pk>/{slug}/", self.admin_site.admin_view(cl_view), name=prefix),
+                path(
+                    f"<int:sample_pk>/{slug}/add/", self.admin_site.admin_view(add_view), name=f"{prefix}_add"
+                ),
+                path(
+                    f"<int:sample_pk>/{slug}/<path:object_id>/change/",
+                    self.admin_site.admin_view(change_view),
+                    name=f"{prefix}_change",
+                ),
             ]
         return custom_urls + super().get_urls()
 
-    def _get_accessible_sample(self, request, sample_pk):
+    def _get_accessible_sample(self, request, sample_pk) -> None:
         """Return Sample if accessible; raise 404 if missing, 403 if forbidden."""
         get_object_or_404(Sample, pk=sample_pk)
         if not self.get_queryset(request).filter(pk=sample_pk).exists():
             raise PermissionDenied
 
-    def _analysis_changelist_view(self, request, sample_pk, model_class):
+    def _analysis_changelist_view(self, request, sample_pk, model_class) -> HttpResponse:
         """Render an analysis model's changelist filtered for sample_pk."""
         self._get_accessible_sample(request, sample_pk)
         analysis_admin = self.admin_site._registry[model_class]
@@ -527,6 +542,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         # (used by the empty-state template via {% include ... with preserved_filters=cl.preserved_filters %}).
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
+
             pf = urlencode({"_changelist_filters": f"sample__id__exact={sample_pk}"})
             response.context_data["preserved_filters"] = pf
             cl = response.context_data.get("cl")
@@ -539,7 +555,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     # Add-view helpers
     # ------------------------------------------------------------------
 
-    def _analysis_add_view(self, request, sample_pk, model_class):
+    def _analysis_add_view(self, request, sample_pk, model_class) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
         analysis_admin = self.admin_site._registry[model_class]
         mutable_get = request.GET.copy()
@@ -548,8 +564,9 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         response = analysis_admin.add_view(request)
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
+
             response.context_data["preserved_filters"] = urlencode(
-                {"_changelist_filters": f"sample__id__exact={sample_pk}"}
+                {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
         return response
 
@@ -557,7 +574,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     # Change-view helpers
     # ------------------------------------------------------------------
 
-    def _analysis_change_view(self, request, sample_pk, model_class, object_id):
+    def _analysis_change_view(self, request, sample_pk, model_class, object_id) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
         # Ensure the analysis object actually belongs to the declared sample so
         # a crafted URL like /sample/1/luminescencedating/99/change/ cannot expose
@@ -567,12 +584,13 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         response = analysis_admin.change_view(request, str(object_id))
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
+
             response.context_data["preserved_filters"] = urlencode(
-                {"_changelist_filters": f"sample__id__exact={sample_pk}"}
+                {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
         return response
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
+    def formfield_for_manytomany(self, db_field, request, **kwargs) -> Field | None:
         if db_field.name == "tags":
             sample_ct = ContentType.objects.get_for_model(Sample)
             qs = Tag.objects.filter(content_type=sample_ct)
@@ -586,6 +604,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
                     pass
             kwargs["queryset"] = qs
         return super().formfield_for_manytomany(db_field, request, **kwargs)
+
 
 class SampleTypeAdmin(ExportMixin, ModelAdmin):
     change_form_show_cancel_button = True
@@ -612,7 +631,7 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_filter_sheet = False
     list_filter_submit = True
 
-    def get_search_results(self, request, queryset, search_term):
+    def get_search_results(self, request, queryset, search_term) -> tuple:
         queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
         app_label = request.GET.get("app_label")
         field_name = request.GET.get("field_name")
