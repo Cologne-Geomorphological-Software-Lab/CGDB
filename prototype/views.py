@@ -106,7 +106,7 @@ def locations_geojson(request) -> HttpResponse:
 def dashboard_callback(request, context) -> dict:
     try:
         period_days = int(request.GET.get("period", 30))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
         period_days = 30
     if period_days not in {p["days"] for p in _PERIOD_OPTIONS}:
         period_days = 30
