@@ -32,5 +32,7 @@ class Command(BaseCommand):
             help="Clear all permissions from each group before re-adding them.",
         )
 
-    def handle(self, *args: object, **options: object) -> None:
-        create_permission_groups(reset=options["reset"], stdout=self.stdout)
+    def handle(self, *_args: object, **options: object) -> None:
+        create_permission_groups(
+            reset=options["reset"], stdout=self.stdout
+        )

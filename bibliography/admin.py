@@ -4,7 +4,11 @@ from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from unfold.admin import ModelAdmin, TabularInline
-from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeNumericFilter, RelatedDropdownFilter
+from unfold.contrib.filters.admin import (
+    ChoicesDropdownFilter,
+    RangeNumericFilter,
+    RelatedDropdownFilter,
+)
 from unfold.decorators import display
 
 from .models import Author, Reference, ReferenceKeyword
@@ -84,7 +88,13 @@ class ReferenceAdmin(ModelAdmin):
         ),
     ]
     filter_horizontal = ["second_author", "supervisor", "keywords"]
-    search_fields = ["title", "doi", "issn", "isbn_print", "lead_author__last_name"]
+    search_fields = [
+        "title",
+        "doi",
+        "issn",
+        "isbn_print",
+        "lead_author__last_name",
+    ]
     list_display = [
         "lead_author",
         "year",
@@ -119,13 +129,19 @@ class ReferenceAdmin(ModelAdmin):
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request)
 
-    def has_view_permission(self, request: HttpRequest, obj: Reference | None = None) -> bool:
+    def has_view_permission(
+        self, _request: HttpRequest, _obj: Reference | None = None
+    ) -> bool:
         return True
 
-    def has_change_permission(self, request: HttpRequest, obj: Reference | None = None) -> bool:
+    def has_change_permission(
+        self, request: HttpRequest, obj: Reference | None = None
+    ) -> bool:
         if obj is None:
             return True
-        change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
+        change_perm = (
+            f"{self.opts.app_label}.change_{self.opts.model_name}"
+        )
         return request.user.has_perm(change_perm, obj)
 
 

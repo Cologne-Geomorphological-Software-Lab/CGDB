@@ -1,5 +1,5 @@
 [tool.ruff]
-line-length = 110
+line-length = 72
 
 # Exclude-Files
 exclude = [
@@ -13,10 +13,6 @@ exclude = [
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    # --- Django admin forces unused argument signatures (request, obj, form, change) ---
-    "ARG001", # Unused function argument
-    "ARG002", # Unused method argument
-    "ARG005", # Unused lambda argument
     # --- Style / formatter conflicts ---
     "I001",   # isort (handled by ruff-format)
     "COM812", # Trailing comma missing (conflicts with ruff-format)
@@ -60,8 +56,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Test settings use a deliberate placeholder secret key
 "prototype/test_settings.py" = ["S105"]
-# pytest fixture signatures (config, session, exitstatus) have complex pytest-internal types
-"conftest.py" = ["ANN001"]
+# pytest fixture signatures (config, session, exitstatus) require specific names and may go unused
+"conftest.py" = ["ANN001", "ARG001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["prototype", "field_data", "analysis", "orchestration"]
