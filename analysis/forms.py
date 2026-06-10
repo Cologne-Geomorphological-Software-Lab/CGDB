@@ -16,7 +16,7 @@ class GrainSizeForm(forms.ModelForm):
             "measured_data",
         ]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
 
         self.helper = FormHelper()

@@ -8,7 +8,7 @@ from prototype.models import BaseModel
 
 
 @receiver(post_migrate)
-def setup_permission_groups(sender, **kwargs) -> None:
+def setup_permission_groups(sender: type, **kwargs: object) -> None:
     """Create/update predefined permission groups after every migrate run.
 
     Filtered to the prototype app so it only fires once per migrate, not once
@@ -22,7 +22,7 @@ def setup_permission_groups(sender, **kwargs) -> None:
 
 
 @receiver(post_save)
-def assign_permissions_to_creator(sender, instance, created, **kwargs) -> None:
+def assign_permissions_to_creator(sender: type, instance: object, created: bool, **kwargs: object) -> None:
     """Assigns all object-related permissions to the creator when the object is newly created."""
     if not issubclass(sender, BaseModel):
         return

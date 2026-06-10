@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET
 from django.utils import timezone
@@ -30,7 +30,7 @@ from prototype.models import Project
 logger = logging.getLogger(__name__)
 
 
-def documentation(request, filepath) -> HttpResponse:
+def documentation(request: HttpRequest, filepath: str) -> HttpResponse:
     doc_path = Path(settings.BASE_DIR) / "static" / "docs" / filepath
     if not doc_path.exists():
         return render(request, "404.html", status=404)
@@ -41,7 +41,7 @@ def documentation(request, filepath) -> HttpResponse:
     )
 
 
-def logout_view(request) -> HttpResponse:
+def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("/")
 
@@ -59,14 +59,14 @@ _DASHBOARD_NAV = [
 ]
 
 
-def _nav(request) -> list:
+def _nav(request: HttpRequest | None) -> list:
     path = request.path if request else ""
     return [
         {"title": n["title"], "link": n["link"], "active": path == n["active_path"]} for n in _DASHBOARD_NAV
     ]
 
 
-def map_dashboard(request) -> HttpResponse:
+def map_dashboard(request: HttpRequest) -> HttpResponse:
     from django.contrib import admin as _admin
 
     context = _admin.site.each_context(request)
@@ -75,7 +75,7 @@ def map_dashboard(request) -> HttpResponse:
 
 
 @require_GET
-def locations_geojson(request) -> HttpResponse:
+def locations_geojson(request: HttpRequest) -> HttpResponse:
     if request.user.is_superuser:
         qs = Location.objects.exclude(location__isnull=True)
     else:
@@ -103,7 +103,7 @@ def locations_geojson(request) -> HttpResponse:
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
-def dashboard_callback(request, context) -> dict:
+def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
     try:
         period_days = int(request.GET.get("period", 30))
     except (ValueError, TypeError, AttributeError):
@@ -129,10 +129,10 @@ def stat_data(period_days: int = 30) -> dict:
     since = now - timedelta(days=period_days)
     logger.debug("stat_data called at %s (period=%d days)", now, period_days)
 
-    def _pct(count, total) -> float:
+    def _pct(count: int, total: int) -> float:
         return round(count / total * 100, 2) if total > 0 else 0
 
-    def _footer(pct, period_days) -> str:
+    def _footer(pct: float, period_days: int) -> str:
         return mark_safe(
             f'<strong class="text-green-700 font-semibold dark:text-green-400">'
             f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days"

@@ -3,6 +3,8 @@
 Happy-path, error-handling and integration tests.
 Temporary files are created with tempfile and cleaned up via addCleanup.
 """
+from __future__ import annotations
+
 import os
 import tempfile
 from pathlib import Path
@@ -68,7 +70,7 @@ class GrainSizeFromFileHappyPathTest(SimpleTestCase):
         self.sample = _make_sample()
         self.method = "L"
 
-    def _parse(self, content=None):
+    def _parse(self, content: str | None = None):
         if content is not None:
             path = _make_av_file(content)
             self.addCleanup(os.unlink, path)
@@ -163,7 +165,7 @@ class GrainSizeFromFileHappyPathTest(SimpleTestCase):
 
 class GrainSizeFromFileErrorHandlingTest(SimpleTestCase):
 
-    def _parse(self, content):
+    def _parse(self, content: str):
         path = _make_av_file(content)
         self.addCleanup(os.unlink, path)
         return GrainSize.from_file(path, _make_sample(), "L")

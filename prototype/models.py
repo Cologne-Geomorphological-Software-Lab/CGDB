@@ -129,7 +129,7 @@ class Researcher(BaseModel):
         ("EX", "External"),
     ]
     position = models.CharField(max_length=5, choices=POSITION_CHOICES)
-    orcid = models.CharField(max_length=50, blank=True, null=True)
+    orcid = models.CharField(max_length=50, blank=True)
 
     class Meta:
         verbose_name_plural = "Researchers"
@@ -160,7 +160,7 @@ class Project(BaseModel):
     """
 
     title = models.CharField(max_length=200)
-    subtitle = models.CharField(max_length=200, blank=True, null=True)
+    subtitle = models.CharField(max_length=200, blank=True)
     label = models.CharField(max_length=50)
     principal_investigator = models.ManyToManyField(Researcher)
     associated_investigator = models.ManyToManyField(
@@ -183,10 +183,7 @@ class Project(BaseModel):
         blank=True,
         null=True,
     )
-    description = models.TextField(
-        blank=True,
-        null=True,
-    )
+    description = models.TextField(blank=True)
 
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),

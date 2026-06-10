@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
@@ -112,7 +114,7 @@ class MethodAdmin(ModelAdmin):
         label={"CHEM": "success", "PHY": "info", "CHRO": "warning"},
         description="Category",
     )
-    def colored_category(self, obj) -> str:
+    def colored_category(self, obj: Method) -> str:
         return obj.category
 
 

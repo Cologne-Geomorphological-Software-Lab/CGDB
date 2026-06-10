@@ -54,7 +54,7 @@ class _CreatedUpdatedAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     pass
 
 
-def _make_request(user):
+def _make_request(user: object):
     rf = RequestFactory()
     request = rf.get("/")
     request.user = user

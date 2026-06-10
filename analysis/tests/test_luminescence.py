@@ -52,7 +52,7 @@ class _LuminescenceSetup(TestCase):
 class LuminescenceDatingStrSimpleTest(SimpleTestCase):
     """Tests that do not need a DB – build instances via __new__."""
 
-    def _make(self, pk, lab_id, mineral):
+    def _make(self, pk: object, lab_id: str, mineral: str):
         obj = LuminescenceDating.__new__(LuminescenceDating)
         obj.pk = pk
         obj.laboratory_id = lab_id

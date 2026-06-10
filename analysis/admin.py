@@ -11,7 +11,8 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db.models import QuerySet
-from django.http import HttpResponse
+from django.forms import ModelForm
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import NoReverseMatch, reverse
 from django.utils.safestring import mark_safe
@@ -55,16 +56,16 @@ class SampleContextMixin:
     - response_add / response_change: after saving, return to the Sample form.
     """
 
-    def _is_sample_scoped(self, request) -> bool:
+    def _is_sample_scoped(self, request: HttpRequest) -> bool:
         url_name = getattr(getattr(request, "resolver_match", None), "url_name", "") or ""
         return url_name.startswith("field_data_sample_")
 
-    def _sample_pk_from_add_request(self, request) -> str | None:
+    def _sample_pk_from_add_request(self, request: HttpRequest) -> str | None:
         from field_data.utils import extract_sample_pk_from_get
 
         return extract_sample_pk_from_get(request.GET)
 
-    def changelist_view(self, request, extra_context=None) -> HttpResponse:
+    def changelist_view(self, request: HttpRequest, extra_context: dict | None = None) -> HttpResponse:
         if not self._is_sample_scoped(request):
             sample_pk = request.GET.get("sample__id__exact", "")
             if sample_pk and sample_pk.isdigit():
@@ -76,7 +77,9 @@ class SampleContextMixin:
                     pass
         return super().changelist_view(request, extra_context)
 
-    def add_view(self, request, form_url="", extra_context=None) -> HttpResponse:
+    def add_view(
+        self, request: HttpRequest, form_url: str = "", extra_context: dict | None = None
+    ) -> HttpResponse:
         if request.method == "GET" and not self._is_sample_scoped(request):
             sample_pk = self._sample_pk_from_add_request(request)
             if sample_pk:
@@ -88,7 +91,9 @@ class SampleContextMixin:
                     pass
         return super().add_view(request, form_url, extra_context)
 
-    def change_view(self, request, object_id, form_url="", extra_context=None) -> HttpResponse:
+    def change_view(
+        self, request: HttpRequest, object_id: str, form_url: str = "", extra_context: dict | None = None
+    ) -> HttpResponse:
         if request.method == "GET" and not self._is_sample_scoped(request):
             obj = self.get_object(request, object_id)
             if obj and obj.sample_id:
@@ -103,7 +108,7 @@ class SampleContextMixin:
                     pass
         return super().change_view(request, object_id, form_url, extra_context)
 
-    def get_changeform_initial_data(self, request) -> dict:
+    def get_changeform_initial_data(self, request: HttpRequest) -> dict:
         initial = super().get_changeform_initial_data(request)
         if "sample" not in initial:
             from urllib.parse import parse_qs
@@ -116,16 +121,18 @@ class SampleContextMixin:
                     initial["sample"] = pk_list[0]
         return initial
 
-    def _redirect_to_sample(self, request, obj) -> HttpResponse | None:
+    def _redirect_to_sample(self, request: HttpRequest, obj: object) -> HttpResponse | None:
         if "_save" in request.POST and getattr(obj, "sample_id", None):
             return redirect(reverse("admin:field_data_sample_change", args=[obj.sample_id]))
         return None
 
-    def response_add(self, request, obj, post_url_continue=None) -> HttpResponse:
+    def response_add(
+        self, request: HttpRequest, obj: object, post_url_continue: str | None = None
+    ) -> HttpResponse:
         r = self._redirect_to_sample(request, obj)
         return r or super().response_add(request, obj, post_url_continue)
 
-    def response_change(self, request, obj) -> HttpResponse:
+    def response_change(self, request: HttpRequest, obj: object) -> HttpResponse:
         r = self._redirect_to_sample(request, obj)
         return r or super().response_change(request, obj)
 
@@ -249,19 +256,19 @@ class LuminescenceDatingAdmin(
     raw_id_fields = ["sample", "raw_data"]
 
     @display(description="Luminescence age [ka]")
-    def age(self, obj) -> str:
+    def age(self, obj: LuminescenceDating) -> str:
         if obj.luminescence_age:
             return f"{round(obj.luminescence_age, 2)} ± {round(obj.age_error, 2)}"
         return "—"
 
     @display(description="Dose rate [Gy/ka]")
-    def total_dose_rate(self, obj) -> str:
+    def total_dose_rate(self, obj: LuminescenceDating) -> str:
         if obj.dose_rate:
             return f"{round(obj.dose_rate, 2)} ± {round(obj.dose_rate_error, 2)}"
         return "—"
 
     @display(description="Paleodose [Gy]")
-    def paleodose(self, obj) -> str:
+    def paleodose(self, obj: LuminescenceDating) -> str:
         if obj.palaeodose_value:
             return f"{round(obj.palaeodose_value, 2)} ± {round(obj.palaeodose_error, 2)}"
         return "—"
@@ -270,14 +277,14 @@ class LuminescenceDatingAdmin(
         label={"Quartz": "success", "Feldspar": "info", "Polymineral": "warning", "Other": "default"},
         description="Mineral",
     )
-    def colored_mineral(self, obj) -> str:
+    def colored_mineral(self, obj: LuminescenceDating) -> str:
         return obj.mineral
 
     @display(
         label={"Burial dating": "info", "Exposure dating": "success", "Other": "warning"},
         description="Approach",
     )
-    def colored_dating_approach(self, obj) -> str:
+    def colored_dating_approach(self, obj: LuminescenceDating) -> str:
         return obj.dating_approach
 
     fieldsets = (
@@ -352,7 +359,7 @@ class LuminescenceDatingAdmin(
         ),
     )
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).select_related("sample__location__project")
 
 
@@ -465,18 +472,18 @@ class CosmogenicNuclideDatingAdmin(
         },
         description="Nuclide",
     )
-    def colored_nuclide(self, obj) -> str:
+    def colored_nuclide(self, obj: CosmogenicNuclideDating) -> str:
         return obj.nuclide
 
     @display(
         label={"exposure": "success", "burial": "warning", "denudation": "info"},
         description="Approach",
     )
-    def colored_approach(self, obj) -> str:
+    def colored_approach(self, obj: CosmogenicNuclideDating) -> str:
         return obj.dating_approach
 
     @display(description="Exposure age [ka]")
-    def colored_exposure_age(self, obj) -> str:
+    def colored_exposure_age(self, obj: CosmogenicNuclideDating) -> str:
         if obj.exposure_age is None:
             return "—"
         err = f" ± {obj.exposure_age_error_external}" if obj.exposure_age_error_external else ""
@@ -537,7 +544,38 @@ class GrainSizeImportForm(forms.ModelForm):
 
     class Meta:
         model = GrainSize
-        fields = "__all__"
+        fields = [
+            "sample",
+            "raw_data",
+            "sample_weight",
+            "sample_concentration",
+            "method",
+            "classes",
+            "measured_data",
+            "clay",
+            "fine_silt",
+            "medium_silt",
+            "coarse_silt",
+            "fine_sand",
+            "medium_sand",
+            "coarse_sand",
+            "gravel",
+            "mean",
+            "mode",
+            "median",
+            "std",
+            "skew",
+            "kurtosis",
+            "fwmean",
+            "fwmedian",
+            "fwsd",
+            "fwskew",
+            "fwkurt",
+        ]
+
+
+_SAMPLE_CONC_MIN = 6  # Sympatec Helios optimal range: 6–20 % (volume concentration)
+_SAMPLE_CONC_MAX = 20
 
 
 class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
@@ -644,21 +682,21 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         ),
     )
 
-    def get_readonly_fields(self, request, obj=None) -> list:
+    def get_readonly_fields(self, request: HttpRequest, obj: GrainSize | None = None) -> list:
         readonly = list(super().get_readonly_fields(request, obj))
         if obj and obj.source == "file":
             readonly += [f for f in self._STAT_FIELDS if f not in readonly]
         return readonly
 
     @display(label={"L": "success", "C": "info", "S": "warning"}, description="Method")
-    def colored_method(self, obj) -> str:
+    def colored_method(self, obj: GrainSize) -> str:
         return obj.method
 
     @display(description="Sample concentration [%]")
-    def colored_sample_concentration(self, obj) -> str:
+    def colored_sample_concentration(self, obj: GrainSize) -> str:
         if obj.sample_concentration is None:
             return "N/A"
-        color = "success" if 6 <= obj.sample_concentration <= 20 else "danger"
+        color = "success" if _SAMPLE_CONC_MIN <= obj.sample_concentration <= _SAMPLE_CONC_MAX else "danger"
         color = color if color in {"success", "danger", "warning", "info"} else "danger"
         rounded = round(obj.sample_concentration, 1)
         return mark_safe(
@@ -666,7 +704,7 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         )
 
     @admin.display(description="Classes")
-    def classes_summary(self, obj) -> str:
+    def classes_summary(self, obj: GrainSize) -> str:
         if not obj.classes:
             return "—"
         n = len(obj.classes)
@@ -675,14 +713,14 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         return f"{n} classes, {mn}–{mx} µm"
 
     @admin.display(description="Measured data")
-    def measured_data_summary(self, obj) -> str:
+    def measured_data_summary(self, obj: GrainSize) -> str:
         if not obj.measured_data:
             return "—"
         n = len(obj.measured_data)
         total = sum(obj.measured_data)
         return f"{n} data points, sum = {round(total, 1)}"
 
-    def save_model(self, request, obj, form, change) -> None:
+    def save_model(self, request: HttpRequest, obj: GrainSize, form: ModelForm, change: bool) -> None:
         file = form.cleaned_data.get("file")
         if file:
             self.process_file(file, obj)
@@ -690,7 +728,7 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
             self.message_user(request, "File uploaded and processed successfully.", messages.SUCCESS)
         super().save_model(request, obj, form, change)
 
-    def process_file(self, file, obj) -> None:
+    def process_file(self, file: object, obj: GrainSize) -> None:
         file_path = default_storage.save(f"tmp/{file.name}", ContentFile(file.read()))
         tmp_file = default_storage.path(file_path)
 
@@ -712,7 +750,7 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         obj.sample_concentration = grain_size_instance.sample_concentration
         default_storage.delete(file_path)
 
-    def plot(self, obj) -> str:
+    def plot(self, obj: GrainSize) -> str:
         if not obj.measured_data or not obj.classes:
             return "No data available for plotting."
         fig, ax = plt.subplots(figsize=(30, 10))
@@ -777,14 +815,14 @@ class GenericMeasurementAdmin(SampleContextMixin, ExportMixin, ModelAdmin, Neste
     )
 
     @admin.display(description="Value")
-    def value_with_error(self, obj) -> str:
+    def value_with_error(self, obj: GenericMeasurement) -> str:
         if obj.value is None:
             return "—"
         if obj.error:
             return f"{round(obj.value, 4)} ± {round(obj.error, 4)}"
         return str(round(obj.value, 4))
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).select_related("method", "parameter")
 
 
@@ -803,7 +841,7 @@ class MicroXRFElementInline(admin.TabularInline):
     fields = ["element", "raster_file", "preview"]
     extra = 0
 
-    def preview(self, obj) -> str:
+    def preview(self, obj: MicroXRFElementMap) -> str:
         if obj.raster_file and obj.raster_file.name.lower().endswith((".tif", ".tiff")):
             try:
                 with obj.raster_file.open("rb") as f:

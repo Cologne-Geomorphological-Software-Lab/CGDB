@@ -6,6 +6,7 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import Group, Permission, User
 from django.db.models import QuerySet
 from django.forms import Field
+from django.http import HttpRequest
 from guardian.shortcuts import assign_perm, remove_perm
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter
@@ -18,13 +19,13 @@ from .models import Project, ProjectUserObjectPermission, Researcher, ResearchGr
 class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
     """Base admin class with object-level Guardian permissions."""
 
-    def has_add_permission(self, request) -> bool:
+    def has_add_permission(self, request: HttpRequest) -> bool:
         if request.user.is_superuser:
             return True
         add_perm = f"{self.opts.app_label}.add_{self.opts.model_name}"
         return request.user.has_perm(add_perm)
 
-    def save_model(self, request, obj, form, change) -> None:
+    def save_model(self, request: HttpRequest, obj: object, form: object, change: bool) -> None:
         if not obj.pk:
             obj.created_by = request.user
         obj.updated_by = request.user
@@ -53,13 +54,15 @@ class ProjectUserObjectPermissionInline(TabularInline):
     ordering = ["user__last_name", "user__first_name", "permission__codename"]
 
     @display(description="Access level")
-    def permission_label(self, obj) -> str:
+    def permission_label(self, obj: ProjectUserObjectPermission) -> str:
         return _PERMISSION_LABELS.get(obj.permission.codename, obj.permission.codename)
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).select_related("user", "permission")
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs) -> Field | None:
+    def formfield_for_foreignkey(
+        self, db_field: object, request: HttpRequest, **kwargs: object
+    ) -> Field | None:
         if db_field.name == "permission":
             kwargs["queryset"] = Permission.objects.filter(
                 content_type__app_label="prototype",
@@ -67,16 +70,16 @@ class ProjectUserObjectPermissionInline(TabularInline):
             ).order_by("codename")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    def has_add_permission(self, request, obj=None) -> bool:
+    def has_add_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         return request.user.is_superuser
 
-    def has_change_permission(self, request, obj=None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         return request.user.is_superuser
 
-    def has_delete_permission(self, request, obj=None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         return request.user.is_superuser
 
-    def has_view_permission(self, request, obj=None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         return request.user.is_superuser or (
             obj is not None and request.user.has_perm("prototype.change_project", obj)
         )
@@ -98,7 +101,7 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
     readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
 
     @display(header=True, description="Researcher")
-    def display_researcher(self, obj) -> list:
+    def display_researcher(self, obj: Researcher) -> list:
         if obj.user:
             initials = "".join(n[0].upper() for n in [obj.user.first_name, obj.user.last_name] if n)
             return [obj.user.get_full_name(), obj.get_position_display() or "", initials or "?"]
@@ -122,11 +125,11 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_filter_submit = True
     inlines = [ProjectUserObjectPermissionInline]
 
-    def save_related(self, request, form, formsets, change) -> None:
+    def save_related(self, request: HttpRequest, form: object, formsets: object, change: bool) -> None:
         super().save_related(request, form, formsets, change)
         self._sync_member_permissions(form.instance)
 
-    def _sync_member_permissions(self, project) -> None:
+    def _sync_member_permissions(self, project: object) -> None:
         """Sync Guardian object-permissions to match the current members M2M.
 
         Called after save_related so that project.members already reflects the
@@ -157,7 +160,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
         label={"ACTIVE": "success", "COMPLETED": "info", "PAUSED": "warning", "CANCELLED": "danger"},
         description="Status",
     )
-    def colored_status(self, obj) -> str:
+    def colored_status(self, obj: Project) -> str:
         return obj.status
 
     fieldsets = (

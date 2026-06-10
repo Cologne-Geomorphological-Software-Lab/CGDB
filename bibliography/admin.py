@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from django.contrib import admin
 from django.db.models import QuerySet
+from django.http import HttpRequest
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeNumericFilter, RelatedDropdownFilter
 from unfold.decorators import display
@@ -110,16 +113,16 @@ class ReferenceAdmin(ModelAdmin):
         },
         description="Type",
     )
-    def colored_type(self, obj) -> str:
+    def colored_type(self, obj: Reference) -> str:
         return obj.type
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request)
 
-    def has_view_permission(self, request, obj=None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: Reference | None = None) -> bool:
         return True
 
-    def has_change_permission(self, request, obj=None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: Reference | None = None) -> bool:
         if obj is None:
             return True
         change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"

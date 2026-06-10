@@ -121,7 +121,7 @@ class CreatePermissionGroupsTest(TestCase):
         buf = io.StringIO()
 
         class _FakeStdout:
-            def write(self, s):
+            def write(self, s: str):
                 buf.write(s)
 
         create_permission_groups(stdout=_FakeStdout())

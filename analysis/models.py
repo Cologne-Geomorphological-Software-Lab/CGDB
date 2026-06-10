@@ -31,8 +31,8 @@ class Algorithm(models.Model):
 
     name = models.CharField(max_length=100)
     version = models.CharField(max_length=10)
-    description = models.TextField(blank=True, null=True)
-    link = models.URLField(blank=True, null=True)
+    description = models.TextField(blank=True)
+    link = models.URLField(blank=True)
     file = models.FileField(upload_to="analysis/algorithms/", blank=True, null=True)
     CHOICES = [
         ("Python", "Python"),
@@ -87,7 +87,7 @@ class RawMeasurement(BaseModel):
         related_name="analysis_raw_data",
     )
     file = models.FileField(upload_to="analysis/raw_data/")
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True)
 
     def filename(self) -> str | None:
         return Path(self.file.name).name if self.file else None
@@ -117,7 +117,7 @@ class RawProcessing(BaseModel):
     )
 
     processed_file = models.FileField(upload_to="analysis/processed_data/")
-    processing_description = models.TextField(blank=True, null=True)
+    processing_description = models.TextField(blank=True)
 
     processed_by = models.ForeignKey(
         Researcher,
@@ -280,7 +280,7 @@ def current_year() -> int:
     return datetime.datetime.now(tz=ZoneInfo("Europe/Berlin")).date().year
 
 
-def max_value_current_year(value) -> None:
+def max_value_current_year(value: int) -> None:
     return MaxValueValidator(current_year())(value)
 
 
@@ -479,10 +479,7 @@ class LuminescenceDating(BaseModel):
         blank=True,
     )
 
-    comments = models.TextField(
-        blank=True,
-        null=True,
-    )
+    comments = models.TextField(blank=True)
 
     grain_size_min = models.IntegerField(
         verbose_name="Min. grain size [µm]",
@@ -499,7 +496,6 @@ class LuminescenceDating(BaseModel):
     aliquot_size = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
     )
 
     aliquot_number_used_for_palaeodose = models.IntegerField(
@@ -1095,7 +1091,7 @@ class CosmogenicNuclideDating(BaseModel):
         choices=[("BSc", "BSc"), ("MSc", "MSc"), ("PhD", "PhD"), ("None", "None")],
         default="None",
     )
-    comments = models.TextField(blank=True, null=True)
+    comments = models.TextField(blank=True)
 
     def __str__(self) -> str:
         lab_id = self.lab_id or (f"ID-{self.pk}" if self.pk else "Unsaved")
@@ -1618,7 +1614,7 @@ class GrainSize(BaseModel):
             self.clay,
         )
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: object, **kwargs: object) -> None:
         if self.classes is not None and self.measured_data is not None:
             (
                 self.fine_silt,
@@ -1682,7 +1678,7 @@ class GrainSize(BaseModel):
         }
 
     @classmethod
-    def from_file(cls, file_path, sample, method) -> Self:
+    def from_file(cls, file_path: str | Path, sample: Sample, method: Method) -> Self:
         """Create a GrainSize instance by parsing a .mps instrument file."""
         with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
             parsed = cls._parse_file_lines(file.readlines())
@@ -1730,7 +1726,7 @@ class MicroXRFMeasurement(BaseModel):
         null=True,
         help_text="Method/Device used",
     )
-    notes = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True)
 
     def __str__(self) -> str:
         return f"MicroXRF {self.sample} ({self.measurement_date})"

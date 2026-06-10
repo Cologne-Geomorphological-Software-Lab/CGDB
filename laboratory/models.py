@@ -5,7 +5,7 @@ from prototype.models import BaseModel, Researcher
 
 class Manufacturer(models.Model):
     name = models.CharField(max_length=100)
-    website = models.URLField(blank=True, null=True)
+    website = models.URLField(blank=True)
 
     def __str__(self) -> str:
         return self.name
@@ -24,12 +24,10 @@ class Device(models.Model):
     description = models.CharField(
         max_length=150,
         blank=True,
-        null=True,
     )
     token = models.CharField(
         max_length=5,
         blank=True,
-        null=True,
     )
     manufacturer = models.ForeignKey(
         Manufacturer,
@@ -50,16 +48,13 @@ class Accessory(models.Model):
     name = models.CharField(
         max_length=50,
     )
-    description = models.TextField(
-        blank=True,
-        null=True,
-    )
-
-    def __str__(self) -> str:
-        return f"{self.device.name} - {self.name}"
+    description = models.TextField(blank=True)
 
     class Meta:
         verbose_name_plural = "Accessories"
+
+    def __str__(self) -> str:
+        return f"{self.device.name} - {self.name}"
 
 
 class AccessoryParameter(models.Model):
@@ -75,7 +70,6 @@ class AccessoryParameter(models.Model):
     parameter_unit = models.CharField(
         max_length=5,
         blank=True,
-        null=True,
     )
 
     def __str__(self) -> str:
@@ -95,12 +89,10 @@ class Method(models.Model):
     description = models.CharField(
         max_length=40,
         blank=True,
-        null=True,
     )
     token = models.CharField(
         max_length=5,
         blank=True,
-        null=True,
     )
     device = models.ForeignKey(
         Device,
@@ -127,7 +119,6 @@ class Method(models.Model):
         max_length=4,
         choices=LABORATORY_CHOICES,
         blank=True,
-        null=True,
     )
     available = models.BooleanField(default=True)
 
@@ -146,10 +137,7 @@ class Calibration(BaseModel):
         on_delete=models.RESTRICT,
         null=True,
     )
-    remarks = models.TextField(
-        blank=True,
-        null=True,
-    )
+    remarks = models.TextField(blank=True)
 
     def __str__(self) -> str:
         return f"{self.device} – {self.date}"
@@ -162,10 +150,7 @@ class Firmware(models.Model):
     )
     version = models.CharField(max_length=50)
     installation_date = models.DateField()
-    changelog = models.TextField(
-        blank=True,
-        null=True,
-    )
+    changelog = models.TextField(blank=True)
 
     def __str__(self) -> str:
         return f"{self.device.name} - {self.version}"

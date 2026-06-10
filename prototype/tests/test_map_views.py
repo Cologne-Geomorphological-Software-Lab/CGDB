@@ -4,6 +4,8 @@ Covers:
 - map_dashboard: authentication redirect, HTTP 200 for staff
 - locations_geojson: structure, permission filtering, geometry exclusion
 """
+from __future__ import annotations
+
 import json
 
 from django.contrib.auth.models import User
@@ -16,7 +18,7 @@ from field_data.models import Location
 from prototype.models import Project
 
 
-def _make_point_location(identifier, project=None, data_source="internal", with_geometry=True):
+def _make_point_location(identifier: str, project: object = None, data_source: str = "internal", with_geometry: bool = True):
     """Helper: create a Location; set easting/northing so save() builds the PointField."""
     loc = Location(
         identifier=identifier,
@@ -190,12 +192,12 @@ class LocationsGeoJSONPermissionTest(TestCase):
     def setUp(self):
         assign_perm("prototype.view_project", self.user_a, self.project_a)
 
-    def _fetch(self, user):
+    def _fetch(self, user: object):
         c = Client()
         c.login(username=user.username, password="pw")
         return json.loads(c.get("/api/locations.geojson").content)["features"]
 
-    def _ids(self, features):
+    def _ids(self, features: object):
         return {f["properties"]["identifier"] for f in features}
 
     def test_superuser_sees_all_locations(self):

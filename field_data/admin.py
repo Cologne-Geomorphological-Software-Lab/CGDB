@@ -7,7 +7,7 @@ from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
 from django.db.models import QuerySet
 from django.forms import Field
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from import_export.admin import ExportMixin
@@ -167,13 +167,15 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     search_fields = ["identifier", "campaign__label"]
 
     @display(label={"internal": "success", "literature": "info"}, description="Data Source")
-    def colored_data_source(self, obj) -> str:
+    def colored_data_source(self, obj: Location) -> str:
         return obj.data_source
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).select_related("project", "campaign", "reference")
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs) -> Field | None:
+    def formfield_for_manytomany(
+        self, db_field: object, request: HttpRequest, **kwargs: object
+    ) -> Field | None:
         if db_field.name == "tags":
             location_ct = ContentType.objects.get_for_model(Location)
             qs = Tag.objects.filter(content_type=location_ct)
@@ -361,7 +363,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         },
         description="Season",
     )
-    def colored_season(self, obj) -> str:
+    def colored_season(self, obj: Campaign) -> str:
         return obj.season
 
     fieldsets = (
@@ -484,7 +486,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     def get_urls(self) -> list:
         from importlib import import_module
 
-        def _load(dotted) -> type:
+        def _load(dotted: str) -> type:
             mod, cls = dotted.rsplit(".", 1)
             return getattr(import_module(mod), cls)
 
@@ -493,14 +495,14 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
             model_class = _load(model_path)
             prefix = f"field_data_sample_{slug}"
 
-            def make_views(m) -> tuple:
-                def _cl(request, sample_pk) -> HttpResponse:
+            def make_views(m: type) -> tuple:
+                def _cl(request: HttpRequest, sample_pk: int) -> HttpResponse:
                     return self._analysis_changelist_view(request, sample_pk, m)
 
-                def _add(request, sample_pk) -> HttpResponse:
+                def _add(request: HttpRequest, sample_pk: int) -> HttpResponse:
                     return self._analysis_add_view(request, sample_pk, m)
 
-                def _change(request, sample_pk, object_id) -> HttpResponse:
+                def _change(request: HttpRequest, sample_pk: int, object_id: str) -> HttpResponse:
                     return self._analysis_change_view(request, sample_pk, m, object_id)
 
                 return _cl, _add, _change
@@ -519,13 +521,15 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
             ]
         return custom_urls + super().get_urls()
 
-    def _get_accessible_sample(self, request, sample_pk) -> None:
+    def _get_accessible_sample(self, request: HttpRequest, sample_pk: int) -> None:
         """Return Sample if accessible; raise 404 if missing, 403 if forbidden."""
         get_object_or_404(Sample, pk=sample_pk)
         if not self.get_queryset(request).filter(pk=sample_pk).exists():
             raise PermissionDenied
 
-    def _analysis_changelist_view(self, request, sample_pk, model_class) -> HttpResponse:
+    def _analysis_changelist_view(
+        self, request: HttpRequest, sample_pk: int, model_class: type
+    ) -> HttpResponse:
         """Render an analysis model's changelist filtered for sample_pk."""
         self._get_accessible_sample(request, sample_pk)
         analysis_admin = self.admin_site._registry[model_class]
@@ -555,7 +559,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     # Add-view helpers
     # ------------------------------------------------------------------
 
-    def _analysis_add_view(self, request, sample_pk, model_class) -> HttpResponse:
+    def _analysis_add_view(self, request: HttpRequest, sample_pk: int, model_class: type) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
         analysis_admin = self.admin_site._registry[model_class]
         mutable_get = request.GET.copy()
@@ -574,7 +578,9 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     # Change-view helpers
     # ------------------------------------------------------------------
 
-    def _analysis_change_view(self, request, sample_pk, model_class, object_id) -> HttpResponse:
+    def _analysis_change_view(
+        self, request: HttpRequest, sample_pk: int, model_class: type, object_id: str
+    ) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
         # Ensure the analysis object actually belongs to the declared sample so
         # a crafted URL like /sample/1/luminescencedating/99/change/ cannot expose
@@ -590,7 +596,9 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
             )
         return response
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs) -> Field | None:
+    def formfield_for_manytomany(
+        self, db_field: object, request: HttpRequest, **kwargs: object
+    ) -> Field | None:
         if db_field.name == "tags":
             sample_ct = ContentType.objects.get_for_model(Sample)
             qs = Tag.objects.filter(content_type=sample_ct)
@@ -631,7 +639,7 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_filter_sheet = False
     list_filter_submit = True
 
-    def get_search_results(self, request, queryset, search_term) -> tuple:
+    def get_search_results(self, request: HttpRequest, queryset: QuerySet, search_term: str) -> tuple:
         queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
         app_label = request.GET.get("app_label")
         field_name = request.GET.get("field_name")

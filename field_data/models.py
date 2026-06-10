@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
@@ -672,7 +673,7 @@ class Location(BaseModel):
                     "Literature data source requires a reference assignment.",
                 )
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: object, **kwargs: object) -> None:
         if self.easting is not None and self.northing is not None:
             self.location = Point(
                 self.easting,
@@ -966,7 +967,7 @@ class Sample(BaseModel):
         if self.project and self.location and self.location.project and self.location.project != self.project:
             raise ValidationError("Sample project must match location project.")
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: object, **kwargs: object) -> None:
         if self.location and self.location.project and not self.project:
             self.project = self.location.project
 

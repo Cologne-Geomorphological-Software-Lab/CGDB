@@ -8,7 +8,7 @@ from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 
 
-def _q(*specs, actions=None) -> Q:
+def _q(*specs: str, actions: list[str] | None = None) -> Q:
     """Build a Q-filter for the given model specs and actions.
 
     specs   - "app_label.model_name" strings
@@ -121,7 +121,7 @@ GROUPS = {
 }
 
 
-def create_permission_groups(reset=False, stdout=None) -> tuple:
+def create_permission_groups(reset: bool = False, stdout: object = None) -> tuple:
     """Create or update predefined permission groups. Idempotent.
 
     reset=True clears all permissions from each group before re-adding —

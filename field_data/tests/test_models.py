@@ -48,7 +48,7 @@ class _BaseSetup(TestCase):
 class LocationCleanTest(_BaseSetup):
     """Unit-level validation tests for Location.clean()."""
 
-    def _make_location(self, **kwargs):
+    def _make_location(self, **kwargs: object):
         """Returns an unsaved Location – does NOT call save() or clean()."""
         defaults = {"identifier": "TEMP"}
         defaults.update(kwargs)
@@ -193,7 +193,7 @@ class LocationSaveTest(_BaseSetup):
 class SampleCleanTest(_BaseSetup):
     """Unit-level validation tests for Sample.clean()."""
 
-    def _make_sample(self, **kwargs):
+    def _make_sample(self, **kwargs: object):
         defaults = {"identifier": "TEMP_S"}
         defaults.update(kwargs)
         return Sample(**defaults)

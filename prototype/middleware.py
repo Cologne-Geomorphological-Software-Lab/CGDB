@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import threading
 
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 
 _user = threading.local()
 
 
 class CurrentUserMiddleware:
-    def __init__(self, get_response) -> None:
+    def __init__(self, get_response: object) -> None:
         self.get_response = get_response
 
-    def __call__(self, request) -> HttpResponse:
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         _user.value = request.user
         return self.get_response(request)
 

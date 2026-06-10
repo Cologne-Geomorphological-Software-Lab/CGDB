@@ -14,6 +14,9 @@ Usage:
              Safe to re-run after adding new models or renaming permissions.
 """
 
+from __future__ import annotations
+
+
 from django.core.management.base import BaseCommand
 
 from prototype.permissions import create_permission_groups
@@ -22,12 +25,12 @@ from prototype.permissions import create_permission_groups
 class Command(BaseCommand):
     help = "Create predefined permission groups for CGDB."
 
-    def add_arguments(self, parser) -> None:
+    def add_arguments(self, parser: object) -> None:
         parser.add_argument(
             "--reset",
             action="store_true",
             help="Clear all permissions from each group before re-adding them.",
         )
 
-    def handle(self, *args, **options) -> None:
+    def handle(self, *args: object, **options: object) -> None:
         create_permission_groups(reset=options["reset"], stdout=self.stdout)

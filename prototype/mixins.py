@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q, QuerySet
+from django.http import HttpRequest
 from guardian.shortcuts import get_objects_for_user
 
 from prototype.models import Project
 
 
-def _has_data_source_field(model) -> bool:
+def _has_data_source_field(model: type) -> bool:
     """Return True only when the model has a real database field named data_source."""
     try:
         model._meta.get_field("data_source")
@@ -14,7 +17,7 @@ def _has_data_source_field(model) -> bool:
         return False
 
 
-def _accessible_projects(user) -> QuerySet:
+def _accessible_projects(user: object) -> QuerySet:
     return get_objects_for_user(
         user,
         "prototype.view_project",
@@ -26,7 +29,7 @@ def _accessible_projects(user) -> QuerySet:
     )
 
 
-def _addable_projects(user) -> QuerySet:
+def _addable_projects(user: object) -> QuerySet:
     """Projects where the user has add_project permission (can create data within)."""
     return get_objects_for_user(
         user,
@@ -42,7 +45,7 @@ def _addable_projects(user) -> QuerySet:
 class CreatedUpdatedModelAdminMixin:
     """Sets created_by and updated_by on save. Use as a base for admin classes that manage BaseModel objects."""
 
-    def save_model(self, request, obj, form, change) -> None:
+    def save_model(self, request: HttpRequest, obj: object, form: object, change: bool) -> None:
         if not obj.pk:
             obj.created_by = request.user
         obj.updated_by = request.user
@@ -56,7 +59,7 @@ class ProjectBasedPermissionMixin:
     editable only by superusers.
     """
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         if request.user.is_superuser:
             return super().get_queryset(request)
 
@@ -69,12 +72,12 @@ class ProjectBasedPermissionMixin:
             )
         return qs.filter(project_id__in=accessible_project_ids)
 
-    def has_add_permission(self, request) -> bool:
+    def has_add_permission(self, request: HttpRequest) -> bool:
         if request.user.is_superuser:
             return True
         return _addable_projects(request.user).exists()
 
-    def has_change_permission(self, request, obj=None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -88,7 +91,7 @@ class ProjectBasedPermissionMixin:
 
         return super().has_change_permission(request, obj)
 
-    def has_view_permission(self, request, obj=None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -99,7 +102,7 @@ class ProjectBasedPermissionMixin:
 
         return super().has_view_permission(request, obj)
 
-    def has_delete_permission(self, request, obj=None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -121,7 +124,7 @@ class GuardianPermissionMixin:
     and use Guardian permissions.
     """
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
@@ -142,25 +145,25 @@ class GuardianPermissionMixin:
 
         return qs.filter(id__in=accessible_objects.values_list("id", flat=True))
 
-    def has_add_permission(self, request) -> bool:
+    def has_add_permission(self, request: HttpRequest) -> bool:
         if request.user.is_superuser:
             return True
         add_perm = f"{self.opts.app_label}.add_{self.opts.model_name}"
         return request.user.has_perm(add_perm)
 
-    def has_change_permission(self, request, obj=None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
         return request.user.has_perm(change_perm, obj)
 
-    def has_view_permission(self, request, obj=None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         view_perm = f"{self.opts.app_label}.view_{self.opts.model_name}"
         return request.user.has_perm(view_perm, obj)
 
-    def has_delete_permission(self, request, obj=None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         delete_perm = f"{self.opts.app_label}.delete_{self.opts.model_name}"
@@ -180,7 +183,7 @@ class NestedProjectPermissionMixin:
             "project_path must be defined or get_project_filter_path must be overridden",
         )
 
-    def get_project_from_obj(self, obj) -> object:
+    def get_project_from_obj(self, obj: object) -> object:
         if self.project_path:
             current_obj = obj
             for attr in self.project_path.split("__"):
@@ -192,7 +195,7 @@ class NestedProjectPermissionMixin:
             "project_path must be defined or get_project_from_obj must be overridden",
         )
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         if request.user.is_superuser:
             return super().get_queryset(request)
 
@@ -201,12 +204,12 @@ class NestedProjectPermissionMixin:
         filter_kwargs = {self.get_project_filter_path(): accessible_project_ids}
         return qs.filter(**filter_kwargs)
 
-    def has_add_permission(self, request) -> bool:
+    def has_add_permission(self, request: HttpRequest) -> bool:
         if request.user.is_superuser:
             return True
         return _addable_projects(request.user).exists()
 
-    def has_change_permission(self, request, obj=None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -216,7 +219,7 @@ class NestedProjectPermissionMixin:
             return request.user.has_perm("prototype.change_project", project)
         return super().has_change_permission(request, obj)
 
-    def has_view_permission(self, request, obj=None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -226,7 +229,7 @@ class NestedProjectPermissionMixin:
             return request.user.has_perm("prototype.view_project", project)
         return super().has_view_permission(request, obj)
 
-    def has_delete_permission(self, request, obj=None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -241,7 +244,7 @@ class HybridProjectPermissionMixin:
     """Mixin for models with both a direct project FK and an indirect one
     through location (e.g. Sample which can have project or location.project)."""
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
         if request.user.is_superuser:
             return super().get_queryset(request)
 
@@ -251,19 +254,19 @@ class HybridProjectPermissionMixin:
             Q(project_id__in=accessible_project_ids) | Q(location__project_id__in=accessible_project_ids),
         )
 
-    def has_add_permission(self, request) -> bool:
+    def has_add_permission(self, request: HttpRequest) -> bool:
         if request.user.is_superuser:
             return True
         return _addable_projects(request.user).exists()
 
-    def _get_project(self, obj) -> object:
+    def _get_project(self, obj: object) -> object:
         if hasattr(obj, "project") and obj.project:
             return obj.project
         if hasattr(obj, "location") and obj.location and hasattr(obj.location, "project"):
             return obj.location.project
         return None
 
-    def has_change_permission(self, request, obj=None) -> bool:
+    def has_change_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -273,7 +276,7 @@ class HybridProjectPermissionMixin:
             return request.user.has_perm("prototype.change_project", project)
         return super().has_change_permission(request, obj)
 
-    def has_view_permission(self, request, obj=None) -> bool:
+    def has_view_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -283,7 +286,7 @@ class HybridProjectPermissionMixin:
             return request.user.has_perm("prototype.view_project", project)
         return super().has_view_permission(request, obj)
 
-    def has_delete_permission(self, request, obj=None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
         if obj is None:
             return True
         if request.user.is_superuser:

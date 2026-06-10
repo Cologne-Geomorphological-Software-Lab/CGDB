@@ -20,7 +20,7 @@ from django.test import SimpleTestCase
 from analysis.models import GrainSize
 
 
-def _make_grain_size(classes, measured_data):
+def _make_grain_size(classes: list, measured_data: list):
     """Return an unsaved GrainSize with the given classes and measured_data."""
     gs = GrainSize.__new__(GrainSize)
     gs.classes = classes

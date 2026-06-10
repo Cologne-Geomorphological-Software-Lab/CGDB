@@ -32,7 +32,6 @@ class ReferenceKeyword(BaseModel):
     keyword_ger = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
 
     def __str__(self) -> str:
@@ -96,7 +95,6 @@ class Reference(BaseModel):
     journal = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     volume = models.IntegerField(
         blank=True,
@@ -109,17 +107,14 @@ class Reference(BaseModel):
     pages = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     publisher = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     location_of_publication = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     CHOICES = [
         ("Monography", "Monography"),
@@ -139,7 +134,6 @@ class Reference(BaseModel):
     doi = models.URLField(
         max_length=50,
         blank=True,
-        null=True,
     )
     issn = models.IntegerField(
         blank=True,
@@ -149,19 +143,16 @@ class Reference(BaseModel):
     isbn_print = models.CharField(
         max_length=50,
         blank=True,
-        null=True,
         verbose_name="ISBN Print",
     )
     isbn_online = models.CharField(
         max_length=50,
         blank=True,
-        null=True,
         verbose_name="ISBN Online",
     )
     how_to_cite = models.CharField(
         max_length=350,
         blank=True,
-        null=True,
     )
     keywords = models.ManyToManyField(
         ReferenceKeyword,

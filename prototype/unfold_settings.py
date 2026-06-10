@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from django.conf import settings
+from django.http import HttpRequest
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
@@ -10,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 _UNSET = object()
 
 
-def _sample_pk_from_request(request) -> str | None:
+def _sample_pk_from_request(request: HttpRequest) -> str | None:
     """Extract the current sample PK from the request URL context.
 
     Covers four cases:
@@ -31,7 +32,7 @@ def _sample_pk_from_request(request) -> str | None:
     return result
 
 
-def _compute_sample_pk(request) -> str | None:
+def _compute_sample_pk(request: HttpRequest) -> str | None:
     m = re.search(r"/field_data/sample/(\d+)/", request.path)
     if m:
         return m.group(1)
@@ -65,56 +66,56 @@ def _compute_sample_pk(request) -> str | None:
     return None
 
 
-def _sample_link(request) -> str:
+def _sample_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_change", args=[pk])
     return reverse("admin:field_data_sample_changelist")
 
 
-def _generic_measurement_link(request) -> str:
+def _generic_measurement_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_genericmeasurement", args=[pk])
     return reverse("admin:analysis_genericmeasurement_changelist")
 
 
-def _grainsize_link(request) -> str:
+def _grainsize_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_grainsize", args=[pk])
     return reverse("admin:analysis_grainsize_changelist")
 
 
-def _luminescence_link(request) -> str:
+def _luminescence_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_luminescencedating", args=[pk])
     return reverse("admin:analysis_luminescencedating_changelist")
 
 
-def _radiocarbon_link(request) -> str:
+def _radiocarbon_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_radiocarbondating", args=[pk])
     return reverse("admin:analysis_radiocarbondating_changelist")
 
 
-def _counting_link(request) -> str:
+def _counting_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_counting", args=[pk])
     return reverse("admin:analysis_counting_changelist")
 
 
-def _microxrf_link(request) -> str:
+def _microxrf_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_microxrfmeasurement", args=[pk])
     return reverse("admin:analysis_microxrfmeasurement_changelist")
 
 
-def _cosmogenic_link(request) -> str:
+def _cosmogenic_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_cosmogenicnuclidedating", args=[pk])
@@ -390,7 +391,7 @@ CRISPY_TEMPLATE_PACK = "unfold_crispy"
 CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 
 
-def environment_callback(request) -> list:
+def environment_callback(request: HttpRequest) -> list:
     """Callback has to return a list of two values representing text value and the color type of the label
     displayed in top right corner."""
     label = getattr(settings, "UNFOLD_ENVIRONMENT_LABEL", "Production")
@@ -398,7 +399,7 @@ def environment_callback(request) -> list:
     return [label, color]
 
 
-def badge_callback(request) -> int:
+def badge_callback(request: HttpRequest) -> int:
     """Return an integer badge value based on the current user.
 
     Currently this returns the number of permissions for authenticated users, or 0 for anonymous users.
@@ -409,5 +410,5 @@ def badge_callback(request) -> int:
     return len(user.get_all_permissions())
 
 
-def permission_callback(request) -> bool:
+def permission_callback(request: HttpRequest) -> bool:
     return request.user.has_perm("prototype.change_project")
