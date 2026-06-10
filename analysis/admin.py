@@ -1,6 +1,5 @@
 import base64
 import io
-import os
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -385,7 +384,7 @@ class GrainSizeImportForm(forms.ModelForm):
         if not file:
             return file
 
-        if not file.name.endswith(".$av"):
+        if not file.name.lower().endswith(".$av"):
             raise ValidationError(_("Invalid file type. Only .$av files are allowed."))
 
         max_size_mb = 10
@@ -523,6 +522,7 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         if obj.sample_concentration is None:
             return "N/A"
         color = "success" if 6 <= obj.sample_concentration <= 20 else "danger"
+        color = color if color in {"success", "danger", "warning", "info"} else "danger"
         rounded = round(obj.sample_concentration, 1)
         return mark_safe(
             f'<span class="text-{color}-600 dark:text-{color}-400 font-semibold">{rounded} %</span>'
@@ -555,7 +555,7 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
 
     def process_file(self, file, obj):
         file_path = default_storage.save(f"tmp/{file.name}", ContentFile(file.read()))
-        tmp_file = os.path.join(default_storage.location, file_path)
+        tmp_file = default_storage.path(file_path)
 
         grain_size_instance = GrainSize.from_file(tmp_file, obj.sample, obj.method)
 
