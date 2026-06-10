@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import threading
+from typing import TYPE_CHECKING
 
-from django.http import HttpRequest, HttpResponse
+if TYPE_CHECKING:
+    from django.http import HttpRequest, HttpResponse
 
 _user = threading.local()
 

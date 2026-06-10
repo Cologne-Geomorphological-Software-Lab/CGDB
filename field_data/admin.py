@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
-from django.db.models import QuerySet
-from django.forms import Field
-from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from import_export.admin import ExportMixin
@@ -40,6 +38,11 @@ from .models import (
     Transect,
 )
 from .resources import LocationResource
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.forms import Field
+    from django.http import HttpRequest, HttpResponse
 
 
 class SampleTabularInline(TabularInline):
@@ -126,7 +129,37 @@ class ExposureTypeAdmin(ExportMixin, ModelAdmin):
     list_filter_submit = True
 
 
-class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+class TagFilterMixin:
+    """Restrict the tags M2M dropdown to the current model's content type and project."""
+
+    def formfield_for_manytomany(
+        self,
+        db_field: object,
+        request: HttpRequest,
+        **kwargs: object,
+    ) -> Field | None:
+        """Filter tag choices to the current model's content type and project."""
+        if db_field.name == "tags":
+            ct = ContentType.objects.get_for_model(self.model)
+            qs = Tag.objects.filter(content_type=ct)
+            object_id = request.resolver_match.kwargs.get("object_id")
+            if object_id:
+                try:
+                    project = self.model.objects.values_list(
+                        "project",
+                        flat=True,
+                    ).get(pk=object_id)
+                    if project:
+                        qs = qs.filter(project=project)
+                except self.model.DoesNotExist:
+                    pass
+            kwargs["queryset"] = qs
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+
+class LocationAdmin(
+    TagFilterMixin, ExportMixin, ModelAdmin, ProjectBasedPermissionMixin
+):
     """Admin interface for Location records with export and project-based permissions."""
 
     save_on_top = True
@@ -203,30 +236,6 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
             .get_queryset(request)
             .select_related("project", "campaign", "reference")
         )
-
-    def formfield_for_manytomany(
-        self,
-        db_field: object,
-        request: HttpRequest,
-        **kwargs: object,
-    ) -> Field | None:
-        """Restrict tag choices to those matching the location's content type and project."""
-        if db_field.name == "tags":
-            location_ct = ContentType.objects.get_for_model(Location)
-            qs = Tag.objects.filter(content_type=location_ct)
-            object_id = request.resolver_match.kwargs.get("object_id")
-            if object_id:
-                try:
-                    project = Location.objects.values_list(
-                        "project",
-                        flat=True,
-                    ).get(pk=object_id)
-                    if project:
-                        qs = qs.filter(project=project)
-                except Location.DoesNotExist:
-                    pass
-            kwargs["queryset"] = qs
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     fieldsets = (
         (
@@ -483,7 +492,9 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
 
 
-class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
+class SampleAdmin(
+    TagFilterMixin, ExportMixin, ModelAdmin, HybridProjectPermissionMixin
+):
     """Admin interface for Sample records with analysis sub-views and hybrid project permissions."""
 
     save_on_top = True
@@ -641,7 +652,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     ) -> HttpResponse:
         """Render an analysis model's changelist filtered for sample_pk."""
         self._get_accessible_sample(request, sample_pk)
-        analysis_admin = self.admin_site._registry[model_class]
+        analysis_admin = self.admin_site.get_model_admin(model_class)
 
         # Inject the sample filter — changelist reads this from GET params
         mutable_get = request.GET.copy()
@@ -677,7 +688,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         model_class: type,
     ) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
-        analysis_admin = self.admin_site._registry[model_class]
+        analysis_admin = self.admin_site.get_model_admin(model_class)
         mutable_get = request.GET.copy()
         mutable_get["sample"] = str(sample_pk)
         request.GET = mutable_get
@@ -706,7 +717,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         # a crafted URL like /sample/1/luminescencedating/99/change/ cannot expose
         # a measurement that belongs to an inaccessible sample.
         get_object_or_404(model_class, pk=object_id, sample_id=sample_pk)
-        analysis_admin = self.admin_site._registry[model_class]
+        analysis_admin = self.admin_site.get_model_admin(model_class)
         response = analysis_admin.change_view(request, str(object_id))
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
@@ -715,30 +726,6 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
                 {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
         return response
-
-    def formfield_for_manytomany(
-        self,
-        db_field: object,
-        request: HttpRequest,
-        **kwargs: object,
-    ) -> Field | None:
-        """Restrict tag choices to those matching the sample's content type and project."""
-        if db_field.name == "tags":
-            sample_ct = ContentType.objects.get_for_model(Sample)
-            qs = Tag.objects.filter(content_type=sample_ct)
-            object_id = request.resolver_match.kwargs.get("object_id")
-            if object_id:
-                try:
-                    project_id = Sample.objects.values_list(
-                        "project",
-                        flat=True,
-                    ).get(pk=object_id)
-                    if project_id:
-                        qs = qs.filter(project=project_id)
-                except Sample.DoesNotExist:
-                    pass
-            kwargs["queryset"] = qs
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 class SampleTypeAdmin(ExportMixin, ModelAdmin):
@@ -803,7 +790,10 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
                 object_pk = int(match.group(1))
                 # Validate via the model's own admin queryset (permission-filtered) so a
                 # crafted Referer header cannot expose data from inaccessible projects.
-                model_admin = self.admin_site._registry.get(model_class)
+                try:
+                    model_admin = self.admin_site.get_model_admin(model_class)
+                except admin.sites.NotRegistered:
+                    model_admin = None
                 if model_admin:
                     accessible = model_admin.get_queryset(request).filter(
                         pk=object_pk,

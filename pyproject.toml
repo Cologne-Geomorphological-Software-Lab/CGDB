@@ -14,46 +14,40 @@ exclude = [
 select = ["ALL"]
 ignore = [
     # --- Style / formatter ---
-    "E501",   # Line too long (enforced by line-length above)
+    "E501",    # Line too long (enforced by line-length above)
+    "COM812",  # Trailing comma: ruff-format manages this; COM812 conflicts with the formatter
     # --- Django-specific exemptions ---
-    "RUF012", # ClassVar on mutable class attributes: no ruff auto-fix, 211 Django admin/model attrs
-    "SLF001", # Private member accessed: _meta is Django's public API despite the underscore
-    # --- Exception / try patterns that conflict with Django idioms ---
-    "TRY003", # Long exception messages: Django ValidationError style
-    "EM101",  # Raw string in exception: same as above
-    "TRY300", # try/else block: rarely used in Django views
-    "TRY301", # Abstract raise: not applicable to Django middleware/admin patterns
-    "TRY400", # logging.error vs logging.exception: intentional in several hooks
-    "BLE001", # Blind except Exception: necessary in some admin hooks for safety
-    # --- Intentionally kept for readability in scientific/admin context ---
-    "DTZ001", # datetime without tzinfo: make_aware(datetime(...)) IS the Django tz pattern
-    "ERA001", # Commented-out code: disabled Dagster schedules and planned features
-    "INP001", # Implicit namespace package: project layout
-    # --- TYPE_CHECKING import splitting: Django ORM metaclasses make this fragile ---
-    "TC001",  # Move first-party import into TYPE_CHECKING block
-    "TC002",  # Move third-party import into TYPE_CHECKING block
-    "TC003",  # Move standard-library import into TYPE_CHECKING block
+    "RUF012",  # ClassVar on mutable class attributes: no ruff auto-fix, 211 Django admin/model attrs
+    "SLF001",  # Private member accessed: Model._meta is Django's documented API for model metadata
     # --- Lazy imports inside functions: Django pattern to avoid circular imports ---
-    "PLC0415",# import-outside-top-level: e.g. apps.get_model(), signals, admin inside ready()
-    # --- Module-level imports after setup code: test/conf files configure Django first ---
-    "E402",   # module-import-not-at-top: conftest.py, test_settings.py, docs/conf.py
-    # --- Python builtins shadowed by intentional Sphinx/Django conventions ---
-    "A001",   # builtin-variable-shadowing: Sphinx `copyright` variable is required
-    # --- Boolean arguments: Django save_model(change), signals(created), commands(reset) use bool positionally ---
-    "FBT001", # boolean-type-hint-positional-argument: Django/signal convention
-    "FBT002", # boolean-default-value-positional-argument: existing internal API
-    # --- pytest global for test media root: standard pytest fixture pattern ---
-    "PLW0603",# global-statement: _TEST_MEDIA_ROOT shared across fixture setup/teardown
+    "PLC0415", # import-outside-top-level: e.g. apps.get_model(), signals, admin inside ready()
+    # --- Boolean arguments: Django save_model(change) and signals(created) require positional bool ---
+    "FBT001",  # boolean-type-hint-positional-argument: Django/signal convention
     # --- Unicode in scientific notation and technical documentation ---
-    "RUF001", # Ambiguous Unicode in strings (σ, isotope symbols)
-    "RUF003", # Ambiguous Unicode in comments (EN dash in ranges)
+    "RUF001",  # Ambiguous Unicode in strings (σ, α, γ, isotope symbols)
+    "RUF003",  # Ambiguous Unicode in comments (EN dash in ranges)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Test settings use a deliberate placeholder secret key
-"prototype/test_settings.py" = ["S105"]
+# Test settings use a deliberate placeholder secret key; E402 because Django setup precedes imports
+"prototype/test_settings.py" = ["S105", "E402"]
 # pytest fixture signatures (config, session, exitstatus) require specific names and may go unused
-"conftest.py" = ["ANN001", "ARG001"]
+# PLW0603: global _TEST_MEDIA_ROOT shared across fixture setup/teardown (standard pytest pattern)
+"conftest.py" = ["ANN001", "ARG001", "PLW0603"]
+# manage.py is Django-generated and must not be modified
+"manage.py" = ["TRY003", "EM101"]
+# GrainSizeImportForm.clean_file: broad catch converts any read error to ValidationError (Django form pattern)
+# MicroXRFAdmin.preview: broad catch returns a safe error string in a display-only method
+# TRY301: raise inside try is the Django ValidationError pattern in clean_*
+"analysis/admin.py" = ["BLE001", "TRY301"]
+# Dagster workspace: namespace packages intentional; context.log has no .exception(); broad catch is asset contract
+"orchestration/dagster_home/assets.py" = ["INP001", "BLE001", "TRY300", "TRY400"]
+"orchestration/dagster_home/jobs.py" = ["INP001"]
+"orchestration/dagster_home/repository.py" = ["INP001", "ERA001"]
+# Sphinx docs dir: not a Python package; copyright variable is a Sphinx requirement; E402 because sys.path is set first
+"docs/source/conf.py" = ["INP001", "A001", "E402"]
+# make_aware(datetime(...)) is the correct Django DST-safe pattern; naive datetime is only intermediate
+"prototype/views.py" = ["DTZ001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["prototype", "field_data", "analysis", "orchestration"]
@@ -61,3 +55,12 @@ known-third-party = ["django", "rest_framework", "dagster"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.bandit]
+exclude_dirs = ["venv"]
+# B105/B106: all instances are settings templates or test fixture passwords — intentional
+# B101: assert statements are legitimate in non-test production code here
+skips = ["B101", "B105", "B106"]
+
+[dependency-groups]
+dev = ["radon", "vulture", "pylint", "bandit", "lizard", "pytest-cov", "mutmut", "wily", "xenon", "pyupgrade", "ruff", "mypy", "basedpyright", "pre-commit"]

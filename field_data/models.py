@@ -688,18 +688,17 @@ class Location(BaseModel):
         """Validate the data_source logic for project/reference assignment."""
         if self.data_source == "internal":
             if not self.project:
-                raise ValidationError(
-                    "Internal data source requires a project assignment.",
-                )
+                msg = "Internal data source requires a project assignment."
+                raise ValidationError(msg)
             if self.reference:
-                raise ValidationError(
-                    "Internal data source cannot have a reference assignment.",
+                msg = (
+                    "Internal data source cannot have a reference assignment."
                 )
+                raise ValidationError(msg)
         elif self.data_source == "literature":
             if not self.reference:
-                raise ValidationError(
-                    "Literature data source requires a reference assignment.",
-                )
+                msg = "Literature data source requires a reference assignment."
+                raise ValidationError(msg)
 
     def save(self, *args: object, **kwargs: object) -> None:
         """Compute the location point from easting/northing before saving."""
@@ -991,9 +990,8 @@ class Sample(BaseModel):
     def clean(self) -> None:
         """Validate that the sample has a project or location and that they are consistent."""
         if not self.project and not self.location:
-            raise ValidationError(
-                "Sample must have either a project or a location.",
-            )
+            msg = "Sample must have either a project or a location."
+            raise ValidationError(msg)
 
         if (
             self.project
@@ -1001,9 +999,8 @@ class Sample(BaseModel):
             and self.location.project
             and self.location.project != self.project
         ):
-            raise ValidationError(
-                "Sample project must match location project.",
-            )
+            msg = "Sample project must match location project."
+            raise ValidationError(msg)
 
     def save(self, *args: object, **kwargs: object) -> None:
         """Assign project from location if not set, then validate and save."""

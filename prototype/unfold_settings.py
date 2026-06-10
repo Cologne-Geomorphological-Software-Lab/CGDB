@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from django.conf import settings
-from django.http import HttpRequest
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
+
+if TYPE_CHECKING:
+    from django.http import HttpRequest
 
 _UNSET = object()
 

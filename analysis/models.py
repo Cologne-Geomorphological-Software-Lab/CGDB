@@ -1659,7 +1659,8 @@ class GrainSize(BaseModel):
         if isinstance(self.measured_data, str):
             self.measured_data = json.loads(self.measured_data)
         elif not isinstance(self.measured_data, list):
-            raise TypeError("Measured data must be a string or a list.")
+            msg = "Measured data must be a string or a list."
+            raise TypeError(msg)
 
         fraction_names = [name for _, name in _WENTWORTH_FRACTIONS] + [
             "gravel",
@@ -1675,7 +1676,8 @@ class GrainSize(BaseModel):
 
         total = sum(self.measured_data)
         if total == 0:
-            raise ValueError("measured_data must not sum to zero.")
+            msg = "measured_data must not sum to zero."
+            raise ValueError(msg)
 
         for attr, value in sums.items():
             setattr(self, attr, value / total * 100)
@@ -1773,9 +1775,8 @@ class GrainSize(BaseModel):
                 parsed["concentration"],
             )
         except (ZeroDivisionError, TypeError):
-            raise ValueError(
-                "No concentration data found in the file.",
-            ) from None
+            msg = "No concentration data found in the file."
+            raise ValueError(msg) from None
 
         return cls(
             sample=sample,

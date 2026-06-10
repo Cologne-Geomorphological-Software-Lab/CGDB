@@ -158,7 +158,7 @@ def stat_data(period_days: int = 30) -> dict:
         return round(count / total * 100, 2) if total > 0 else 0
 
     def _footer(pct: float, period_days: int) -> str:
-        return mark_safe(  # noqa: S308 — only floats interpolated, no user input
+        return mark_safe(  # noqa: S308  # nosec B703, B308 — only floats interpolated, no user input
             f'<strong class="text-green-700 font-semibold dark:text-green-400">'
             f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days",
         )

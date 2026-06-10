@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.contrib import admin
-from django.db.models import QuerySet
-from django.http import HttpRequest
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import (
     ChoicesDropdownFilter,
@@ -14,6 +14,10 @@ from unfold.contrib.filters.admin import (
 from unfold.decorators import display
 
 from .models import Author, Reference, ReferenceKeyword
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.http import HttpRequest
 
 
 class ReferenceKeywordAdmin(ModelAdmin):

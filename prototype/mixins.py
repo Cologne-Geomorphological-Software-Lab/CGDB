@@ -2,21 +2,26 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q, QuerySet
-from django.http import HttpRequest
 from guardian.shortcuts import get_objects_for_user
 
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from django.http import HttpRequest
 
 
 def _has_data_source_field(model: type) -> bool:
     """Return True only when the model has a real database field named data_source."""
     try:
         model._meta.get_field("data_source")
-        return True
     except FieldDoesNotExist:
         return False
+    else:
+        return True
 
 
 def _accessible_projects(user: object) -> QuerySet:
@@ -237,9 +242,8 @@ class NestedProjectPermissionMixin:
         """Return the ORM filter keyword for filtering by accessible project IDs."""
         if self.project_path:
             return f"{self.project_path}_id__in"
-        raise NotImplementedError(
-            "project_path must be defined or get_project_filter_path must be overridden",
-        )
+        msg = "project_path must be defined or get_project_filter_path must be overridden"
+        raise NotImplementedError(msg)
 
     def get_project_from_obj(self, obj: object) -> object:
         """Traverse project_path attributes on obj and return the project instance."""
@@ -250,9 +254,8 @@ class NestedProjectPermissionMixin:
                     return None
                 current_obj = getattr(current_obj, attr, None)
             return current_obj
-        raise NotImplementedError(
-            "project_path must be defined or get_project_from_obj must be overridden",
-        )
+        msg = "project_path must be defined or get_project_from_obj must be overridden"
+        raise NotImplementedError(msg)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         """Return only objects reachable through the nested project the user may view."""

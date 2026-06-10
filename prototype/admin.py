@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as DjangoGroupAdmin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import Group, Permission, User
-from django.db.models import QuerySet
-from django.forms import Field
-from django.http import HttpRequest
 from guardian.shortcuts import assign_perm, remove_perm
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import (
@@ -24,6 +23,11 @@ from .models import (
     Researcher,
     ResearchGroup,
 )
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.forms import Field
+    from django.http import HttpRequest
 
 
 class PermissionBasedModelAdmin(

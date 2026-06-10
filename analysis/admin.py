@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
+from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,9 +13,6 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.db.models import QuerySet
-from django.forms import ModelForm
-from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import NoReverseMatch, reverse
 from django.utils.safestring import mark_safe
@@ -49,7 +47,30 @@ from .models import (
     RawProcessing,
 )
 
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.forms import ModelForm
+    from django.http import HttpRequest, HttpResponse
+
 mpl.use("Agg")
+
+
+def _normalize_float_image(img: object) -> object:
+    """Convert a 32-bit float raster to 8-bit greyscale for display."""
+    import numpy as np
+
+    arr = np.array(img)
+    arr = arr - arr.min()
+    if arr.max() > 0:
+        arr = arr / arr.max()
+    return Image.fromarray((arr * 255).astype("uint8"), mode="L")
+
+
+def _format_with_error(value: object, error: object, decimals: int = 2) -> str:
+    """Return 'value ± error' rounded to *decimals*, or an em-dash when *value* is absent."""
+    if not value:
+        return "—"
+    return f"{round(value, decimals)} ± {round(error, decimals)}"
 
 
 class SampleContextMixin:
@@ -332,27 +353,17 @@ class LuminescenceDatingAdmin(
     @display(description="Luminescence age [ka]")
     def age(self, obj: LuminescenceDating) -> str:
         """Return formatted age with error, or an em-dash if unavailable."""
-        if obj.luminescence_age:
-            return (
-                f"{round(obj.luminescence_age, 2)} ± {round(obj.age_error, 2)}"
-            )
-        return "—"
+        return _format_with_error(obj.luminescence_age, obj.age_error)
 
     @display(description="Dose rate [Gy/ka]")
     def total_dose_rate(self, obj: LuminescenceDating) -> str:
         """Return formatted dose rate with error, or an em-dash if unavailable."""
-        if obj.dose_rate:
-            return (
-                f"{round(obj.dose_rate, 2)} ± {round(obj.dose_rate_error, 2)}"
-            )
-        return "—"
+        return _format_with_error(obj.dose_rate, obj.dose_rate_error)
 
     @display(description="Paleodose [Gy]")
     def paleodose(self, obj: LuminescenceDating) -> str:
         """Return formatted palaeodose with error, or an em-dash if unavailable."""
-        if obj.palaeodose_value:
-            return f"{round(obj.palaeodose_value, 2)} ± {round(obj.palaeodose_error, 2)}"
-        return "—"
+        return _format_with_error(obj.palaeodose_value, obj.palaeodose_error)
 
     @display(
         label={
@@ -887,7 +898,7 @@ class GrainSizeAdmin(
             else "danger"
         )
         rounded = round(obj.sample_concentration, 1)
-        return mark_safe(  # noqa: S308 — color is whitelist-validated, rounded is float
+        return mark_safe(  # noqa: S308  # nosec B703, B308 — color is whitelist-validated, rounded is float
             f'<span class="text-{color}-600 dark:text-{color}-400 font-semibold">{rounded} %</span>',
         )
 
@@ -986,7 +997,7 @@ class GrainSizeAdmin(
         plt.close(fig)
         buf.seek(0)
         image_base64 = base64.b64encode(buf.read()).decode("utf-8")
-        return mark_safe(  # noqa: S308 — base64-encoded matplotlib PNG, no user input
+        return mark_safe(  # noqa: S308  # nosec B703, B308 — base64-encoded matplotlib PNG, no user input
             f'<img src="data:image/png;base64,{image_base64}" />',
         )
 
@@ -1070,35 +1081,27 @@ class MicroXRFElementInline(admin.TabularInline):
 
     def preview(self, obj: MicroXRFElementMap) -> str:
         """Render a 120 px thumbnail of the element map raster file."""
-        if obj.raster_file and obj.raster_file.name.lower().endswith(
-            (".tif", ".tiff"),
+        if not (
+            obj.raster_file
+            and obj.raster_file.name.lower().endswith((".tif", ".tiff"))
         ):
-            try:
-                with obj.raster_file.open("rb") as f:
-                    img = Image.open(f)
-                    img.thumbnail((120, 120))
-                    if img.mode == "F":
-                        import numpy as np
-
-                        arr = np.array(img)
-                        arr = arr - arr.min()
-                        if arr.max() > 0:
-                            arr = arr / arr.max()
-                        arr = (arr * 255).astype("uint8")
-                        img = Image.fromarray(arr, mode="L")
-                    elif img.mode not in ("L", "RGB"):
-                        img = img.convert("RGB")
-                    buf = io.BytesIO()
-                    img.save(buf, format="PNG")
-                    image_base64 = base64.b64encode(buf.getvalue()).decode(
-                        "utf-8",
-                    )
-                    return mark_safe(  # noqa: S308 — base64-encoded PIL PNG, no user input
-                        f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />',
-                    )
-            except Exception as e:
-                return f"Preview unavailable: {e}"
-        return "No preview"
+            return "No preview"
+        try:
+            with obj.raster_file.open("rb") as f:
+                img = Image.open(f)
+                img.thumbnail((120, 120))
+                if img.mode == "F":
+                    img = _normalize_float_image(img)
+                elif img.mode not in ("L", "RGB"):
+                    img = img.convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                image_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                return mark_safe(  # noqa: S308  # nosec B703, B308 — base64-encoded PIL PNG, no user input
+                    f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />',
+                )
+        except Exception as e:
+            return f"Preview unavailable: {e}"
 
     preview.short_description = "Thumbnail"
 

@@ -122,6 +122,7 @@ GROUPS = {
 
 
 def create_permission_groups(
+    *,
     reset: bool = False,
     stdout: object = None,
 ) -> tuple:
