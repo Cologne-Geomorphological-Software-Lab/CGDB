@@ -60,9 +60,9 @@ _DASHBOARD_NAV = [
 
 
 def _nav(request) -> list:
+    path = request.path if request else ""
     return [
-        {"title": n["title"], "link": n["link"], "active": request.path == n["active_path"]}
-        for n in _DASHBOARD_NAV
+        {"title": n["title"], "link": n["link"], "active": path == n["active_path"]} for n in _DASHBOARD_NAV
     ]
 
 
