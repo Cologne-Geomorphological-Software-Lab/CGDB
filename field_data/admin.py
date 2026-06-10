@@ -559,6 +559,10 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
 
     def _analysis_change_view(self, request, sample_pk, model_class, object_id):
         self._get_accessible_sample(request, sample_pk)
+        # Ensure the analysis object actually belongs to the declared sample so
+        # a crafted URL like /sample/1/luminescencedating/99/change/ cannot expose
+        # a measurement that belongs to an inaccessible sample.
+        get_object_or_404(model_class, pk=object_id, sample_id=sample_pk)
         analysis_admin = self.admin_site._registry[model_class]
         response = analysis_admin.change_view(request, str(object_id))
         if hasattr(response, "context_data"):
@@ -619,12 +623,15 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
             queryset = queryset.filter(content_type=ContentType.objects.get_for_model(model_class))
             match = re.search(rf"/{model_name}/(\d+)/change/", request.META.get("HTTP_REFERER", ""))
             if match:
-                try:
-                    project_id = model_class.objects.values_list("project", flat=True).get(pk=match.group(1))
+                object_pk = int(match.group(1))
+                # Validate via the model's own admin queryset (permission-filtered) so a
+                # crafted Referer header cannot expose data from inaccessible projects.
+                model_admin = self.admin_site._registry.get(model_class)
+                if model_admin:
+                    accessible = model_admin.get_queryset(request).filter(pk=object_pk)
+                    project_id = accessible.values_list("project", flat=True).first()
                     if project_id:
                         queryset = queryset.filter(project=project_id)
-                except model_class.DoesNotExist:
-                    pass
         return queryset, may_have_duplicates
 
 
