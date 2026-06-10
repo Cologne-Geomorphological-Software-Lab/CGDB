@@ -1,3 +1,5 @@
+"""Admin permission mixins for project-based and object-level access control."""
+
 from __future__ import annotations
 
 from django.core.exceptions import FieldDoesNotExist
@@ -18,6 +20,7 @@ def _has_data_source_field(model: type) -> bool:
 
 
 def _accessible_projects(user: object) -> QuerySet:
+    """Return projects for which the user has view_project permission."""
     return get_objects_for_user(
         user,
         "prototype.view_project",
@@ -52,6 +55,7 @@ class CreatedUpdatedModelAdminMixin:
         form: object,
         change: bool,
     ) -> None:
+        """Set created_by on insert and updated_by on every save."""
         if not obj.pk:
             obj.created_by = request.user
         obj.updated_by = request.user
@@ -66,6 +70,7 @@ class ProjectBasedPermissionMixin:
     """
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return only objects belonging to projects the user may view."""
         if request.user.is_superuser:
             return super().get_queryset(request)
 
@@ -82,6 +87,7 @@ class ProjectBasedPermissionMixin:
         return qs.filter(project_id__in=accessible_project_ids)
 
     def has_add_permission(self, request: HttpRequest) -> bool:
+        """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
         return _addable_projects(request.user).exists()
@@ -91,6 +97,7 @@ class ProjectBasedPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow change only when the user has change_project on the object's project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -112,6 +119,7 @@ class ProjectBasedPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow view only when the user has view_project on the object's project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -127,6 +135,7 @@ class ProjectBasedPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow delete only when the user has delete_project on the object's project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -152,6 +161,7 @@ class GuardianPermissionMixin:
     """
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return only objects the user has object-level view permission for."""
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
@@ -175,6 +185,7 @@ class GuardianPermissionMixin:
         )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
+        """Allow add when the user has the model-level add permission."""
         if request.user.is_superuser:
             return True
         add_perm = f"{self.opts.app_label}.add_{self.opts.model_name}"
@@ -185,6 +196,7 @@ class GuardianPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow change when the user has object-level change permission."""
         if obj is None:
             return True
         change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
@@ -195,6 +207,7 @@ class GuardianPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow view when the user has object-level view permission."""
         if obj is None:
             return True
         view_perm = f"{self.opts.app_label}.view_{self.opts.model_name}"
@@ -205,6 +218,7 @@ class GuardianPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow delete when the user has object-level delete permission."""
         if obj is None:
             return True
         delete_perm = f"{self.opts.app_label}.delete_{self.opts.model_name}"
@@ -212,12 +226,15 @@ class GuardianPermissionMixin:
 
 
 class NestedProjectPermissionMixin:
-    """Mixin for admin classes where the project relationship is nested
-    (e.g. layer.location.project). Set project_path to the ORM lookup path."""
+    """Mixin for admin classes where the project relationship is nested.
+
+    For example, layer.location.project. Set project_path to the ORM lookup path.
+    """
 
     project_path = None
 
     def get_project_filter_path(self) -> str:
+        """Return the ORM filter keyword for filtering by accessible project IDs."""
         if self.project_path:
             return f"{self.project_path}_id__in"
         raise NotImplementedError(
@@ -225,6 +242,7 @@ class NestedProjectPermissionMixin:
         )
 
     def get_project_from_obj(self, obj: object) -> object:
+        """Traverse project_path attributes on obj and return the project instance."""
         if self.project_path:
             current_obj = obj
             for attr in self.project_path.split("__"):
@@ -237,6 +255,7 @@ class NestedProjectPermissionMixin:
         )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return only objects reachable through the nested project the user may view."""
         if request.user.is_superuser:
             return super().get_queryset(request)
 
@@ -250,6 +269,7 @@ class NestedProjectPermissionMixin:
         return qs.filter(**filter_kwargs)
 
     def has_add_permission(self, request: HttpRequest) -> bool:
+        """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
         return _addable_projects(request.user).exists()
@@ -259,6 +279,7 @@ class NestedProjectPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow change when the user has change_project on the nested project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -273,6 +294,7 @@ class NestedProjectPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow view when the user has view_project on the nested project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -287,6 +309,7 @@ class NestedProjectPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow delete when the user has delete_project on the nested project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -298,11 +321,13 @@ class NestedProjectPermissionMixin:
 
 
 class HybridProjectPermissionMixin:
-    """Mixin for models with both a direct project FK and an indirect one
-    through location (e.g. Sample which can have project or location.project).
+    """Mixin for models with both a direct project FK and an indirect one through location.
+
+    For example, Sample which can have project or location.project.
     """
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return objects accessible via either a direct or location-level project FK."""
         if request.user.is_superuser:
             return super().get_queryset(request)
 
@@ -316,6 +341,7 @@ class HybridProjectPermissionMixin:
         )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
+        """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
         return _addable_projects(request.user).exists()
@@ -336,6 +362,7 @@ class HybridProjectPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow change when the user has change_project on the resolved project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -350,6 +377,7 @@ class HybridProjectPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow view when the user has view_project on the resolved project."""
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -364,6 +392,7 @@ class HybridProjectPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow delete when the user has delete_project on the resolved project."""
         if obj is None:
             return True
         if request.user.is_superuser:

@@ -1,3 +1,5 @@
+"""Bibliography models: Author, ReferenceKeyword, and Reference."""
+
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -28,6 +30,8 @@ class Author(BaseModel):
 
 
 class ReferenceKeyword(BaseModel):
+    """A keyword that can be assigned to one or more references."""
+
     keyword = models.CharField(max_length=250, unique=True)
     keyword_ger = models.CharField(
         max_length=250,
@@ -35,6 +39,7 @@ class ReferenceKeyword(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the keyword string."""
         return f"{self.keyword}"
 
 
@@ -160,6 +165,8 @@ class Reference(BaseModel):
     )
 
     class Meta:
+        """Order references newest-first, then alphabetically."""
+
         ordering = [
             "-year",
             "title",
@@ -168,4 +175,5 @@ class Reference(BaseModel):
         verbose_name_plural = "References"
 
     def __str__(self) -> str:
+        """Return a short citation string: 'Author (year): Title'."""
         return f"{self.lead_author} ({self.year}): {self.title}"

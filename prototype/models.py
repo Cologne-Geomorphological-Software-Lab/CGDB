@@ -50,6 +50,8 @@ class BaseModel(models.Model):
     )
 
     class Meta:
+        """Mark as abstract and order newest-modified first."""
+
         abstract = True
         ordering = ["-modified_at", "-created_at"]
 
@@ -132,6 +134,8 @@ class Researcher(BaseModel):
     orcid = models.CharField(max_length=50, blank=True)
 
     class Meta:
+        """Use a proper plural for the admin."""
+
         verbose_name_plural = "Researchers"
 
     def __str__(self) -> str:

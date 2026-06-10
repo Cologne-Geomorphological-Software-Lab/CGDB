@@ -24,6 +24,7 @@ _TEST_MEDIA_ROOT: str | None = None
 
 
 def pytest_configure(config) -> None:
+    """Register OSGeo4W DLLs and create an isolated MEDIA_ROOT before Django setup."""
     global _TEST_MEDIA_ROOT
 
     # -- OSGeo4W DLL registration (Windows only) --
@@ -45,5 +46,6 @@ def pytest_configure(config) -> None:
 
 
 def pytest_sessionfinish(session, exitstatus) -> None:
+    """Remove the temporary MEDIA_ROOT after the test session completes."""
     if _TEST_MEDIA_ROOT:
         shutil.rmtree(_TEST_MEDIA_ROOT, ignore_errors=True)

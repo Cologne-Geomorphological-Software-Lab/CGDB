@@ -1,3 +1,5 @@
+"""Unfold admin configuration: sidebar, tabs, branding, and callbacks."""
+
 from __future__ import annotations
 
 import re
@@ -23,12 +25,12 @@ def _sample_pk_from_request(request: HttpRequest) -> str | None:
     Result is cached on the request object so the 7 link functions (called once
     per tab render) do not each trigger a separate DB query.
     """
-    cached = getattr(request, "_cgdb_sample_pk", _UNSET)
+    cached = getattr(request, "cgdb_sample_pk", _UNSET)
     if cached is not _UNSET:
         return cached
 
     result = _compute_sample_pk(request)
-    request._cgdb_sample_pk = result
+    request.cgdb_sample_pk = result
     return result
 
 
@@ -456,8 +458,10 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 
 
 def environment_callback(_request: HttpRequest) -> list:
-    """Callback has to return a list of two values representing text value and the color type of the label
-    displayed in top right corner."""
+    """Return the environment label and colour for the Unfold top-right badge.
+
+    Returns a two-element list: [label_text, colour_type].
+    """
     label = getattr(settings, "UNFOLD_ENVIRONMENT_LABEL", "Production")
     color = getattr(settings, "UNFOLD_ENVIRONMENT_COLOR", "danger")
     return [label, color]
@@ -475,4 +479,5 @@ def badge_callback(request: HttpRequest) -> int:
 
 
 def permission_callback(request: HttpRequest) -> bool:
+    """Return True if the user has change permission on Project."""
     return request.user.has_perm("prototype.change_project")

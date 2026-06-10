@@ -1,3 +1,5 @@
+"""Signal handlers for automatic permission management in the prototype app."""
+
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models.signals import post_migrate, post_save

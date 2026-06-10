@@ -1,3 +1,5 @@
+"""Views for the prototype app: documentation, dashboard, map, and GeoJSON endpoints."""
+
 import json
 import logging
 from calendar import monthrange
@@ -31,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def documentation(request: HttpRequest, filepath: str) -> HttpResponse:
+    """Serve a static documentation file, or 404 if it does not exist."""
     doc_path = Path(settings.BASE_DIR) / "static" / "docs" / filepath
     if not doc_path.exists():
         return render(request, "404.html", status=404)
@@ -42,6 +45,7 @@ def documentation(request: HttpRequest, filepath: str) -> HttpResponse:
 
 
 def logout_view(request: HttpRequest) -> HttpResponse:
+    """Log out the current user and redirect to the site root."""
     logout(request)
     return redirect("/")
 
@@ -72,6 +76,7 @@ def _nav(request: HttpRequest | None) -> list:
 
 
 def map_dashboard(request: HttpRequest) -> HttpResponse:
+    """Render the full-screen map dashboard page."""
     from django.contrib import admin as _admin
 
     context = _admin.site.each_context(request)
@@ -81,6 +86,7 @@ def map_dashboard(request: HttpRequest) -> HttpResponse:
 
 @require_GET
 def locations_geojson(request: HttpRequest) -> HttpResponse:
+    """Return a GeoJSON FeatureCollection of all accessible locations."""
     if request.user.is_superuser:
         qs = Location.objects.exclude(location__isnull=True)
     else:
@@ -121,6 +127,7 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
 
 
 def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
+    """Populate the Unfold dashboard context with stats and navigation."""
     try:
         period_days = int(request.GET.get("period", 30))
     except (ValueError, TypeError, AttributeError):
@@ -142,6 +149,7 @@ def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
 
 
 def stat_data(period_days: int = 30) -> dict:
+    """Compute dashboard statistics for the given time window in days."""
     now = timezone.now()
     since = now - timedelta(days=period_days)
     logger.debug("stat_data called at %s (period=%d days)", now, period_days)
@@ -150,7 +158,7 @@ def stat_data(period_days: int = 30) -> dict:
         return round(count / total * 100, 2) if total > 0 else 0
 
     def _footer(pct: float, period_days: int) -> str:
-        return mark_safe(
+        return mark_safe(  # noqa: S308 — only floats interpolated, no user input
             f'<strong class="text-green-700 font-semibold dark:text-green-400">'
             f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days",
         )

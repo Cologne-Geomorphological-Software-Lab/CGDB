@@ -1,3 +1,5 @@
+"""Import/export resource definitions for field_data models."""
+
 from import_export import fields, resources
 from import_export.widgets import ForeignKeyWidget
 
@@ -16,6 +18,8 @@ from .models import (
 
 
 class LocationResource(resources.ModelResource):
+    """Import/export resource for the Location model."""
+
     exposure_type = fields.Field(
         column_name="exposure_type",
         attribute="exposure_type",
@@ -33,6 +37,8 @@ class LocationResource(resources.ModelResource):
     )
 
     class Meta:
+        """Resource metadata for LocationResource."""
+
         model = Location
         skip_unchanged = True
         report_skipped = True
@@ -62,6 +68,8 @@ class LocationResource(resources.ModelResource):
 
 
 class StudyAreaResource(resources.ModelResource):
+    """Import/export resource for the StudyArea model."""
+
     project = fields.Field(
         column_name="project",
         attribute="project",
@@ -81,12 +89,16 @@ class StudyAreaResource(resources.ModelResource):
     )
 
     class Meta:
+        """Resource metadata for StudyAreaResource."""
+
         model = StudyArea
         skip_unchanged = True
         report_skipped = True
 
 
 class CampaignResource(resources.ModelResource):
+    """Import/export resource for the Campaign model."""
+
     project = fields.Field(
         column_name="project",
         attribute="project",
@@ -106,12 +118,16 @@ class CampaignResource(resources.ModelResource):
     )
 
     class Meta:
+        """Resource metadata for CampaignResource."""
+
         model = Campaign
         skip_unchanged = True
         report_skipped = True
 
 
 class SampleResource(resources.ModelResource):
+    """Import/export resource for the Sample model."""
+
     location = fields.Field(
         column_name="location",
         attribute="location",
@@ -128,6 +144,8 @@ class SampleResource(resources.ModelResource):
     )
 
     class Meta:
+        """Resource metadata for SampleResource."""
+
         model = Sample
         skip_unchanged = True
         report_skipped = True
@@ -150,6 +168,8 @@ class SampleResource(resources.ModelResource):
 
 
 class LayerResource(resources.ModelResource):
+    """Import/export resource for the Layer model."""
+
     location = fields.Field(
         column_name="location",
         attribute="location",
@@ -166,6 +186,8 @@ class LayerResource(resources.ModelResource):
     )
 
     class Meta:
+        """Resource metadata for LayerResource."""
+
         model = Layer
         skip_unchanged = True
         report_skipped = True

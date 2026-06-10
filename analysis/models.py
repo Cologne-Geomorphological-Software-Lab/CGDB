@@ -1,3 +1,5 @@
+"""Django models for the analysis app, covering geochronology, paleobotany, sedimentology, and geochemistry."""
+
 from __future__ import annotations
 
 import contextlib
@@ -51,6 +53,7 @@ class Algorithm(models.Model):
     )
 
     def __str__(self) -> str:
+        """Return the algorithm name."""
         return self.name
 
 
@@ -94,9 +97,11 @@ class RawMeasurement(BaseModel):
     description = models.TextField(blank=True)
 
     def filename(self) -> str | None:
+        """Return the base filename of the uploaded file, or None if no file."""
         return Path(self.file.name).name if self.file else None
 
     def __str__(self) -> str:
+        """Return a string combining device and creation timestamp."""
         return f"{self.device} - {self.created_at}"
 
 
@@ -154,6 +159,7 @@ class RawProcessing(BaseModel):
     )
 
     def processed_filename(self) -> str | None:
+        """Return the base filename of the processed file, or None if no file."""
         return (
             Path(self.processed_file.name).name
             if self.processed_file
@@ -161,6 +167,7 @@ class RawProcessing(BaseModel):
         )
 
     def __str__(self) -> str:
+        """Return a human-readable label referencing the raw measurement."""
         return f"Processed data for {self.raw_measurement}"
 
 
@@ -203,10 +210,13 @@ class Counting(BaseModel):
     type = models.CharField(choices=COUNTING_CHOICES, max_length=50)
 
     class Meta:
+        """Django metadata for Counting."""
+
         verbose_name = "Counting"
         verbose_name_plural = "Countings"
 
     def __str__(self) -> str:
+        """Return the associated sample as a string."""
         return f"{self.sample}"
 
 
@@ -243,10 +253,13 @@ class Pollen(BaseModel):
     )
 
     class Meta:
+        """Django metadata for Pollen."""
+
         verbose_name = "Pollen"
         verbose_name_plural = "Pollen"
 
     def __str__(self) -> str:
+        """Return the Latin name of the pollen species."""
         return f"{self.name}"
 
 
@@ -272,10 +285,13 @@ class PollenCount(BaseModel):
     number = models.IntegerField()
 
     class Meta:
+        """Django metadata for PollenCount."""
+
         verbose_name = "Pollen Count"
         verbose_name_plural = "Pollen Counts"
 
     def __str__(self) -> str:
+        """Return a label combining counting event and pollen species."""
         return f"{self.counting} - {self.pollen}"
 
 
@@ -285,10 +301,12 @@ class PollenCount(BaseModel):
 
 
 def current_year() -> int:
+    """Return the current calendar year in the Europe/Berlin timezone."""
     return datetime.datetime.now(tz=ZoneInfo("Europe/Berlin")).date().year
 
 
 def max_value_current_year(value: int) -> None:
+    """Validate that *value* does not exceed the current year."""
     return MaxValueValidator(current_year())(value)
 
 
@@ -780,6 +798,7 @@ class LuminescenceDating(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label combining the laboratory ID and mineral type."""
         mineral_str = self.mineral or "Unknown"
         lab_id = (
             (self.laboratory_id or f"ID-{self.pk}")
@@ -828,11 +847,14 @@ class RadiocarbonDating(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label with lab ID and age."""
         age_str = f"{self.age} ka" if self.age is not None else "undated"
         return f"{self.lab_id} ({age_str})"
 
 
 class CosmogenicNuclideDating(BaseModel):
+    """Represents cosmogenic nuclide dating data for a sample."""
+
     NUCLIDE_CHOICES = [
         ("10Be", "¹⁰Be"),
         ("26Al", "²⁶Al"),
@@ -1130,11 +1152,14 @@ class CosmogenicNuclideDating(BaseModel):
     comments = models.TextField(blank=True)
 
     def __str__(self) -> str:
+        """Return a label combining lab ID and nuclide."""
         lab_id = self.lab_id or (f"ID-{self.pk}" if self.pk else "Unsaved")
         nuclide_str = self.nuclide or "Unknown"
         return f"{lab_id} ({nuclide_str})"
 
     class Meta:
+        """Django metadata for CosmogenicNuclideDating."""
+
         verbose_name = "Cosmogenic Nuclide Dating"
         verbose_name_plural = "Cosmogenic Nuclide Datings"
 
@@ -1272,6 +1297,7 @@ CLASSES = [
 
 
 def default_classes() -> list:
+    """Return a copy of the default Sympatec grain-size class boundaries."""
     return list(CLASSES)
 
 
@@ -1323,6 +1349,7 @@ class Parameter(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the parameter name with its unit in brackets."""
         return f"{self.name} - [{self.unit}]"
 
 
@@ -1336,6 +1363,7 @@ class MeasurementSeries(BaseModel):
     datetime = models.DateTimeField()
 
     def __str__(self) -> str:
+        """Return a label with the series PK and datetime."""
         return f"Series {self.pk} – {self.datetime}"
 
 
@@ -1396,6 +1424,7 @@ class GenericMeasurement(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label combining sample, method, and parameter."""
         return f"{self.sample} - {self.method} - {self.parameter}"
 
 
@@ -1662,6 +1691,7 @@ class GrainSize(BaseModel):
         )
 
     def save(self, *args: object, **kwargs: object) -> None:
+        """Recompute Wentworth fractions from raw data before saving."""
         if self.classes is not None and self.measured_data is not None:
             (
                 self.fine_silt,
@@ -1675,9 +1705,12 @@ class GrainSize(BaseModel):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
+        """Return a label combining sample identifier and measurement method."""
         return str(self.sample) + ", " + str(self.method)
 
     class Meta:
+        """Django metadata for GrainSize."""
+
         verbose_name_plural = "Grain size"
 
     @staticmethod
@@ -1785,9 +1818,12 @@ class MicroXRFMeasurement(BaseModel):
     notes = models.TextField(blank=True)
 
     def __str__(self) -> str:
+        """Return a label with sample and measurement date."""
         return f"MicroXRF {self.sample} ({self.measurement_date})"
 
     class Meta:
+        """Django metadata for MicroXRFMeasurement."""
+
         verbose_name = "MicroXRF"
         verbose_name_plural = "MicroXRF"
 
@@ -1881,7 +1917,9 @@ class MicroXRFElementMap(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label with element symbol and parent measurement."""
         return f"{self.element} map ({self.measurement})"
 
     def get_raster_path(self) -> Path:
+        """Return the absolute filesystem path to the raster file."""
         return Path(settings.MEDIA_ROOT) / self.raster_file.name

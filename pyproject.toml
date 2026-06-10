@@ -13,14 +13,11 @@ exclude = [
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    # --- Style / formatter conflicts ---
-    "D",      # Docstring rules (D100–D107): no mandatory docstrings in this project
+    # --- Style / formatter ---
     "E501",   # Line too long (enforced by line-length above)
-    "COM812",
     # --- Django-specific exemptions ---
-    "RUF012", # ClassVar annotation on mutable class attributes: Django field descriptors
-    "SLF001", # Private member accessed: Django internals regularly need _meta, _registry etc.
-    "S308",   # mark_safe: only used with validated/whitelisted input in this project
+    "RUF012", # ClassVar on mutable class attributes: no ruff auto-fix, 211 Django admin/model attrs
+    "SLF001", # Private member accessed: _meta is Django's public API despite the underscore
     # --- Exception / try patterns that conflict with Django idioms ---
     "TRY003", # Long exception messages: Django ValidationError style
     "EM101",  # Raw string in exception: same as above

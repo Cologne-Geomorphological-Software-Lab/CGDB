@@ -1,4 +1,4 @@
-"""Management command: create_permission_groups
+"""Management command: create_permission_groups.
 
 Creates predefined Django Groups that bundle related permissions so users
 can be granted access in one step instead of selecting individual permissions.
@@ -22,9 +22,12 @@ from prototype.permissions import create_permission_groups
 
 
 class Command(BaseCommand):
+    """Management command that creates or resets predefined permission groups."""
+
     help = "Create predefined permission groups for CGDB."
 
     def add_arguments(self, parser: object) -> None:
+        """Register the --reset flag on the argument parser."""
         parser.add_argument(
             "--reset",
             action="store_true",
@@ -32,6 +35,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *_args: object, **options: object) -> None:
+        """Execute the command, optionally resetting groups before rebuilding."""
         create_permission_groups(
             reset=options["reset"],
             stdout=self.stdout,

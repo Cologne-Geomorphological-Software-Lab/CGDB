@@ -1,3 +1,5 @@
+"""Django admin registrations and configuration for the prototype app."""
+
 from __future__ import annotations
 
 from django.contrib import admin
@@ -31,6 +33,7 @@ class PermissionBasedModelAdmin(
     """Base admin class with object-level Guardian permissions."""
 
     def has_add_permission(self, request: HttpRequest) -> bool:
+        """Allow add when the user holds the model-level add permission."""
         if request.user.is_superuser:
             return True
         add_perm = f"{self.opts.app_label}.add_{self.opts.model_name}"
@@ -43,6 +46,7 @@ class PermissionBasedModelAdmin(
         form: object,
         change: bool,
     ) -> None:
+        """Set created_by on insert and updated_by on every save."""
         if not obj.pk:
             obj.created_by = request.user
         obj.updated_by = request.user
@@ -60,6 +64,8 @@ _MEMBER_PERMS = ["view_project", "add_project", "change_project"]
 
 
 class ProjectUserObjectPermissionInline(TabularInline):
+    """Inline editor for per-user object permissions on a Project."""
+
     model = ProjectUserObjectPermission
     extra = 1
     tab = True
@@ -76,12 +82,14 @@ class ProjectUserObjectPermissionInline(TabularInline):
 
     @display(description="Access level")
     def permission_label(self, obj: ProjectUserObjectPermission) -> str:
+        """Return a human-readable access level label for the permission codename."""
         return _PERMISSION_LABELS.get(
             obj.permission.codename,
             obj.permission.codename,
         )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return the queryset with user and permission pre-fetched."""
         return (
             super().get_queryset(request).select_related("user", "permission")
         )
@@ -92,6 +100,7 @@ class ProjectUserObjectPermissionInline(TabularInline):
         request: HttpRequest,
         **kwargs: object,
     ) -> Field | None:
+        """Restrict the permission dropdown to project-level prototype permissions."""
         if db_field.name == "permission":
             kwargs["queryset"] = Permission.objects.filter(
                 content_type__app_label="prototype",
@@ -108,6 +117,7 @@ class ProjectUserObjectPermissionInline(TabularInline):
         request: HttpRequest,
         _obj: object | None = None,
     ) -> bool:
+        """Allow add only for superusers."""
         return request.user.is_superuser
 
     def has_change_permission(
@@ -115,6 +125,7 @@ class ProjectUserObjectPermissionInline(TabularInline):
         request: HttpRequest,
         _obj: object | None = None,
     ) -> bool:
+        """Allow change only for superusers."""
         return request.user.is_superuser
 
     def has_delete_permission(
@@ -122,6 +133,7 @@ class ProjectUserObjectPermissionInline(TabularInline):
         request: HttpRequest,
         _obj: object | None = None,
     ) -> bool:
+        """Allow delete only for superusers."""
         return request.user.is_superuser
 
     def has_view_permission(
@@ -129,6 +141,7 @@ class ProjectUserObjectPermissionInline(TabularInline):
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
+        """Allow view for superusers or users with change_project on the project."""
         return request.user.is_superuser or (
             obj is not None
             and request.user.has_perm("prototype.change_project", obj)
@@ -136,6 +149,8 @@ class ProjectUserObjectPermissionInline(TabularInline):
 
 
 class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
+    """Admin for ResearchGroup with object-level Guardian permissions."""
+
     change_form_show_cancel_button = True
     list_display = ["label", "head_of_group", "created_at"]
     search_fields = ["label"]
@@ -149,6 +164,8 @@ class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
 
 class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
+    """Admin for Researcher with object-level Guardian permissions."""
+
     change_form_show_cancel_button = True
     list_display = ["user", "academic_rank", "display_researcher"]
     search_fields = [
@@ -166,6 +183,7 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
     @display(header=True, description="Researcher")
     def display_researcher(self, obj: Researcher) -> list:
+        """Return a display triple of [full name, position, initials] for the Researcher."""
         if obj.user:
             initials = "".join(
                 n[0].upper()
@@ -181,6 +199,8 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
 
 class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
+    """Admin for Project with Guardian permissions and member permission syncing."""
+
     save_on_top = True
     change_form_show_cancel_button = True
     compressed_fields = True
@@ -221,6 +241,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
         formsets: object,
         change: bool,
     ) -> None:
+        """Save related objects then sync Guardian permissions for project members."""
         super().save_related(request, form, formsets, change)
         self._sync_member_permissions(form.instance)
 
@@ -263,6 +284,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
         description="Status",
     )
     def colored_status(self, obj: Project) -> str:
+        """Return the project status string for the colored label display."""
         return obj.status
 
     fieldsets = (
@@ -310,12 +332,16 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
 
 class GroupAdmin(DjangoGroupAdmin, ModelAdmin):
+    """Unfold-styled admin for Django's built-in Group model."""
+
     search_fields = ["name"]
     list_display = ["name"]
     filter_horizontal = ["permissions"]
 
 
 class UserAdmin(DjangoUserAdmin, ModelAdmin):
+    """Unfold-styled admin for Django's built-in User model."""
+
     compressed_fields = True
     change_form_show_cancel_button = True
     list_display = [

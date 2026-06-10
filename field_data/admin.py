@@ -1,3 +1,5 @@
+"""Django admin configuration for field_data models."""
+
 from __future__ import annotations
 
 import re
@@ -41,6 +43,8 @@ from .resources import LocationResource
 
 
 class SampleTabularInline(TabularInline):
+    """Tabular inline for Sample records nested under a Location."""
+
     model = Sample
     tab = True
     extra = 0
@@ -55,6 +59,8 @@ class SampleTabularInline(TabularInline):
 
 
 class SiteStackedInline(StackedInline):
+    """Stacked inline for Site records nested under a StudyArea."""
+
     model = Site
     tab = True
     fields = [
@@ -64,6 +70,8 @@ class SiteStackedInline(StackedInline):
 
 
 class LayerStackedInline(StackedInline):
+    """Stacked inline for Layer records nested under a Location."""
+
     model = Layer
     tab = True
     extra = 0
@@ -100,6 +108,8 @@ class LayerStackedInline(StackedInline):
 
 
 class ExposureTypeAdmin(ExportMixin, ModelAdmin):
+    """Admin interface for ExposureType records."""
+
     change_form_show_cancel_button = True
     list_display = [
         "name_en",
@@ -117,6 +127,8 @@ class ExposureTypeAdmin(ExportMixin, ModelAdmin):
 
 
 class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    """Admin interface for Location records with export and project-based permissions."""
+
     save_on_top = True
     change_form_show_cancel_button = True
     compressed_fields = True
@@ -181,9 +193,11 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         description="Data Source",
     )
     def colored_data_source(self, obj: Location) -> str:
+        """Return the data source value for colour-coded display."""
         return obj.data_source
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return queryset with related project, campaign, and reference pre-fetched."""
         return (
             super()
             .get_queryset(request)
@@ -196,6 +210,7 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         request: HttpRequest,
         **kwargs: object,
     ) -> Field | None:
+        """Restrict tag choices to those matching the location's content type and project."""
         if db_field.name == "tags":
             location_ct = ContentType.objects.get_for_model(Location)
             qs = Tag.objects.filter(content_type=location_ct)
@@ -276,6 +291,8 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 
 class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    """Admin interface for StudyArea records with export and project-based permissions."""
+
     save_on_top = True
     change_form_show_cancel_button = True
     compressed_fields = True
@@ -336,6 +353,8 @@ class SiteAdmin(
     admin.options.GeoModelAdminMixin,
     NestedProjectPermissionMixin,
 ):
+    """Admin interface for Site records with geo support and nested project permissions."""
+
     change_form_show_cancel_button = True
     project_path = "study_area__project"
     list_display = [
@@ -362,6 +381,8 @@ class SiteAdmin(
 
 
 class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    """Admin interface for Campaign records with export and project-based permissions."""
+
     save_on_top = True
     change_form_show_cancel_button = True
     compressed_fields = True
@@ -407,6 +428,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         description="Season",
     )
     def colored_season(self, obj: Campaign) -> str:
+        """Return the season value for colour-coded display."""
         return obj.season
 
     fieldsets = (
@@ -435,6 +457,8 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 
 class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    """Admin interface for Layer records with nested project permissions."""
+
     change_form_show_cancel_button = True
     project_path = "location__project"
     list_display = [
@@ -460,6 +484,8 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
+    """Admin interface for Sample records with analysis sub-views and hybrid project permissions."""
+
     save_on_top = True
     change_form_show_cancel_button = True
     compressed_fields = True
@@ -540,6 +566,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     ]
 
     def get_urls(self) -> list:
+        """Register custom analysis sub-view URLs for each registered analysis model."""
         from importlib import import_module
 
         def _load(dotted: str) -> type:
@@ -695,6 +722,7 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         request: HttpRequest,
         **kwargs: object,
     ) -> Field | None:
+        """Restrict tag choices to those matching the sample's content type and project."""
         if db_field.name == "tags":
             sample_ct = ContentType.objects.get_for_model(Sample)
             qs = Tag.objects.filter(content_type=sample_ct)
@@ -714,6 +742,8 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
 
 
 class SampleTypeAdmin(ExportMixin, ModelAdmin):
+    """Admin interface for SampleType records."""
+
     change_form_show_cancel_button = True
     list_display = [
         "word",
@@ -727,6 +757,8 @@ class SampleTypeAdmin(ExportMixin, ModelAdmin):
 
 
 class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+    """Admin interface for Tag records with project-based permissions."""
+
     change_form_show_cancel_button = True
     list_display = ["word", "content_type", "project"]
     search_fields = ["word"]
@@ -744,6 +776,7 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         queryset: QuerySet,
         search_term: str,
     ) -> tuple:
+        """Filter tag search results by content type and project when called from a related field."""
         queryset, may_have_duplicates = super().get_search_results(
             request,
             queryset,
@@ -785,6 +818,8 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 
 class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+    """Admin interface for Transect records with nested project permissions."""
+
     change_form_show_cancel_button = True
     project_path = "study_area__project"
     list_display = ["identifier", "study_area", "campaign"]
