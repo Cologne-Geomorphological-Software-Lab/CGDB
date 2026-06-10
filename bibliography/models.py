@@ -1,3 +1,5 @@
+"""Bibliography models: Author, ReferenceKeyword, and Reference."""
+
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -28,14 +30,16 @@ class Author(BaseModel):
 
 
 class ReferenceKeyword(BaseModel):
+    """A keyword that can be assigned to one or more references."""
+
     keyword = models.CharField(max_length=250, unique=True)
     keyword_ger = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
 
     def __str__(self) -> str:
+        """Return the keyword string."""
         return f"{self.keyword}"
 
 
@@ -96,7 +100,6 @@ class Reference(BaseModel):
     journal = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     volume = models.IntegerField(
         blank=True,
@@ -109,17 +112,14 @@ class Reference(BaseModel):
     pages = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     publisher = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     location_of_publication = models.CharField(
         max_length=250,
         blank=True,
-        null=True,
     )
     CHOICES = [
         ("Monography", "Monography"),
@@ -139,7 +139,6 @@ class Reference(BaseModel):
     doi = models.URLField(
         max_length=50,
         blank=True,
-        null=True,
     )
     issn = models.IntegerField(
         blank=True,
@@ -149,19 +148,16 @@ class Reference(BaseModel):
     isbn_print = models.CharField(
         max_length=50,
         blank=True,
-        null=True,
         verbose_name="ISBN Print",
     )
     isbn_online = models.CharField(
         max_length=50,
         blank=True,
-        null=True,
         verbose_name="ISBN Online",
     )
     how_to_cite = models.CharField(
         max_length=350,
         blank=True,
-        null=True,
     )
     keywords = models.ManyToManyField(
         ReferenceKeyword,
@@ -169,6 +165,8 @@ class Reference(BaseModel):
     )
 
     class Meta:
+        """Order references newest-first, then alphabetically."""
+
         ordering = [
             "-year",
             "title",
@@ -177,4 +175,5 @@ class Reference(BaseModel):
         verbose_name_plural = "References"
 
     def __str__(self) -> str:
+        """Return a short citation string: 'Author (year): Title'."""
         return f"{self.lead_author} ({self.year}): {self.title}"

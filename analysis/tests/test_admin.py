@@ -7,6 +7,7 @@ Sample URL hierarchy:
 - change_view: redirects when obj has sample_id (GET only, not POST)
 - get_changeform_initial_data: pre-fills sample FK from preserved_filters
 """
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -80,7 +81,8 @@ class AddViewRedirectTest(_AdminSetup):
         url = reverse("admin:analysis_genericmeasurement_add")
         response = self.client.get(url, {"sample": self.sample.pk})
         expected = reverse(
-            "admin:field_data_sample_genericmeasurement_add", args=[self.sample.pk]
+            "admin:field_data_sample_genericmeasurement_add",
+            args=[self.sample.pk],
         )
         self.assertRedirects(response, expected, fetch_redirect_response=False)
 
@@ -88,18 +90,23 @@ class AddViewRedirectTest(_AdminSetup):
         """POST with ?sample= must NOT redirect — form data would be discarded."""
         url = reverse("admin:analysis_genericmeasurement_add")
         sample_scoped_add = reverse(
-            "admin:field_data_sample_genericmeasurement_add", args=[self.sample.pk]
+            "admin:field_data_sample_genericmeasurement_add",
+            args=[self.sample.pk],
         )
         response = self.client.post(f"{url}?sample={self.sample.pk}", data={})
         self.assertNotEqual(response.get("Location"), sample_scoped_add)
 
     def test_get_via_changelist_filters_redirects(self):
         from urllib.parse import urlencode
-        cl_filters = urlencode({"_changelist_filters": f"sample__id__exact={self.sample.pk}"})
+
+        cl_filters = urlencode(
+            {"_changelist_filters": f"sample__id__exact={self.sample.pk}"}
+        )
         url = reverse("admin:analysis_genericmeasurement_add")
         response = self.client.get(f"{url}?{cl_filters}")
         expected = reverse(
-            "admin:field_data_sample_genericmeasurement_add", args=[self.sample.pk]
+            "admin:field_data_sample_genericmeasurement_add",
+            args=[self.sample.pk],
         )
         self.assertRedirects(response, expected, fetch_redirect_response=False)
 
@@ -123,7 +130,8 @@ class ChangeViewRedirectTest(_AdminSetup):
 
     def test_get_redirects_to_sample_scoped_change_url(self):
         url = reverse(
-            "admin:analysis_genericmeasurement_change", args=[self.measurement.pk]
+            "admin:analysis_genericmeasurement_change",
+            args=[self.measurement.pk],
         )
         response = self.client.get(url)
         expected = reverse(
@@ -135,7 +143,8 @@ class ChangeViewRedirectTest(_AdminSetup):
     def test_post_does_not_redirect_to_sample_scoped_url(self):
         """POST must NOT redirect — form data would be silently discarded."""
         url = reverse(
-            "admin:analysis_genericmeasurement_change", args=[self.measurement.pk]
+            "admin:analysis_genericmeasurement_change",
+            args=[self.measurement.pk],
         )
         sample_scoped_change = reverse(
             "admin:field_data_sample_genericmeasurement_change",
@@ -155,7 +164,8 @@ class InitialDataTest(_AdminSetup):
     def test_sample_pre_filled_on_sample_scoped_add(self):
         """Add form via sample-scoped URL must have sample FK pre-selected."""
         url = reverse(
-            "admin:field_data_sample_genericmeasurement_add", args=[self.sample.pk]
+            "admin:field_data_sample_genericmeasurement_add",
+            args=[self.sample.pk],
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -165,12 +175,16 @@ class InitialDataTest(_AdminSetup):
     def test_sample_pre_filled_via_changelist_filters(self):
         """Add form reached with _changelist_filters must pre-fill sample."""
         from urllib.parse import urlencode
-        pf = urlencode({"_changelist_filters": f"sample__id__exact={self.sample.pk}"})
+
+        pf = urlencode(
+            {"_changelist_filters": f"sample__id__exact={self.sample.pk}"}
+        )
         url = reverse("admin:analysis_genericmeasurement_add")
         # This GET would redirect, but we test the sample-scoped path directly
         # with the _changelist_filters preserved_filters param:
         scoped_url = reverse(
-            "admin:field_data_sample_genericmeasurement_add", args=[self.sample.pk]
+            "admin:field_data_sample_genericmeasurement_add",
+            args=[self.sample.pk],
         )
         response = self.client.get(f"{scoped_url}?{pf}")
         self.assertEqual(response.status_code, 200)

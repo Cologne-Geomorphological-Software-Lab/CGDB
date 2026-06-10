@@ -8,19 +8,32 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('prototype', '0002_alter_project_options_alter_researchgroup_options_and_more'),
+        (
+            "prototype",
+            "0002_alter_project_options_alter_researchgroup_options_and_more",
+        ),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='project',
-            name='members',
-            field=models.ManyToManyField(blank=True, help_text='Team members with working access to this project. Members automatically receive view, add, and change permissions. Delete access must be granted explicitly via the Permissions tab.', related_name='member_projects', to=settings.AUTH_USER_MODEL),
+            model_name="project",
+            name="members",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Team members with working access to this project. Members automatically receive view, add, and change permissions. Delete access must be granted explicitly via the Permissions tab.",
+                related_name="member_projects",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='researcher',
-            name='user',
-            field=models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.RESTRICT, to=settings.AUTH_USER_MODEL),
+            model_name="researcher",
+            name="user",
+            field=models.OneToOneField(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.RESTRICT,
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

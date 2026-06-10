@@ -30,7 +30,9 @@ from prototype.models import Project, Researcher, ResearchGroup
 
 class AlgorithmTestCase(TestCase):
     def setUp(self):
-        test_file = SimpleUploadedFile("test_files/test.txt", b"file_content", content_type="text/plain")
+        test_file = SimpleUploadedFile(
+            "test_files/test.txt", b"file_content", content_type="text/plain"
+        )
         Algorithm.objects.create(
             name="Dijkstra",
             version="1.0",
@@ -41,7 +43,9 @@ class AlgorithmTestCase(TestCase):
 
     def test_algorithm_file_upload(self):
         dijkstra = Algorithm.objects.get(name="Dijkstra")
-        self.assertTrue(dijkstra.file.name.startswith("analysis/algorithms/test"))
+        self.assertTrue(
+            dijkstra.file.name.startswith("analysis/algorithms/test")
+        )
 
     def test_algorithm_fields(self):
         algorithm = Algorithm.objects.get(name="Dijkstra")
@@ -64,12 +68,16 @@ class RawMeasurementModelTest(TestCase):
             last_name="Researcher",
             email="test.researcher@example.com",
         )
-        cls.researcher = Researcher.objects.create(user=cls.user, academic_rank="P", position="P")
+        cls.researcher = Researcher.objects.create(
+            user=cls.user, academic_rank="P", position="P"
+        )
 
         cls.auth_group = Group.objects.create(name="Test Auth Group")
 
         cls.research_group = ResearchGroup.objects.create(
-            label="Test Research Group", head_of_group=cls.researcher, auth_group=cls.auth_group
+            label="Test Research Group",
+            head_of_group=cls.researcher,
+            auth_group=cls.auth_group,
         )
 
         cls.project = Project.objects.create(
@@ -81,13 +89,22 @@ class RawMeasurementModelTest(TestCase):
         cls.sample_content_type = ContentType.objects.get_for_model(Sample)
 
         cls.tag = Tag.objects.create(
-            content_type=cls.sample_content_type, word="Test Tag", slug="test-tag", project=cls.project
+            content_type=cls.sample_content_type,
+            word="Test Tag",
+            slug="test-tag",
+            project=cls.project,
         )
 
-        cls.sample_type = SampleType.objects.create(word="Test Sample Type", label="TST")
+        cls.sample_type = SampleType.objects.create(
+            word="Test Sample Type", label="TST"
+        )
 
-        cls.country = Country.objects.create(name="Test Country", iso_code="TC")
-        cls.province = Province.objects.create(name="Test Province", country=cls.country)
+        cls.country = Country.objects.create(
+            name="Test Country", iso_code="TC"
+        )
+        cls.province = Province.objects.create(
+            name="Test Province", country=cls.country
+        )
 
         cls.study_area = StudyArea.objects.create(
             label="Test Study Area",
@@ -97,7 +114,9 @@ class RawMeasurementModelTest(TestCase):
             ecozone_schultz="MHU",
         )
 
-        cls.site = Site.objects.create(label="Test Site", study_area=cls.study_area)
+        cls.site = Site.objects.create(
+            label="Test Site", study_area=cls.study_area
+        )
         cls.site.tags.add(cls.tag)
 
         cls.campaign = Campaign.objects.create(
@@ -170,7 +189,9 @@ class RawMeasurementModelTest(TestCase):
         cls.device = Device.objects.create(name="Test Device")
         cls.accessory = Accessory.objects.create(device=cls.device)
 
-        cls.test_file = SimpleUploadedFile("test_raw_data.txt", b"file_content", content_type="text/plain")
+        cls.test_file = SimpleUploadedFile(
+            "test_raw_data.txt", b"file_content", content_type="text/plain"
+        )
 
         cls.sample = Sample.objects.create(
             identifier="SAMPLE001",
@@ -205,12 +226,16 @@ class RawMeasurementModelTest(TestCase):
         self.assertEqual(self.raw_measurement.device, self.device)
         self.assertEqual(self.raw_measurement.accessories, self.accessory)
         self.assertEqual(self.raw_measurement.researcher, self.researcher)
-        self.assertTrue(file.file.name.startswith("analysis/raw_data/test_raw_data"))
+        self.assertTrue(
+            file.file.name.startswith("analysis/raw_data/test_raw_data")
+        )
         self.assertEqual(self.raw_measurement.description, "Test description")
 
     def test_file_upload_path(self):
 
-        self.assertTrue(self.raw_measurement.file.name.startswith("analysis/raw_data/"))
+        self.assertTrue(
+            self.raw_measurement.file.name.startswith("analysis/raw_data/")
+        )
 
     def test_file_content(self):
         self.assertEqual(self.raw_measurement.file.read(), b"file_content")
@@ -223,10 +248,10 @@ class RawMeasurementModelTest(TestCase):
             researcher=self.researcher,
             file=self.test_file,
             accessories=None,
-            description=None,
+            description="",
         )
         self.assertIsNone(raw_measurement.accessories)
-        self.assertIsNone(raw_measurement.description)
+        self.assertEqual(raw_measurement.description, "")
 
     def test_sample_relation(self):
         self.assertIn(self.sample, self.raw_measurement.sample.all())

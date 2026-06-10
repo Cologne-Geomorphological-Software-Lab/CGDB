@@ -3,6 +3,7 @@
 Covers: __str__ for all models, Method choices, Calibration str with
 em-dash, Firmware str, AccessoryParameter str.
 """
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 
@@ -40,7 +41,9 @@ class _LabSetup(TestCase):
             laboratory="PHY",
             available=True,
         )
-        cls.user = User.objects.create_user(username="lab_model_user", password="pw")
+        cls.user = User.objects.create_user(
+            username="lab_model_user", password="pw"
+        )
         cls.researcher = Researcher.objects.create(
             user=cls.user, academic_rank="D", position="WiMa"
         )

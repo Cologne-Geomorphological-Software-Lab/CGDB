@@ -50,6 +50,8 @@ class BaseModel(models.Model):
     )
 
     class Meta:
+        """Mark as abstract and order newest-modified first."""
+
         abstract = True
         ordering = ["-modified_at", "-created_at"]
 
@@ -129,9 +131,11 @@ class Researcher(BaseModel):
         ("EX", "External"),
     ]
     position = models.CharField(max_length=5, choices=POSITION_CHOICES)
-    orcid = models.CharField(max_length=50, blank=True, null=True)
+    orcid = models.CharField(max_length=50, blank=True)
 
     class Meta:
+        """Use a proper plural for the admin."""
+
         verbose_name_plural = "Researchers"
 
     def __str__(self) -> str:
@@ -160,7 +164,7 @@ class Project(BaseModel):
     """
 
     title = models.CharField(max_length=200)
-    subtitle = models.CharField(max_length=200, blank=True, null=True)
+    subtitle = models.CharField(max_length=200, blank=True)
     label = models.CharField(max_length=50)
     principal_investigator = models.ManyToManyField(Researcher)
     associated_investigator = models.ManyToManyField(
@@ -183,10 +187,7 @@ class Project(BaseModel):
         blank=True,
         null=True,
     )
-    description = models.TextField(
-        blank=True,
-        null=True,
-    )
+    description = models.TextField(blank=True)
 
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),

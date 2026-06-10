@@ -1,13 +1,28 @@
+"""Django admin configuration for the bibliography app."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from django.contrib import admin
-from django.db.models import QuerySet
 from unfold.admin import ModelAdmin, TabularInline
-from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeNumericFilter, RelatedDropdownFilter
+from unfold.contrib.filters.admin import (
+    ChoicesDropdownFilter,
+    RangeNumericFilter,
+    RelatedDropdownFilter,
+)
 from unfold.decorators import display
 
 from .models import Author, Reference, ReferenceKeyword
 
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.http import HttpRequest
+
 
 class ReferenceKeywordAdmin(ModelAdmin):
+    """Admin for the ReferenceKeyword model."""
+
     change_form_show_cancel_button = True
     list_display = ["keyword", "keyword_ger"]
     search_fields = ["keyword", "keyword_ger"]
@@ -15,6 +30,8 @@ class ReferenceKeywordAdmin(ModelAdmin):
 
 
 class ReferenceAdmin(ModelAdmin):
+    """Admin for the Reference model with tabbed fieldsets and custom list display."""
+
     change_form_show_cancel_button = True
     fieldsets = [
         (
@@ -81,7 +98,13 @@ class ReferenceAdmin(ModelAdmin):
         ),
     ]
     filter_horizontal = ["second_author", "supervisor", "keywords"]
-    search_fields = ["title", "doi", "issn", "isbn_print", "lead_author__last_name"]
+    search_fields = [
+        "title",
+        "doi",
+        "issn",
+        "isbn_print",
+        "lead_author__last_name",
+    ]
     list_display = [
         "lead_author",
         "year",
@@ -110,16 +133,28 @@ class ReferenceAdmin(ModelAdmin):
         },
         description="Type",
     )
-    def colored_type(self, obj) -> str:
+    def colored_type(self, obj: Reference) -> str:
+        """Return the reference type value used to render a coloured badge."""
         return obj.type
 
-    def get_queryset(self, request) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return the default queryset for the Reference changelist."""
         return super().get_queryset(request)
 
-    def has_view_permission(self, request, obj=None) -> bool:
+    def has_view_permission(
+        self,
+        _request: HttpRequest,
+        _obj: Reference | None = None,
+    ) -> bool:
+        """Allow all authenticated users to view references."""
         return True
 
-    def has_change_permission(self, request, obj=None) -> bool:
+    def has_change_permission(
+        self,
+        request: HttpRequest,
+        obj: Reference | None = None,
+    ) -> bool:
+        """Allow change only when the user holds the per-object change permission."""
         if obj is None:
             return True
         change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
@@ -127,6 +162,8 @@ class ReferenceAdmin(ModelAdmin):
 
 
 class LeadAuthorReferenceInline(TabularInline):
+    """Inline showing references where this author is the lead author."""
+
     model = Reference
     fk_name = "lead_author"
     extra = 0
@@ -135,6 +172,8 @@ class LeadAuthorReferenceInline(TabularInline):
 
 
 class AuthorAdmin(ModelAdmin):
+    """Admin for the Author model with an inline of their lead-author references."""
+
     change_form_show_cancel_button = True
     list_display = ["last_name", "first_name"]
     search_fields = ["last_name", "first_name"]

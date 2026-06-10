@@ -10,7 +10,11 @@ from django.utils import timezone
 from analysis.models import GrainSize
 from field_data.models import Location, Sample
 from prototype.models import Project
-from prototype.views import _build_monthly_performance, dashboard_callback, stat_data
+from prototype.views import (
+    _build_monthly_performance,
+    dashboard_callback,
+    stat_data,
+)
 
 
 class _ViewSetup(TestCase):
@@ -60,9 +64,13 @@ class StatDataStructureTest(_ViewSetup):
         self.assertIn("0", footer)
 
     def test_project_count_reflects_db(self):
-        Project.objects.create(title="Count Test", label="CT01", status="ACTIVE")
+        Project.objects.create(
+            title="Count Test", label="CT01", status="ACTIVE"
+        )
         result = stat_data()
-        projects_tile = next(t for t in result["project"] if t["title"] == "Projects")
+        projects_tile = next(
+            t for t in result["project"] if t["title"] == "Projects"
+        )
         self.assertEqual(projects_tile["metric"], "1")
 
 
@@ -103,6 +111,7 @@ class BuildMonthlyPerformanceTest(_ViewSetup):
 
     def test_oldest_entry_is_11_months_ago(self):
         from dateutil.relativedelta import relativedelta
+
         today = timezone.now()
         oldest = today - relativedelta(months=11)
         result = _build_monthly_performance([Project])
@@ -111,7 +120,9 @@ class BuildMonthlyPerformanceTest(_ViewSetup):
         self.assertIn(month_name, first_label)
 
     def test_current_month_count_reflected(self):
-        Project.objects.create(title="Perf Test", label="PT01", status="ACTIVE")
+        Project.objects.create(
+            title="Perf Test", label="PT01", status="ACTIVE"
+        )
         result = _build_monthly_performance([Project])
         self.assertGreaterEqual(result[-1][1], 1)
 

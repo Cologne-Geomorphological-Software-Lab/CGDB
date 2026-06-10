@@ -6,7 +6,7 @@ DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.spatialite",
         "NAME": ":memory:",
-    }
+    },
 }
 
 SPATIALITE_LIBRARY_PATH = "C:/OSGeo4W/bin/mod_spatialite.dll"

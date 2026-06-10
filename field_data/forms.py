@@ -1,3 +1,7 @@
+"""Django forms for creating and editing field_data records."""
+
+from __future__ import annotations
+
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Layout, Row, Submit
 from django.contrib.gis import forms
@@ -6,7 +10,11 @@ from .models import Campaign, Layer, Location, Project, Sample, StudyArea, Tag
 
 
 class CampaignForm(forms.ModelForm):
+    """Form for creating and editing a Campaign."""
+
     class Meta:
+        """Form metadata for CampaignForm."""
+
         model = Campaign
         fields = [
             "label",
@@ -45,7 +53,8 @@ class CampaignForm(forms.ModelForm):
             "season": forms.Select(attrs={"class": "form-control"}),
         }
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialise the form, pre-populating the project field from project_id."""
         project_id = kwargs.pop("project_id", None)
         super().__init__(*args, **kwargs)
         self.fields["project"].widget.attrs["readonly"] = True
@@ -61,7 +70,11 @@ class CampaignForm(forms.ModelForm):
 
 
 class LocationForm(forms.ModelForm):
+    """Form for creating and editing a Location."""
+
     class Meta:
+        """Form metadata for LocationForm."""
+
         model = Location
         fields = [
             "project",
@@ -90,7 +103,8 @@ class LocationForm(forms.ModelForm):
             "date_of_record": forms.DateInput(attrs={"type": "date"}),
         }
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialise the form and configure the crispy-forms helper."""
         super().__init__(*args, **kwargs)
 
         self.fields["processor"].widget.attrs["readonly"] = True
@@ -100,7 +114,11 @@ class LocationForm(forms.ModelForm):
 
 
 class StudyAreaForm(forms.ModelForm):
+    """Form for creating and editing a StudyArea."""
+
     class Meta:
+        """Form metadata for StudyAreaForm."""
+
         model = StudyArea
         fields = [
             "label",
@@ -110,9 +128,14 @@ class StudyAreaForm(forms.ModelForm):
             "ecozone_schultz",
             "geometry",
         ]
-        widgets = {"area": forms.OSMWidget(attrs={"map_width": 800, "map_height": 500})}
+        widgets = {
+            "area": forms.OSMWidget(
+                attrs={"map_width": 800, "map_height": 500},
+            ),
+        }
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialise the form with a crispy-forms layout including a map widget."""
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -127,7 +150,11 @@ class StudyAreaForm(forms.ModelForm):
 
 
 class SampleForm(forms.ModelForm):
+    """Form for creating and editing a Sample."""
+
     class Meta:
+        """Form metadata for SampleForm."""
+
         model = Sample
         fields = [
             "identifier",
@@ -151,7 +178,8 @@ class SampleForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialise the form, pre-populating the location field when provided."""
         location = kwargs.pop("location", None)
         super().__init__(*args, **kwargs)
         if location:
@@ -162,18 +190,27 @@ class SampleForm(forms.ModelForm):
 
 
 class TagForm(forms.ModelForm):
+    """Form for creating and editing a Tag."""
+
     class Meta:
+        """Form metadata for TagForm."""
+
         model = Tag
         fields = ["word", "slug", "project", "content_type"]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialise the form and configure the crispy-forms helper."""
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.add_input(Submit("submit", "Submit"))
 
 
 class LayerForm(forms.ModelForm):
+    """Form for creating and editing a Layer."""
+
     class Meta:
+        """Form metadata for LayerForm."""
+
         model = Layer
         fields = [
             "location",
@@ -193,7 +230,8 @@ class LayerForm(forms.ModelForm):
             "tags",
         ]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialise the form and configure the crispy-forms helper."""
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.add_input(Submit("submit", "Submit"))

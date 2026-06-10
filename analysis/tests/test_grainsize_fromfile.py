@@ -3,6 +3,9 @@
 Happy-path, error-handling and integration tests.
 Temporary files are created with tempfile and cleaned up via addCleanup.
 """
+
+from __future__ import annotations
+
 import os
 import tempfile
 from pathlib import Path
@@ -22,6 +25,7 @@ def _make_sample():
 # ---------------------------------------------------------------------------
 # Helper: write a temporary .$av-style file
 # ---------------------------------------------------------------------------
+
 
 def _make_av_file(content: str) -> Path:
     """Write content to a temporary file and return its Path."""
@@ -68,7 +72,7 @@ class GrainSizeFromFileHappyPathTest(SimpleTestCase):
         self.sample = _make_sample()
         self.method = "L"
 
-    def _parse(self, content=None):
+    def _parse(self, content: str | None = None):
         if content is not None:
             path = _make_av_file(content)
             self.addCleanup(os.unlink, path)
@@ -163,19 +167,23 @@ class GrainSizeFromFileHappyPathTest(SimpleTestCase):
 
 class GrainSizeFromFileErrorHandlingTest(SimpleTestCase):
 
-    def _parse(self, content):
+    def _parse(self, content: str):
         path = _make_av_file(content)
         self.addCleanup(os.unlink, path)
         return GrainSize.from_file(path, _make_sample(), "L")
 
     def test_missing_size_block_raises_value_error(self):
-        content = "[#Bindiam]\n10.0\n[#Binheight]\n50.0\n[SizeStats]\nMean=5.0\n"
+        content = (
+            "[#Bindiam]\n10.0\n[#Binheight]\n50.0\n[SizeStats]\nMean=5.0\n"
+        )
         with self.assertRaises(ValueError) as cm:
             self._parse(content)
         self.assertIn("concentration", str(cm.exception).lower())
 
     def test_size_block_without_obs_raises_value_error(self):
-        content = "[#Bindiam]\n10.0\n[#Binheight]\n50.0\n[Size0]\nSomething=42\n"
+        content = (
+            "[#Bindiam]\n10.0\n[#Binheight]\n50.0\n[Size0]\nSomething=42\n"
+        )
         with self.assertRaises(ValueError):
             self._parse(content)
 
@@ -201,8 +209,19 @@ class GrainSizeFromFileErrorHandlingTest(SimpleTestCase):
     def test_missing_stats_fields_remain_none(self):
         content = "[#Bindiam]\n10.0\n[#Binheight]\n50.0\n[Size0]\nObs=100\n"
         gs = self._parse(content)
-        for attr in ("mean", "mode", "median", "std", "skew", "kurtosis",
-                     "fwmean", "fwmedian", "fwsd", "fwskew", "fwkurt"):
+        for attr in (
+            "mean",
+            "mode",
+            "median",
+            "std",
+            "skew",
+            "kurtosis",
+            "fwmean",
+            "fwmedian",
+            "fwsd",
+            "fwskew",
+            "fwkurt",
+        ):
             self.assertIsNone(getattr(gs, attr), msg=f"{attr} should be None")
 
     def test_latin1_encoding_does_not_raise(self):

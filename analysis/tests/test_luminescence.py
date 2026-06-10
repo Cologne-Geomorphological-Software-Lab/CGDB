@@ -3,6 +3,7 @@
 Covers: __str__ edge-cases, year_of_publication validators,
 required/optional fields, choices, defaults, FK protect-on-delete.
 """
+
 import datetime
 
 from django.contrib.auth.models import User
@@ -10,10 +11,13 @@ from django.core.exceptions import ValidationError
 from django.db.models import RestrictedError
 from django.test import SimpleTestCase, TestCase
 
-from analysis.models import LuminescenceDating, current_year, max_value_current_year
+from analysis.models import (
+    LuminescenceDating,
+    current_year,
+    max_value_current_year,
+)
 from field_data.models import Location, Sample
 from prototype.models import Project
-
 
 # ===========================================================================
 # Shared fixture
@@ -52,7 +56,7 @@ class _LuminescenceSetup(TestCase):
 class LuminescenceDatingStrSimpleTest(SimpleTestCase):
     """Tests that do not need a DB – build instances via __new__."""
 
-    def _make(self, pk, lab_id, mineral):
+    def _make(self, pk: object, lab_id: str, mineral: str):
         obj = LuminescenceDating.__new__(LuminescenceDating)
         obj.pk = pk
         obj.laboratory_id = lab_id
@@ -148,10 +152,18 @@ class LuminescenceDatingFieldsTest(_LuminescenceSetup):
     def test_decimal_fields_nullable(self):
         d = LuminescenceDating.objects.create(sample=self.sample)
         for field_name in (
-            "luminescence_age", "age_error", "dose_rate", "dose_rate_error",
-            "palaeodose_value", "palaeodose_error", "g_value", "g_value_error",
+            "luminescence_age",
+            "age_error",
+            "dose_rate",
+            "dose_rate_error",
+            "palaeodose_value",
+            "palaeodose_error",
+            "g_value",
+            "g_value_error",
         ):
-            self.assertIsNone(getattr(d, field_name), msg=f"{field_name} should be None")
+            self.assertIsNone(
+                getattr(d, field_name), msg=f"{field_name} should be None"
+            )
 
     def test_mineral_choices_complete(self):
         choices = dict(LuminescenceDating.CHOICES_MINERAL)

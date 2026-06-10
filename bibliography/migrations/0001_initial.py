@@ -26,7 +26,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("keyword", models.CharField(max_length=250, unique=True)),
                 (
                     "keyword_ger",
@@ -49,7 +52,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("last_name", models.CharField(max_length=50)),
                 ("first_name", models.CharField(max_length=50)),
                 (
@@ -98,16 +104,28 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("title", models.CharField(max_length=250)),
                 ("year", models.IntegerField(blank=True, null=True)),
                 ("published", models.BooleanField(blank=True, null=True)),
                 ("abstract", models.TextField()),
-                ("journal", models.CharField(blank=True, max_length=250, null=True)),
+                (
+                    "journal",
+                    models.CharField(blank=True, max_length=250, null=True),
+                ),
                 ("volume", models.IntegerField(blank=True, null=True)),
                 ("number", models.IntegerField(blank=True, null=True)),
-                ("pages", models.CharField(blank=True, max_length=250, null=True)),
-                ("publisher", models.CharField(blank=True, max_length=250, null=True)),
+                (
+                    "pages",
+                    models.CharField(blank=True, max_length=250, null=True),
+                ),
+                (
+                    "publisher",
+                    models.CharField(blank=True, max_length=250, null=True),
+                ),
                 (
                     "location_of_publication",
                     models.CharField(blank=True, max_length=250, null=True),
@@ -129,8 +147,14 @@ class Migration(migrations.Migration):
                 ),
                 ("doi", models.URLField(blank=True, max_length=50, null=True)),
                 ("issn", models.IntegerField(blank=True, null=True)),
-                ("isbn_print", models.CharField(blank=True, max_length=50, null=True)),
-                ("isbn_online", models.CharField(blank=True, max_length=50, null=True)),
+                (
+                    "isbn_print",
+                    models.CharField(blank=True, max_length=50, null=True),
+                ),
+                (
+                    "isbn_online",
+                    models.CharField(blank=True, max_length=50, null=True),
+                ),
                 (
                     "how_to_cite",
                     models.CharField(blank=True, max_length=350, null=True),

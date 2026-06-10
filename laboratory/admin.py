@@ -1,12 +1,29 @@
+"""Admin configuration for the laboratory app."""
+
+from __future__ import annotations
+
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
-from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
+from unfold.contrib.filters.admin import (
+    ChoicesDropdownFilter,
+    RelatedDropdownFilter,
+)
 from unfold.decorators import display
 
-from .models import Accessory, AccessoryParameter, Calibration, Device, Firmware, Manufacturer, Method
+from .models import (
+    Accessory,
+    AccessoryParameter,
+    Calibration,
+    Device,
+    Firmware,
+    Manufacturer,
+    Method,
+)
 
 
 class DeviceInline(TabularInline):
+    """Inline editor for devices within a manufacturer."""
+
     model = Device
     extra = 0
     fields = ["name", "available"]
@@ -14,6 +31,8 @@ class DeviceInline(TabularInline):
 
 
 class ManufacturerAdmin(ModelAdmin):
+    """Admin interface for manufacturers."""
+
     change_form_show_cancel_button = True
     list_display = ["name", "website"]
     search_fields = ["name"]
@@ -24,6 +43,8 @@ class ManufacturerAdmin(ModelAdmin):
 
 
 class AccessoryInline(TabularInline):
+    """Inline editor for accessories within a device."""
+
     model = Accessory
     extra = 0
     fields = ["name"]
@@ -31,6 +52,8 @@ class AccessoryInline(TabularInline):
 
 
 class FirmwareInline(TabularInline):
+    """Inline editor for firmware versions within a device."""
+
     model = Firmware
     extra = 0
     fields = ["version", "installation_date"]
@@ -38,6 +61,8 @@ class FirmwareInline(TabularInline):
 
 
 class CalibrationInline(TabularInline):
+    """Inline editor for calibration records within a device."""
+
     model = Calibration
     extra = 0
     fields = ["date", "researcher"]
@@ -45,6 +70,8 @@ class CalibrationInline(TabularInline):
 
 
 class DeviceAdmin(ModelAdmin):
+    """Admin interface for devices."""
+
     change_form_show_cancel_button = True
     list_display = ["name", "manufacturer"]
     search_fields = ["name"]
@@ -56,12 +83,16 @@ class DeviceAdmin(ModelAdmin):
 
 
 class AccessoryParameterInline(TabularInline):
+    """Inline editor for accessory parameters within an accessory."""
+
     model = AccessoryParameter
     extra = 0
     fields = ["method", "parameter_name", "parameter_value", "parameter_unit"]
 
 
 class AccessoryAdmin(ModelAdmin):
+    """Admin interface for accessories."""
+
     change_form_show_cancel_button = True
     list_display = ["device", "name"]
     search_fields = ["name", "device__name"]
@@ -73,6 +104,8 @@ class AccessoryAdmin(ModelAdmin):
 
 
 class FirmwareAdmin(ModelAdmin):
+    """Admin interface for firmware records."""
+
     change_form_show_cancel_button = True
     list_display = ["device", "version", "installation_date"]
     search_fields = ["device__name", "version"]
@@ -83,6 +116,8 @@ class FirmwareAdmin(ModelAdmin):
 
 
 class CalibrationAdmin(ModelAdmin):
+    """Admin interface for calibration records."""
+
     change_form_show_cancel_button = True
     list_display = ["device", "date", "researcher"]
     search_fields = ["device__name"]
@@ -96,6 +131,8 @@ class CalibrationAdmin(ModelAdmin):
 
 
 class MethodAdmin(ModelAdmin):
+    """Admin interface for analytical methods."""
+
     change_form_show_cancel_button = True
     list_display = ["name", "colored_category", "device", "laboratory"]
     search_fields = ["name", "token"]
@@ -112,7 +149,8 @@ class MethodAdmin(ModelAdmin):
         label={"CHEM": "success", "PHY": "info", "CHRO": "warning"},
         description="Category",
     )
-    def colored_category(self, obj) -> str:
+    def colored_category(self, obj: Method) -> str:
+        """Return the category value for colour-coded display."""
         return obj.category
 
 

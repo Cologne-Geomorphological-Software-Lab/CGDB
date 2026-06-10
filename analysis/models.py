@@ -1,5 +1,8 @@
+"""Django models for the analysis app, covering geochronology, paleobotany, sedimentology, and geochemistry."""
+
 from __future__ import annotations
 
+import contextlib
 import datetime
 import json
 from pathlib import Path
@@ -30,9 +33,13 @@ class Algorithm(models.Model):
 
     name = models.CharField(max_length=100)
     version = models.CharField(max_length=10)
-    description = models.TextField(blank=True, null=True)
-    link = models.URLField(blank=True, null=True)
-    file = models.FileField(upload_to="analysis/algorithms/", blank=True, null=True)
+    description = models.TextField(blank=True)
+    link = models.URLField(blank=True)
+    file = models.FileField(
+        upload_to="analysis/algorithms/",
+        blank=True,
+        null=True,
+    )
     CHOICES = [
         ("Python", "Python"),
         ("R", "R"),
@@ -46,6 +53,7 @@ class Algorithm(models.Model):
     )
 
     def __str__(self) -> str:
+        """Return the algorithm name."""
         return self.name
 
 
@@ -86,12 +94,14 @@ class RawMeasurement(BaseModel):
         related_name="analysis_raw_data",
     )
     file = models.FileField(upload_to="analysis/raw_data/")
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True)
 
     def filename(self) -> str | None:
+        """Return the base filename of the uploaded file, or None if no file."""
         return Path(self.file.name).name if self.file else None
 
     def __str__(self) -> str:
+        """Return a string combining device and creation timestamp."""
         return f"{self.device} - {self.created_at}"
 
 
@@ -116,7 +126,7 @@ class RawProcessing(BaseModel):
     )
 
     processed_file = models.FileField(upload_to="analysis/processed_data/")
-    processing_description = models.TextField(blank=True, null=True)
+    processing_description = models.TextField(blank=True)
 
     processed_by = models.ForeignKey(
         Researcher,
@@ -149,9 +159,15 @@ class RawProcessing(BaseModel):
     )
 
     def processed_filename(self) -> str | None:
-        return Path(self.processed_file.name).name if self.processed_file else None
+        """Return the base filename of the processed file, or None if no file."""
+        return (
+            Path(self.processed_file.name).name
+            if self.processed_file
+            else None
+        )
 
     def __str__(self) -> str:
+        """Return a human-readable label referencing the raw measurement."""
         return f"Processed data for {self.raw_measurement}"
 
 
@@ -194,10 +210,13 @@ class Counting(BaseModel):
     type = models.CharField(choices=COUNTING_CHOICES, max_length=50)
 
     class Meta:
+        """Django metadata for Counting."""
+
         verbose_name = "Counting"
         verbose_name_plural = "Countings"
 
     def __str__(self) -> str:
+        """Return the associated sample as a string."""
         return f"{self.sample}"
 
 
@@ -234,10 +253,13 @@ class Pollen(BaseModel):
     )
 
     class Meta:
+        """Django metadata for Pollen."""
+
         verbose_name = "Pollen"
         verbose_name_plural = "Pollen"
 
     def __str__(self) -> str:
+        """Return the Latin name of the pollen species."""
         return f"{self.name}"
 
 
@@ -263,10 +285,13 @@ class PollenCount(BaseModel):
     number = models.IntegerField()
 
     class Meta:
+        """Django metadata for PollenCount."""
+
         verbose_name = "Pollen Count"
         verbose_name_plural = "Pollen Counts"
 
     def __str__(self) -> str:
+        """Return a label combining counting event and pollen species."""
         return f"{self.counting} - {self.pollen}"
 
 
@@ -276,10 +301,12 @@ class PollenCount(BaseModel):
 
 
 def current_year() -> int:
+    """Return the current calendar year in the Europe/Berlin timezone."""
     return datetime.datetime.now(tz=ZoneInfo("Europe/Berlin")).date().year
 
 
-def max_value_current_year(value) -> None:
+def max_value_current_year(value: int) -> None:
+    """Validate that *value* does not exceed the current year."""
     return MaxValueValidator(current_year())(value)
 
 
@@ -460,7 +487,10 @@ class LuminescenceDating(BaseModel):
 
     year_of_publication = models.PositiveIntegerField(
         default=current_year,
-        validators=[MinValueValidator(1984), MaxValueValidator(current_year())],
+        validators=[
+            MinValueValidator(1984),
+            MaxValueValidator(current_year()),
+        ],
         blank=True,
         null=True,
     )
@@ -478,10 +508,7 @@ class LuminescenceDating(BaseModel):
         blank=True,
     )
 
-    comments = models.TextField(
-        blank=True,
-        null=True,
-    )
+    comments = models.TextField(blank=True)
 
     grain_size_min = models.IntegerField(
         verbose_name="Min. grain size [µm]",
@@ -498,7 +525,6 @@ class LuminescenceDating(BaseModel):
     aliquot_size = models.CharField(
         max_length=30,
         blank=True,
-        null=True,
     )
 
     aliquot_number_used_for_palaeodose = models.IntegerField(
@@ -772,8 +798,13 @@ class LuminescenceDating(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label combining the laboratory ID and mineral type."""
         mineral_str = self.mineral or "Unknown"
-        lab_id = (self.laboratory_id or f"ID-{self.pk}") if self.pk else (self.laboratory_id or "Unsaved")
+        lab_id = (
+            (self.laboratory_id or f"ID-{self.pk}")
+            if self.pk
+            else (self.laboratory_id or "Unsaved")
+        )
         return f"{lab_id} {mineral_str}"
 
 
@@ -816,11 +847,14 @@ class RadiocarbonDating(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label with lab ID and age."""
         age_str = f"{self.age} ka" if self.age is not None else "undated"
         return f"{self.lab_id} ({age_str})"
 
 
 class CosmogenicNuclideDating(BaseModel):
+    """Represents cosmogenic nuclide dating data for a sample."""
+
     NUCLIDE_CHOICES = [
         ("10Be", "¹⁰Be"),
         ("26Al", "²⁶Al"),
@@ -866,9 +900,21 @@ class CosmogenicNuclideDating(BaseModel):
         null=True,
     )
     lab_id = models.CharField(max_length=30, blank=True)
-    nuclide = models.CharField(max_length=5, choices=NUCLIDE_CHOICES, blank=True)
-    mineral = models.CharField(max_length=10, choices=MINERAL_CHOICES, blank=True)
-    dating_approach = models.CharField(max_length=10, choices=APPROACH_CHOICES, blank=True)
+    nuclide = models.CharField(
+        max_length=5,
+        choices=NUCLIDE_CHOICES,
+        blank=True,
+    )
+    mineral = models.CharField(
+        max_length=10,
+        choices=MINERAL_CHOICES,
+        blank=True,
+    )
+    dating_approach = models.CharField(
+        max_length=10,
+        choices=APPROACH_CHOICES,
+        blank=True,
+    )
 
     # --- Concentration (published + standardized) ---
     # Concentrations are large integers (1e4–1e7 atoms/g); decimal_places=0
@@ -968,7 +1014,11 @@ class CosmogenicNuclideDating(BaseModel):
     )
 
     # --- Production rate & scaling ---
-    scaling_method = models.CharField(max_length=10, choices=SCALING_CHOICES, blank=True)
+    scaling_method = models.CharField(
+        max_length=10,
+        choices=SCALING_CHOICES,
+        blank=True,
+    )
     calculation_software = models.CharField(
         max_length=50,
         blank=True,
@@ -1091,17 +1141,25 @@ class CosmogenicNuclideDating(BaseModel):
     )
     thesis = models.CharField(
         max_length=4,
-        choices=[("BSc", "BSc"), ("MSc", "MSc"), ("PhD", "PhD"), ("None", "None")],
+        choices=[
+            ("BSc", "BSc"),
+            ("MSc", "MSc"),
+            ("PhD", "PhD"),
+            ("None", "None"),
+        ],
         default="None",
     )
-    comments = models.TextField(blank=True, null=True)
+    comments = models.TextField(blank=True)
 
     def __str__(self) -> str:
+        """Return a label combining lab ID and nuclide."""
         lab_id = self.lab_id or (f"ID-{self.pk}" if self.pk else "Unsaved")
         nuclide_str = self.nuclide or "Unknown"
         return f"{lab_id} ({nuclide_str})"
 
     class Meta:
+        """Django metadata for CosmogenicNuclideDating."""
+
         verbose_name = "Cosmogenic Nuclide Dating"
         verbose_name_plural = "Cosmogenic Nuclide Datings"
 
@@ -1239,6 +1297,7 @@ CLASSES = [
 
 
 def default_classes() -> list:
+    """Return a copy of the default Sympatec grain-size class boundaries."""
     return list(CLASSES)
 
 
@@ -1290,6 +1349,7 @@ class Parameter(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the parameter name with its unit in brackets."""
         return f"{self.name} - [{self.unit}]"
 
 
@@ -1303,6 +1363,7 @@ class MeasurementSeries(BaseModel):
     datetime = models.DateTimeField()
 
     def __str__(self) -> str:
+        """Return a label with the series PK and datetime."""
         return f"Series {self.pk} – {self.datetime}"
 
 
@@ -1363,7 +1424,63 @@ class GenericMeasurement(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label combining sample, method, and parameter."""
         return f"{self.sample} - {self.method} - {self.parameter}"
+
+
+# Wentworth grain size class boundaries in µm (Wentworth 1922 / Folk & Ward)
+_W_CLAY = 2
+_W_FINE_SILT = 6.3
+_W_MEDIUM_SILT = 20
+_W_COARSE_SILT = 63
+_W_FINE_SAND = 200
+_W_MEDIUM_SAND = 630
+_W_COARSE_SAND = 2000
+
+# Ordered lookup: (upper boundary µm, field name). "gravel" has no upper bound.
+_WENTWORTH_FRACTIONS: list[tuple[float, str]] = [
+    (_W_CLAY, "clay"),
+    (_W_FINE_SILT, "fine_silt"),
+    (_W_MEDIUM_SILT, "medium_silt"),
+    (_W_COARSE_SILT, "coarse_silt"),
+    (_W_FINE_SAND, "fine_sand"),
+    (_W_MEDIUM_SAND, "medium_sand"),
+    (_W_COARSE_SAND, "coarse_sand"),
+]
+
+# Maps .mps file stat key → model field name
+_STATS_KEY_MAP: dict[str, str] = {
+    "Mean": "mean",
+    "Mode": "mode",
+    "Median": "median",
+    "SD": "std",
+    "Skew": "skew",
+    "Kurtosis": "kurtosis",
+    "FWMean": "fwmean",
+    "FWMedian": "fwmedian",
+    "FWSD": "fwsd",
+    "FWSkew": "fwskew",
+    "FWKurt": "fwkurt",
+}
+
+
+def _classify_fraction(class_value: float) -> str:
+    """Return the Wentworth fraction name for a given grain size in µm."""
+    for boundary, name in _WENTWORTH_FRACTIONS:
+        if class_value < boundary:
+            return name
+    return "gravel"
+
+
+def _parse_stats_line(line: str, stats: dict) -> None:
+    """Parse one key=value line from a [SizeStats] block into the stats dict."""
+    try:
+        key, value = line.split("=")
+        attr = _STATS_KEY_MAP.get(key.strip())
+        if attr:
+            stats[attr] = float(value.strip())
+    except ValueError:
+        pass
 
 
 class GrainSize(BaseModel):
@@ -1469,7 +1586,10 @@ class GrainSize(BaseModel):
         verbose_name="Gravel (≥ 2000 µm) [%]",
     )
 
-    SOURCE_CHOICES = [("file", "Imported from file"), ("manual", "Entered manually")]
+    SOURCE_CHOICES = [
+        ("file", "Imported from file"),
+        ("manual", "Entered manually"),
+    ]
     source = models.CharField(
         max_length=10,
         choices=SOURCE_CHOICES,
@@ -1533,49 +1653,34 @@ class GrainSize(BaseModel):
         verbose_name="Folk & Ward Kurtosis",
     )
 
-    def _reclassify(self) -> tuple[float, float, float, float, float, float, float]:
+    def _reclassify(
+        self,
+    ) -> tuple[float, float, float, float, float, float, float]:
         if isinstance(self.measured_data, str):
             self.measured_data = json.loads(self.measured_data)
         elif not isinstance(self.measured_data, list):
-            raise TypeError("Measured data must be a string or a list.")
-        self.clay = 0
-        self.fine_silt = 0
-        self.medium_silt = 0
-        self.coarse_silt = 0
-        self.fine_sand = 0
-        self.medium_sand = 0
-        self.coarse_sand = 0
-        self.gravel = 0
+            msg = "Measured data must be a string or a list."
+            raise TypeError(msg)
 
-        for class_value, data_value in zip(self.classes, self.measured_data, strict=False):
-            if class_value < 2:
-                self.clay += data_value
-            elif class_value < 6.3:
-                self.fine_silt += data_value
-            elif class_value < 20:
-                self.medium_silt += data_value
-            elif class_value < 63:
-                self.coarse_silt += data_value
-            elif class_value < 200:
-                self.fine_sand += data_value
-            elif class_value < 630:
-                self.medium_sand += data_value
-            elif class_value < 2000:
-                self.coarse_sand += data_value
-            else:
-                self.gravel += data_value
+        fraction_names = [name for _, name in _WENTWORTH_FRACTIONS] + [
+            "gravel",
+        ]
+        sums: dict[str, float] = dict.fromkeys(fraction_names, 0.0)
+
+        for class_value, data_value in zip(
+            self.classes,
+            self.measured_data,
+            strict=False,
+        ):
+            sums[_classify_fraction(class_value)] += data_value
 
         total = sum(self.measured_data)
         if total == 0:
-            raise ValueError("measured_data must not sum to zero.")
-        self.clay = self.clay / total * 100
-        self.fine_silt = self.fine_silt / total * 100
-        self.medium_silt = self.medium_silt / total * 100
-        self.coarse_silt = self.coarse_silt / total * 100
-        self.fine_sand = self.fine_sand / total * 100
-        self.medium_sand = self.medium_sand / total * 100
-        self.coarse_sand = self.coarse_sand / total * 100
-        self.gravel = self.gravel / total * 100
+            msg = "measured_data must not sum to zero."
+            raise ValueError(msg)
+
+        for attr, value in sums.items():
+            setattr(self, attr, value / total * 100)
 
         return (
             self.fine_silt,
@@ -1587,7 +1692,8 @@ class GrainSize(BaseModel):
             self.clay,
         )
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Recompute Wentworth fractions from raw data before saving."""
         if self.classes is not None and self.measured_data is not None:
             (
                 self.fine_silt,
@@ -1601,117 +1707,84 @@ class GrainSize(BaseModel):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
+        """Return a label combining sample identifier and measurement method."""
         return str(self.sample) + ", " + str(self.method)
 
     class Meta:
+        """Django metadata for GrainSize."""
+
         verbose_name_plural = "Grain size"
 
+    @staticmethod
+    def _parse_block_line(line: str, block: str | None, state: dict) -> None:
+        """Update mutable parse state for one data line based on the current block."""
+        if block == "#Bindiam":
+            with contextlib.suppress(ValueError):
+                state["classes"].append(float(line))
+        elif block == "#Binheight":
+            with contextlib.suppress(ValueError):
+                state["measured_data"].append(float(line))
+        elif block in {"Size0", "Size1", "Size2"}:
+            try:
+                key, value = line.split("=")
+                if key.strip() == "Obs":
+                    state["concentration"].append(float(value.strip()))
+            except ValueError:
+                pass
+        elif block == "SizeStats":
+            _parse_stats_line(line, state["stats"])
+
     @classmethod
-    def from_file(cls, file_path, sample, method) -> Self:
-        """Create an instance of the class from a file.
+    def _parse_file_lines(cls, lines: list[str]) -> dict:
+        """Parse .mps file lines into a structured data dict."""
+        state: dict = {
+            "classes": [],
+            "measured_data": [],
+            "concentration": [],
+            "stats": dict.fromkeys(_STATS_KEY_MAP.values(), None),
+        }
+        current_block: str | None = None
 
-        Args:
-            file_path (str): The path to the file to read.
-            sample (str): The sample identifier.
-            method (str): The method used for measurement.
-
-        Returns:
-            An instance of the class with data populated from the file.
-        The file should have sections denoted by square brackets, e.g., [CLASSES] and [MEASURED_DATA].
-        The data under [CLASSES] should be float values representing different classes.
-        The data under [MEASURED_DATA] should be float values representing measured data.
-        """
-        with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
-            lines = file.readlines()
-
-        classes = []
-        measured_data = []
-        concentration = []
-        current_block = None
-        mean = None
-        mode = None
-        median = None
-        std = None
-        skew = None
-        kurtosis = None
-        fwmean = None
-        fwmedian = None
-        fwsd = None
-        fwskew = None
-        fwkurt = None
-
-        for line in lines:
-            line = line.strip()
+        for raw_line in lines:
+            line = raw_line.strip()
             if line.startswith("[") and line.endswith("]"):
                 current_block = line[1:-1]
-            elif current_block == "#Bindiam":
-                try:
-                    classes.append(float(line))
-                except ValueError:
-                    continue
-            elif current_block == "#Binheight":
-                try:
-                    measured_data.append(float(line))
-                except ValueError:
-                    continue
-            elif current_block in ["Size0", "Size1", "Size2"]:
-                try:
-                    key, value = line.split("=")
-                    if key.strip() == "Obs":
-                        concentration.append(float(value.strip()))
-                except ValueError:
-                    continue
+            else:
+                cls._parse_block_line(line, current_block, state)
 
-            elif current_block == "SizeStats":
-                try:
-                    key, value = line.split("=")
-                    if key.strip() == "Mean":
-                        mean = float(value.strip())
-                    elif key.strip() == "Mode":
-                        mode = float(value.strip())
-                    elif key.strip() == "Median":
-                        median = float(value.strip())
-                    elif key.strip() == "SD":
-                        std = float(value.strip())
-                    elif key.strip() == "Skew":
-                        skew = float(value.strip())
-                    elif key.strip() == "Kurtosis":
-                        kurtosis = float(value.strip())
-                    elif key.strip() == "FWMean":
-                        fwmean = float(value.strip())
-                    elif key.strip() == "FWMedian":
-                        fwmedian = float(value.strip())
-                    elif key.strip() == "FWSD":
-                        fwsd = float(value.strip())
-                    elif key.strip() == "FWSkew":
-                        fwskew = float(value.strip())
-                    elif key.strip() == "FWKurt":
-                        fwkurt = float(value.strip())
-                except ValueError:
-                    continue
+        return {
+            "classes": state["classes"],
+            "measured_data": state["measured_data"],
+            "concentration": state["concentration"],
+            **state["stats"],
+        }
+
+    @classmethod
+    def from_file(
+        cls,
+        file_path: str | Path,
+        sample: Sample,
+        method: Method,
+    ) -> Self:
+        """Create a GrainSize instance by parsing a .mps instrument file."""
+        with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
+            parsed = cls._parse_file_lines(file.readlines())
 
         try:
-            sample_concentration = sum(concentration) / len(concentration)
+            sample_concentration = sum(parsed["concentration"]) / len(
+                parsed["concentration"],
+            )
         except (ZeroDivisionError, TypeError):
-            raise ValueError("No concentration data found in the file.") from None
+            msg = "No concentration data found in the file."
+            raise ValueError(msg) from None
 
         return cls(
             sample=sample,
             method=method,
-            classes=classes,
-            measured_data=measured_data,
+            classes=parsed["classes"],
+            measured_data=parsed["measured_data"],
             sample_concentration=sample_concentration,
-            mean=mean,
-            mode=mode,
-            median=median,
-            std=std,
-            skew=skew,
-            kurtosis=kurtosis,
-            fwmean=fwmean,
-            fwmedian=fwmedian,
-            fwsd=fwsd,
-            fwskew=fwskew,
-            fwkurt=fwkurt,
+            **{k: parsed[k] for k in _STATS_KEY_MAP.values()},
         )
 
 
@@ -1743,12 +1816,15 @@ class MicroXRFMeasurement(BaseModel):
         null=True,
         help_text="Method/Device used",
     )
-    notes = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True)
 
     def __str__(self) -> str:
+        """Return a label with sample and measurement date."""
         return f"MicroXRF {self.sample} ({self.measurement_date})"
 
     class Meta:
+        """Django metadata for MicroXRFMeasurement."""
+
         verbose_name = "MicroXRF"
         verbose_name_plural = "MicroXRF"
 
@@ -1842,7 +1918,9 @@ class MicroXRFElementMap(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return a label with element symbol and parent measurement."""
         return f"{self.element} map ({self.measurement})"
 
     def get_raster_path(self) -> Path:
+        """Return the absolute filesystem path to the raster file."""
         return Path(settings.MEDIA_ROOT) / self.raster_file.name

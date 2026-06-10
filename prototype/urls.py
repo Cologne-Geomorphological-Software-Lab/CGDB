@@ -25,13 +25,20 @@ from prototype.views import locations_geojson, map_dashboard
 
 urlpatterns = [
     path("map/", staff_member_required(map_dashboard), name="map_dashboard"),
-    path("api/locations.geojson", staff_member_required(locations_geojson), name="locations_geojson"),
+    path(
+        "api/locations.geojson",
+        staff_member_required(locations_geojson),
+        name="locations_geojson",
+    ),
     path("", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT,
+    )
 
 admin.site.site_header = "CGDB Administration"
 admin.site.site_title = "CGDB Administration"

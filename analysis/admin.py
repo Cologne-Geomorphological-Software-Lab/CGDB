@@ -1,7 +1,10 @@
+"""Django admin registrations for the analysis app."""
+
 from __future__ import annotations
 
 import base64
 import io
+from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -10,8 +13,6 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.db.models import QuerySet
-from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import NoReverseMatch, reverse
 from django.utils.safestring import mark_safe
@@ -23,7 +24,10 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import RelatedDropdownFilter
 from unfold.decorators import display
 
-from prototype.mixins import CreatedUpdatedModelAdminMixin, NestedProjectPermissionMixin
+from prototype.mixins import (
+    CreatedUpdatedModelAdminMixin,
+    NestedProjectPermissionMixin,
+)
 
 from .models import (
     Algorithm,
@@ -43,7 +47,30 @@ from .models import (
     RawProcessing,
 )
 
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.forms import ModelForm
+    from django.http import HttpRequest, HttpResponse
+
 mpl.use("Agg")
+
+
+def _normalize_float_image(img: object) -> object:
+    """Convert a 32-bit float raster to 8-bit greyscale for display."""
+    import numpy as np
+
+    arr = np.array(img)
+    arr = arr - arr.min()
+    if arr.max() > 0:
+        arr = arr / arr.max()
+    return Image.fromarray((arr * 255).astype("uint8"), mode="L")
+
+
+def _format_with_error(value: object, error: object, decimals: int = 2) -> str:
+    """Return 'value ± error' rounded to *decimals*, or an em-dash when *value* is absent."""
+    if not value:
+        return "—"
+    return f"{round(value, decimals)} ± {round(error, decimals)}"
 
 
 class SampleContextMixin:
@@ -55,40 +82,67 @@ class SampleContextMixin:
     - response_add / response_change: after saving, return to the Sample form.
     """
 
-    def _is_sample_scoped(self, request) -> bool:
-        url_name = getattr(getattr(request, "resolver_match", None), "url_name", "") or ""
+    def _is_sample_scoped(self, request: HttpRequest) -> bool:
+        url_name = (
+            getattr(getattr(request, "resolver_match", None), "url_name", "")
+            or ""
+        )
         return url_name.startswith("field_data_sample_")
 
-    def _sample_pk_from_add_request(self, request) -> str | None:
+    def _sample_pk_from_add_request(self, request: HttpRequest) -> str | None:
         from field_data.utils import extract_sample_pk_from_get
 
         return extract_sample_pk_from_get(request.GET)
 
-    def changelist_view(self, request, extra_context=None) -> HttpResponse:
+    def changelist_view(
+        self,
+        request: HttpRequest,
+        extra_context: dict | None = None,
+    ) -> HttpResponse:
+        """Redirect to the sample-scoped changelist when a sample filter is active."""
         if not self._is_sample_scoped(request):
             sample_pk = request.GET.get("sample__id__exact", "")
             if sample_pk and sample_pk.isdigit():
                 model_name = self.model._meta.model_name
                 try:
-                    url = reverse(f"admin:field_data_sample_{model_name}", args=[sample_pk])
+                    url = reverse(
+                        f"admin:field_data_sample_{model_name}",
+                        args=[sample_pk],
+                    )
                     return redirect(url)
                 except NoReverseMatch:
                     pass
         return super().changelist_view(request, extra_context)
 
-    def add_view(self, request, form_url="", extra_context=None) -> HttpResponse:
+    def add_view(
+        self,
+        request: HttpRequest,
+        form_url: str = "",
+        extra_context: dict | None = None,
+    ) -> HttpResponse:
+        """Redirect to the sample-scoped add URL when accessed outside sample context."""
         if request.method == "GET" and not self._is_sample_scoped(request):
             sample_pk = self._sample_pk_from_add_request(request)
             if sample_pk:
                 model_name = self.model._meta.model_name
                 try:
-                    url = reverse(f"admin:field_data_sample_{model_name}_add", args=[sample_pk])
+                    url = reverse(
+                        f"admin:field_data_sample_{model_name}_add",
+                        args=[sample_pk],
+                    )
                     return redirect(url)
                 except NoReverseMatch:
                     pass
         return super().add_view(request, form_url, extra_context)
 
-    def change_view(self, request, object_id, form_url="", extra_context=None) -> HttpResponse:
+    def change_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        form_url: str = "",
+        extra_context: dict | None = None,
+    ) -> HttpResponse:
+        """Redirect to the sample-scoped change URL when accessed outside sample context."""
         if request.method == "GET" and not self._is_sample_scoped(request):
             obj = self.get_object(request, object_id)
             if obj and obj.sample_id:
@@ -103,7 +157,8 @@ class SampleContextMixin:
                     pass
         return super().change_view(request, object_id, form_url, extra_context)
 
-    def get_changeform_initial_data(self, request) -> dict:
+    def get_changeform_initial_data(self, request: HttpRequest) -> dict:
+        """Pre-fill the sample FK from changelist filter parameters."""
         initial = super().get_changeform_initial_data(request)
         if "sample" not in initial:
             from urllib.parse import parse_qs
@@ -116,16 +171,36 @@ class SampleContextMixin:
                     initial["sample"] = pk_list[0]
         return initial
 
-    def _redirect_to_sample(self, request, obj) -> HttpResponse | None:
+    def _redirect_to_sample(
+        self,
+        request: HttpRequest,
+        obj: object,
+    ) -> HttpResponse | None:
         if "_save" in request.POST and getattr(obj, "sample_id", None):
-            return redirect(reverse("admin:field_data_sample_change", args=[obj.sample_id]))
+            return redirect(
+                reverse(
+                    "admin:field_data_sample_change",
+                    args=[obj.sample_id],
+                ),
+            )
         return None
 
-    def response_add(self, request, obj, post_url_continue=None) -> HttpResponse:
+    def response_add(
+        self,
+        request: HttpRequest,
+        obj: object,
+        post_url_continue: str | None = None,
+    ) -> HttpResponse:
+        """Return to the parent Sample form after a successful add."""
         r = self._redirect_to_sample(request, obj)
         return r or super().response_add(request, obj, post_url_continue)
 
-    def response_change(self, request, obj) -> HttpResponse:
+    def response_change(
+        self,
+        request: HttpRequest,
+        obj: object,
+    ) -> HttpResponse:
+        """Return to the parent Sample form after a successful change."""
         r = self._redirect_to_sample(request, obj)
         return r or super().response_change(request, obj)
 
@@ -136,13 +211,21 @@ class SampleContextMixin:
 
 
 class AlgorithmAdmin(ExportMixin, ModelAdmin):
+    """Admin for the Algorithm model."""
+
     change_form_show_cancel_button = True
     list_display = ["name", "version", "programming_language"]
     search_fields = ["name", "version"]
     ordering = ["name", "version"]
 
 
-class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class RawMeasurementAdmin(
+    ExportMixin,
+    ModelAdmin,
+    NestedProjectPermissionMixin,
+):
+    """Admin for the RawMeasurement model."""
+
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     project_path = "sample__location__project"
@@ -180,7 +263,13 @@ class RawMeasurementAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin)
     ]
 
 
-class RawProcessingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class RawProcessingAdmin(
+    ExportMixin,
+    ModelAdmin,
+    NestedProjectPermissionMixin,
+):
+    """Admin for the RawProcessing model."""
+
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     project_path = "raw_measurement__project"
@@ -195,11 +284,20 @@ class RawProcessingAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class PollenCountInline(TabularInline):
+    """Inline for PollenCount entries within a Counting change form."""
+
     model = PollenCount
     extra = 0
 
 
-class CountingAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class CountingAdmin(
+    SampleContextMixin,
+    ExportMixin,
+    ModelAdmin,
+    NestedProjectPermissionMixin,
+):
+    """Admin for the Counting model with inline pollen counts."""
+
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     project_path = "sample__location__project"
@@ -210,6 +308,8 @@ class CountingAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPe
 
 
 class PollenAdmin(ExportMixin, ModelAdmin):
+    """Admin for the Pollen model."""
+
     change_form_show_cancel_button = True
     list_display = ["name", "token", "name_en"]
     search_fields = ["name", "token", "name_en"]
@@ -228,6 +328,8 @@ class LuminescenceDatingAdmin(
     NestedProjectPermissionMixin,
     ModelAdmin,
 ):
+    """Admin for LuminescenceDating with tabbed fieldsets and color-coded display columns."""
+
     project_path = "sample__location__project"
     save_on_top = True
     change_form_show_cancel_button = True
@@ -249,35 +351,43 @@ class LuminescenceDatingAdmin(
     raw_id_fields = ["sample", "raw_data"]
 
     @display(description="Luminescence age [ka]")
-    def age(self, obj) -> str:
-        if obj.luminescence_age:
-            return f"{round(obj.luminescence_age, 2)} ± {round(obj.age_error, 2)}"
-        return "—"
+    def age(self, obj: LuminescenceDating) -> str:
+        """Return formatted age with error, or an em-dash if unavailable."""
+        return _format_with_error(obj.luminescence_age, obj.age_error)
 
     @display(description="Dose rate [Gy/ka]")
-    def total_dose_rate(self, obj) -> str:
-        if obj.dose_rate:
-            return f"{round(obj.dose_rate, 2)} ± {round(obj.dose_rate_error, 2)}"
-        return "—"
+    def total_dose_rate(self, obj: LuminescenceDating) -> str:
+        """Return formatted dose rate with error, or an em-dash if unavailable."""
+        return _format_with_error(obj.dose_rate, obj.dose_rate_error)
 
     @display(description="Paleodose [Gy]")
-    def paleodose(self, obj) -> str:
-        if obj.palaeodose_value:
-            return f"{round(obj.palaeodose_value, 2)} ± {round(obj.palaeodose_error, 2)}"
-        return "—"
+    def paleodose(self, obj: LuminescenceDating) -> str:
+        """Return formatted palaeodose with error, or an em-dash if unavailable."""
+        return _format_with_error(obj.palaeodose_value, obj.palaeodose_error)
 
     @display(
-        label={"Quartz": "success", "Feldspar": "info", "Polymineral": "warning", "Other": "default"},
+        label={
+            "Quartz": "success",
+            "Feldspar": "info",
+            "Polymineral": "warning",
+            "Other": "default",
+        },
         description="Mineral",
     )
-    def colored_mineral(self, obj) -> str:
+    def colored_mineral(self, obj: LuminescenceDating) -> str:
+        """Return the mineral type for color-coded label rendering."""
         return obj.mineral
 
     @display(
-        label={"Burial dating": "info", "Exposure dating": "success", "Other": "warning"},
+        label={
+            "Burial dating": "info",
+            "Exposure dating": "success",
+            "Other": "warning",
+        },
         description="Approach",
     )
-    def colored_dating_approach(self, obj) -> str:
+    def colored_dating_approach(self, obj: LuminescenceDating) -> str:
+        """Return the dating approach for color-coded label rendering."""
         return obj.dating_approach
 
     fieldsets = (
@@ -315,7 +425,10 @@ class LuminescenceDatingAdmin(
                     ("od_percent", "od_percent_error"),
                     ("od_gy", "od_gy_error"),
                     ("beta_source_calibration", "fading_correction"),
-                    ("instrumental_beta_source_error", "uncertainty_beta_source_calibration"),
+                    (
+                        "instrumental_beta_source_error",
+                        "uncertainty_beta_source_calibration",
+                    ),
                     ("g_value", "g_value_error"),
                     "Lnat_Lsat_ratio",
                 ),
@@ -326,11 +439,17 @@ class LuminescenceDatingAdmin(
             {
                 "classes": ["tab"],
                 "fields": (
-                    ("dose_rate_measurement_technique", "dose_rate_calculation_software"),
+                    (
+                        "dose_rate_measurement_technique",
+                        "dose_rate_calculation_software",
+                    ),
                     ("u_ppm", "u_ppm_error"),
                     ("th_ppm", "th_ppm_error"),
                     ("k_percent", "k_percent_error"),
-                    ("water_content_for_dating", "water_content_for_dating_error"),
+                    (
+                        "water_content_for_dating",
+                        "water_content_for_dating_error",
+                    ),
                     ("a_value", "a_value_error"),
                     ("alpha_dose_rate", "alpha_dose_rate_error"),
                     ("beta_dose_rate", "beta_dose_rate_error"),
@@ -352,8 +471,13 @@ class LuminescenceDatingAdmin(
         ),
     )
 
-    def get_queryset(self, request) -> QuerySet:
-        return super().get_queryset(request).select_related("sample__location__project")
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return queryset with sample location and project pre-fetched."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("sample__location__project")
+        )
 
 
 class RadiocarbonDatingAdmin(
@@ -362,6 +486,8 @@ class RadiocarbonDatingAdmin(
     ModelAdmin,
     NestedProjectPermissionMixin,
 ):
+    """Admin for the RadiocarbonDating model."""
+
     change_form_show_cancel_button = True
     project_path = "sample__location__project"
     raw_id_fields = ["sample"]
@@ -376,12 +502,19 @@ class CosmogenicNuclideDatingAdmin(
     ModelAdmin,
     NestedProjectPermissionMixin,
 ):
+    """Admin for CosmogenicNuclideDating with tabbed fieldsets and color-coded columns."""
+
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     compressed_fields = True
     project_path = "sample__location__project"
     list_fullwidth = True
-    list_display = ["lab_id", "colored_nuclide", "colored_approach", "colored_exposure_age"]
+    list_display = [
+        "lab_id",
+        "colored_nuclide",
+        "colored_approach",
+        "colored_exposure_age",
+    ]
     search_fields = ["lab_id", "sample__identifier"]
     ordering = ["-id"]
 
@@ -406,7 +539,10 @@ class CosmogenicNuclideDatingAdmin(
                 "fields": (
                     ("nuclide_concentration", "nuclide_concentration_error"),
                     ("ams_standard",),
-                    ("normalized_concentration", "normalized_concentration_error"),
+                    (
+                        "normalized_concentration",
+                        "normalized_concentration_error",
+                    ),
                 ),
             },
         ),
@@ -415,7 +551,11 @@ class CosmogenicNuclideDatingAdmin(
             {
                 "classes": ["tab"],
                 "fields": (
-                    ("exposure_age", "exposure_age_error_internal", "exposure_age_error_external"),
+                    (
+                        "exposure_age",
+                        "exposure_age_error_internal",
+                        "exposure_age_error_external",
+                    ),
                     ("burial_age", "burial_age_error"),
                     ("denudation_rate", "denudation_rate_error"),
                 ),
@@ -429,7 +569,11 @@ class CosmogenicNuclideDatingAdmin(
                     ("scaling_method", "calculation_software"),
                     ("production_rate", "production_rate_error"),
                     ("spallation_production_rate", "muon_production_rate"),
-                    ("topographic_shielding", "self_shielding", "snow_shielding"),
+                    (
+                        "topographic_shielding",
+                        "self_shielding",
+                        "snow_shielding",
+                    ),
                     ("combined_shielding",),
                     ("erosion_rate_assumed", "inheritance"),
                 ),
@@ -439,7 +583,14 @@ class CosmogenicNuclideDatingAdmin(
             "Error Budget",
             {
                 "classes": ["tab"],
-                "fields": (("error_ams", "error_muon", "error_production_rate", "error_total"),),
+                "fields": (
+                    (
+                        "error_ams",
+                        "error_muon",
+                        "error_production_rate",
+                        "error_total",
+                    ),
+                ),
             },
         ),
         (
@@ -465,21 +616,32 @@ class CosmogenicNuclideDatingAdmin(
         },
         description="Nuclide",
     )
-    def colored_nuclide(self, obj) -> str:
+    def colored_nuclide(self, obj: CosmogenicNuclideDating) -> str:
+        """Return the nuclide symbol for color-coded label rendering."""
         return obj.nuclide
 
     @display(
-        label={"exposure": "success", "burial": "warning", "denudation": "info"},
+        label={
+            "exposure": "success",
+            "burial": "warning",
+            "denudation": "info",
+        },
         description="Approach",
     )
-    def colored_approach(self, obj) -> str:
+    def colored_approach(self, obj: CosmogenicNuclideDating) -> str:
+        """Return the dating approach for color-coded label rendering."""
         return obj.dating_approach
 
     @display(description="Exposure age [ka]")
-    def colored_exposure_age(self, obj) -> str:
+    def colored_exposure_age(self, obj: CosmogenicNuclideDating) -> str:
+        """Return formatted exposure age with external error, or an em-dash if absent."""
         if obj.exposure_age is None:
             return "—"
-        err = f" ± {obj.exposure_age_error_external}" if obj.exposure_age_error_external else ""
+        err = (
+            f" ± {obj.exposure_age_error_external}"
+            if obj.exposure_age_error_external
+            else ""
+        )
         return f"{obj.exposure_age}{err}"
 
 
@@ -492,7 +654,11 @@ admin.site.register(CosmogenicNuclideDating, CosmogenicNuclideDatingAdmin)
 
 
 class GenericMeasurementResource(resources.ModelResource):
+    """Import/export resource for GenericMeasurement."""
+
     class Meta:
+        """Resource metadata for GenericMeasurement."""
+
         model = GenericMeasurement
 
         skip_diff = True
@@ -500,28 +666,38 @@ class GenericMeasurementResource(resources.ModelResource):
 
 
 class GeochemistryParameterResource(resources.ModelResource):
+    """Import/export resource for Parameter."""
+
     class Meta:
+        """Resource metadata for Parameter."""
+
         model = Parameter
 
 
 class GrainSizeImportForm(forms.ModelForm):
+    """ModelForm for GrainSize that accepts an optional .av file upload."""
+
     file = forms.FileField(required=False)
 
     def clean_file(self) -> object:
+        """Validate the uploaded file is a non-empty .av file within the size limit."""
         file = self.cleaned_data.get("file")
 
         if not file:
             return file
 
         if not file.name.lower().endswith(".$av"):
-            raise ValidationError(_("Invalid file type. Only .$av files are allowed."))
+            raise ValidationError(
+                _("Invalid file type. Only .$av files are allowed."),
+            )
 
         max_size_mb = 10
         if file.size > max_size_mb * 1024 * 1024:
             raise ValidationError(
                 _(
-                    f"File size ({file.size / (1024 * 1024):.1f}MB) exceeds maximum allowed size of {max_size_mb}MB.",
-                ),
+                    "File size (%(size).1fMB) exceeds maximum allowed size of %(max)sMB.",
+                )
+                % {"size": file.size / (1024 * 1024), "max": max_size_mb},
             )
 
         try:
@@ -532,16 +708,58 @@ class GrainSizeImportForm(forms.ModelForm):
             if len(first_chunk) == 0:
                 raise ValidationError(_("File is empty or corrupted."))
         except Exception as e:
-            raise ValidationError(_(f"Unable to read file: {e!s}")) from None
+            raise ValidationError(_("Unable to read file: %s") % e) from None
 
         return file
 
     class Meta:
+        """Form metadata for GrainSizeImportForm."""
+
         model = GrainSize
-        fields = "__all__"
+        fields = [
+            "sample",
+            "raw_data",
+            "sample_weight",
+            "sample_concentration",
+            "method",
+            "classes",
+            "measured_data",
+            "clay",
+            "fine_silt",
+            "medium_silt",
+            "coarse_silt",
+            "fine_sand",
+            "medium_sand",
+            "coarse_sand",
+            "gravel",
+            "mean",
+            "mode",
+            "median",
+            "std",
+            "skew",
+            "kurtosis",
+            "fwmean",
+            "fwmedian",
+            "fwsd",
+            "fwskew",
+            "fwkurt",
+        ]
 
 
-class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+_SAMPLE_CONC_MIN = (
+    6  # Sympatec Helios optimal range: 6–20 % (volume concentration)
+)
+_SAMPLE_CONC_MAX = 20
+
+
+class GrainSizeAdmin(
+    SampleContextMixin,
+    ExportMixin,
+    ModelAdmin,
+    NestedProjectPermissionMixin,
+):
+    """Admin for GrainSize with file import, Wentworth fraction display, and a plot tab."""
+
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     compressed_fields = True
@@ -645,29 +863,48 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         ),
     )
 
-    def get_readonly_fields(self, request, obj=None) -> list:
+    def get_readonly_fields(
+        self,
+        request: HttpRequest,
+        obj: GrainSize | None = None,
+    ) -> list:
+        """Make statistics fields read-only when grain size was imported from a file."""
         readonly = list(super().get_readonly_fields(request, obj))
         if obj and obj.source == "file":
             readonly += [f for f in self._STAT_FIELDS if f not in readonly]
         return readonly
 
-    @display(label={"L": "success", "C": "info", "S": "warning"}, description="Method")
-    def colored_method(self, obj) -> str:
+    @display(
+        label={"L": "success", "C": "info", "S": "warning"},
+        description="Method",
+    )
+    def colored_method(self, obj: GrainSize) -> str:
+        """Return the measurement method for color-coded label rendering."""
         return obj.method
 
     @display(description="Sample concentration [%]")
-    def colored_sample_concentration(self, obj) -> str:
+    def colored_sample_concentration(self, obj: GrainSize) -> str:
+        """Return a colour-highlighted HTML span for the sample concentration value."""
         if obj.sample_concentration is None:
             return "N/A"
-        color = "success" if 6 <= obj.sample_concentration <= 20 else "danger"
-        color = color if color in {"success", "danger", "warning", "info"} else "danger"
+        color = (
+            "success"
+            if _SAMPLE_CONC_MIN <= obj.sample_concentration <= _SAMPLE_CONC_MAX
+            else "danger"
+        )
+        color = (
+            color
+            if color in {"success", "danger", "warning", "info"}
+            else "danger"
+        )
         rounded = round(obj.sample_concentration, 1)
-        return mark_safe(
+        return mark_safe(  # noqa: S308  # nosec B703, B308 — color is whitelist-validated, rounded is float
             f'<span class="text-{color}-600 dark:text-{color}-400 font-semibold">{rounded} %</span>',
         )
 
     @admin.display(description="Classes")
-    def classes_summary(self, obj) -> str:
+    def classes_summary(self, obj: GrainSize) -> str:
+        """Return a summary of the grain-size class boundaries."""
         if not obj.classes:
             return "—"
         n = len(obj.classes)
@@ -676,26 +913,46 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         return f"{n} classes, {mn}–{mx} µm"
 
     @admin.display(description="Measured data")
-    def measured_data_summary(self, obj) -> str:
+    def measured_data_summary(self, obj: GrainSize) -> str:
+        """Return a summary of the measured data points and their total."""
         if not obj.measured_data:
             return "—"
         n = len(obj.measured_data)
         total = sum(obj.measured_data)
         return f"{n} data points, sum = {round(total, 1)}"
 
-    def save_model(self, request, obj, form, change) -> None:
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: GrainSize,
+        form: ModelForm,
+        change: bool,
+    ) -> None:
+        """Parse and import an uploaded .av file before delegating to super."""
         file = form.cleaned_data.get("file")
         if file:
             self.process_file(file, obj)
             obj.source = "file"
-            self.message_user(request, "File uploaded and processed successfully.", messages.SUCCESS)
+            self.message_user(
+                request,
+                "File uploaded and processed successfully.",
+                messages.SUCCESS,
+            )
         super().save_model(request, obj, form, change)
 
-    def process_file(self, file, obj) -> None:
-        file_path = default_storage.save(f"tmp/{file.name}", ContentFile(file.read()))
+    def process_file(self, file: object, obj: GrainSize) -> None:
+        """Save the uploaded file to temp storage, parse it, and populate obj fields."""
+        file_path = default_storage.save(
+            f"tmp/{file.name}",
+            ContentFile(file.read()),
+        )
         tmp_file = default_storage.path(file_path)
 
-        grain_size_instance = GrainSize.from_file(tmp_file, obj.sample, obj.method)
+        grain_size_instance = GrainSize.from_file(
+            tmp_file,
+            obj.sample,
+            obj.method,
+        )
 
         obj.classes = grain_size_instance.classes
         obj.measured_data = grain_size_instance.measured_data
@@ -713,7 +970,8 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         obj.sample_concentration = grain_size_instance.sample_concentration
         default_storage.delete(file_path)
 
-    def plot(self, obj) -> str:
+    def plot(self, obj: GrainSize) -> str:
+        """Render a log-scale grain size distribution chart as an inline base64 PNG."""
         if not obj.measured_data or not obj.classes:
             return "No data available for plotting."
         fig, ax = plt.subplots(figsize=(30, 10))
@@ -739,12 +997,21 @@ class GrainSizeAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectP
         plt.close(fig)
         buf.seek(0)
         image_base64 = base64.b64encode(buf.read()).decode("utf-8")
-        return mark_safe(f'<img src="data:image/png;base64,{image_base64}" />')
+        return mark_safe(  # noqa: S308  # nosec B703, B308 — base64-encoded matplotlib PNG, no user input
+            f'<img src="data:image/png;base64,{image_base64}" />',
+        )
 
     plot.short_description = "Grain size distribution"
 
 
-class GenericMeasurementAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class GenericMeasurementAdmin(
+    SampleContextMixin,
+    ExportMixin,
+    ModelAdmin,
+    NestedProjectPermissionMixin,
+):
+    """Admin for GenericMeasurement with import/export and value-with-error display."""
+
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     compressed_fields = True
@@ -778,18 +1045,24 @@ class GenericMeasurementAdmin(SampleContextMixin, ExportMixin, ModelAdmin, Neste
     )
 
     @admin.display(description="Value")
-    def value_with_error(self, obj) -> str:
+    def value_with_error(self, obj: GenericMeasurement) -> str:
+        """Return the measured value formatted with its error, or an em-dash if absent."""
         if obj.value is None:
             return "—"
         if obj.error:
             return f"{round(obj.value, 4)} ± {round(obj.error, 4)}"
         return str(round(obj.value, 4))
 
-    def get_queryset(self, request) -> QuerySet:
-        return super().get_queryset(request).select_related("method", "parameter")
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return queryset with method and parameter pre-fetched."""
+        return (
+            super().get_queryset(request).select_related("method", "parameter")
+        )
 
 
 class ParameterAdmin(ExportMixin, ModelAdmin):
+    """Admin for the Parameter model."""
+
     change_form_show_cancel_button = True
     list_display = ["token", "id", "unit"]
     search_fields = ["token"]
@@ -798,44 +1071,50 @@ class ParameterAdmin(ExportMixin, ModelAdmin):
 
 
 class MicroXRFElementInline(admin.TabularInline):
+    """Inline for MicroXRFElementMap entries with thumbnail preview."""
+
     model = MicroXRFElementMap
     hide_title = True
     readonly_fields = ["preview"]
     fields = ["element", "raster_file", "preview"]
     extra = 0
 
-    def preview(self, obj) -> str:
-        if obj.raster_file and obj.raster_file.name.lower().endswith((".tif", ".tiff")):
-            try:
-                with obj.raster_file.open("rb") as f:
-                    img = Image.open(f)
-                    img.thumbnail((120, 120))
-                    if img.mode == "F":
-                        import numpy as np
-
-                        arr = np.array(img)
-                        arr = arr - arr.min()
-                        if arr.max() > 0:
-                            arr = arr / arr.max()
-                        arr = (arr * 255).astype("uint8")
-                        img = Image.fromarray(arr, mode="L")
-                    elif img.mode not in ("L", "RGB"):
-                        img = img.convert("RGB")
-                    buf = io.BytesIO()
-                    img.save(buf, format="PNG")
-                    image_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-                    return mark_safe(
-                        f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />',
-                    )
-            except Exception as e:
-                return f"Preview unavailable: {e}"
-        return "No preview"
+    def preview(self, obj: MicroXRFElementMap) -> str:
+        """Render a 120 px thumbnail of the element map raster file."""
+        if not (
+            obj.raster_file
+            and obj.raster_file.name.lower().endswith((".tif", ".tiff"))
+        ):
+            return "No preview"
+        try:
+            with obj.raster_file.open("rb") as f:
+                img = Image.open(f)
+                img.thumbnail((120, 120))
+                if img.mode == "F":
+                    img = _normalize_float_image(img)
+                elif img.mode not in ("L", "RGB"):
+                    img = img.convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                image_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                return mark_safe(  # noqa: S308  # nosec B703, B308 — base64-encoded PIL PNG, no user input
+                    f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />',
+                )
+        except Exception as e:
+            return f"Preview unavailable: {e}"
 
     preview.short_description = "Thumbnail"
 
 
 @admin.register(MicroXRFMeasurement)
-class MicroXRFAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class MicroXRFAdmin(
+    SampleContextMixin,
+    ExportMixin,
+    ModelAdmin,
+    NestedProjectPermissionMixin,
+):
+    """Admin for MicroXRFMeasurement with element map inlines."""
+
     change_form_show_cancel_button = True
     project_path = "sample__location__project"
     list_fullwidth = True
@@ -845,6 +1124,8 @@ class MicroXRFAdmin(SampleContextMixin, ExportMixin, ModelAdmin, NestedProjectPe
 
 
 class MeasurementSeriesAdmin(ModelAdmin):
+    """Admin for the MeasurementSeries model."""
+
     change_form_show_cancel_button = True
     list_display = ["id", "datetime"]
     ordering = ["-datetime"]

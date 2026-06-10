@@ -1,3 +1,5 @@
+"""Models for field data including locations, layers, samples, and related entities."""
+
 from __future__ import annotations
 
 from django.contrib.contenttypes.models import ContentType
@@ -36,6 +38,7 @@ class Country(models.Model):
     )
 
     def __str__(self) -> str:
+        """Return the country name or a fallback string."""
         return self.name or f"Country {self.id}"
 
 
@@ -62,6 +65,7 @@ class Province(models.Model):
     )
 
     def __str__(self) -> str:
+        """Return the province name or a fallback string."""
         return self.name or f"Province {self.id}"
 
 
@@ -100,9 +104,11 @@ class Tag(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the tag word and its associated content type name."""
         return f"{self.word} ({self.content_type.name})"
 
     def __repr__(self) -> str:
+        """Return a detailed string representation of the Tag."""
         return f"<Tag: {self.word}, {self.content_type}>"
 
 
@@ -132,15 +138,12 @@ class SampleType(BaseModel):
     )
 
     def __str__(self) -> str:
-        """Returns:
-        str: The unique word identifier of the sample type.
-        """
+        """Return the unique word identifier of the sample type."""
         return self.word
 
 
 class StudyArea(BaseModel):
-    """Model representing a study area with various attributes such as label, project, province, geometry, and
-    climate classifications.
+    """Model representing a study area with climate and ecozone classifications.
 
     Attributes:
         label (CharField): A short label for the study area.
@@ -181,8 +184,14 @@ class StudyArea(BaseModel):
             "A: Tropical climates",
             (
                 ("Af", "Tropical rainforest climate"),
-                ("Aw", "Tropical savanna climate with dry-winter characteristics"),
-                ("As", "Tropical savanna climate with dry-summer characteristics"),
+                (
+                    "Aw",
+                    "Tropical savanna climate with dry-winter characteristics",
+                ),
+                (
+                    "As",
+                    "Tropical savanna climate with dry-summer characteristics",
+                ),
                 ("Am", "Tropical monsoon climate"),
             ),
         ),
@@ -216,8 +225,14 @@ class StudyArea(BaseModel):
                 ("Dfb", "Warm-summer humid continental climate"),
                 ("Dfc", "Subarctic climate"),
                 ("Dfd", "Extremely cold subarctic climate"),
-                ("Dwa", "Monsoon-influenced hot-summer humid continental climate"),
-                ("Dwb", "Monsoon-influenced warm-summer humid continental climate"),
+                (
+                    "Dwa",
+                    "Monsoon-influenced hot-summer humid continental climate",
+                ),
+                (
+                    "Dwb",
+                    "Monsoon-influenced warm-summer humid continental climate",
+                ),
                 ("Dwc", "Monsoon-influenced subarctic climate"),
                 ("Dwd", "Monsoon-influenced extremely cold subarctic climate"),
                 (
@@ -229,7 +244,10 @@ class StudyArea(BaseModel):
                     "Mediterranean-influenced warm-summer humid continental climate",
                 ),
                 ("Dsc", "Mediterranean-influenced subarctic climate"),
-                ("Dsd", "Mediterranean-influenced extremely cold subarctic climate"),
+                (
+                    "Dsd",
+                    "Mediterranean-influenced extremely cold subarctic climate",
+                ),
             ),
         ),
         (
@@ -265,9 +283,12 @@ class StudyArea(BaseModel):
     )
 
     class Meta:
+        """Meta options for StudyArea."""
+
         verbose_name_plural = "Study areas"
 
     def __str__(self) -> str:
+        """Return the study area label."""
         return str(self.label)
 
 
@@ -291,6 +312,7 @@ class Site(BaseModel):
     tags = models.ManyToManyField(Tag)
 
     def __str__(self) -> str:
+        """Return the site label."""
         return str(self.label)
 
 
@@ -369,12 +391,12 @@ class Campaign(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the campaign label."""
         return str(self.label)
 
 
 class Transect(BaseModel):
-    """Represents a transect within a study area, used to structure profiles according to their spatial
-    location.
+    """Represents a transect within a study area for structuring profiles by spatial location.
 
     Attributes:
         identifier (CharField): A unique identifier for the transect.
@@ -405,6 +427,7 @@ class Transect(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the transect identifier."""
         return str(self.identifier)
 
 
@@ -440,12 +463,12 @@ class ExposureType(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the main type, English name, and abbreviation."""
         return f"{self.main_type}: {self.name_en} ({self.abbreviation})"
 
 
 class Location(BaseModel):
-    """Location model represents a specific geographical location that can be associated with either a project
-    (internal data) or a reference (literature data).
+    """Geographical location associated with either a project (internal) or a reference (literature).
 
     Attributes:
         data_source (CharField): Source type - 'internal' for project data, 'literature' for published data.
@@ -630,7 +653,10 @@ class Location(BaseModel):
         ("NW", "No rain in the last week"),
         ("ND", "No rain the last 24 hours"),
         ("RD", "Rain but no heavy rain the last 24 hours"),
-        ("RH", "Heavy rain for some days or excessive rain in the last 24 hours"),
+        (
+            "RH",
+            "Heavy rain for some days or excessive rain in the last 24 hours",
+        ),
         ("RE", "Extremely rainy or snow melting"),
     ]
 
@@ -646,6 +672,8 @@ class Location(BaseModel):
     )
 
     class Meta:
+        """Meta options for Location."""
+
         unique_together = (
             "campaign",
             "identifier",
@@ -653,26 +681,27 @@ class Location(BaseModel):
         verbose_name_plural = "Locations"
 
     def __str__(self) -> str:
+        """Return the location identifier."""
         return f"{self.identifier}"
 
     def clean(self) -> None:
         """Validate the data_source logic for project/reference assignment."""
         if self.data_source == "internal":
             if not self.project:
-                raise ValidationError(
-                    "Internal data source requires a project assignment.",
-                )
+                msg = "Internal data source requires a project assignment."
+                raise ValidationError(msg)
             if self.reference:
-                raise ValidationError(
-                    "Internal data source cannot have a reference assignment.",
+                msg = (
+                    "Internal data source cannot have a reference assignment."
                 )
+                raise ValidationError(msg)
         elif self.data_source == "literature":
             if not self.reference:
-                raise ValidationError(
-                    "Literature data source requires a reference assignment.",
-                )
+                msg = "Literature data source requires a reference assignment."
+                raise ValidationError(msg)
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Compute the location point from easting/northing before saving."""
         if self.easting is not None and self.northing is not None:
             self.location = Point(
                 self.easting,
@@ -833,6 +862,7 @@ class Layer(BaseModel):
     )
 
     def __str__(self) -> str:
+        """Return the location identifier and layer identifier."""
         return str(f"{self.location}-{self.identifier}")
 
 
@@ -958,15 +988,22 @@ class Sample(BaseModel):
     )
 
     def clean(self) -> None:
+        """Validate that the sample has a project or location and that they are consistent."""
         if not self.project and not self.location:
-            raise ValidationError(
-                "Sample must have either a project or a location.",
-            )
+            msg = "Sample must have either a project or a location."
+            raise ValidationError(msg)
 
-        if self.project and self.location and self.location.project and self.location.project != self.project:
-            raise ValidationError("Sample project must match location project.")
+        if (
+            self.project
+            and self.location
+            and self.location.project
+            and self.location.project != self.project
+        ):
+            msg = "Sample project must match location project."
+            raise ValidationError(msg)
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Assign project from location if not set, then validate and save."""
         if self.location and self.location.project and not self.project:
             self.project = self.location.project
 
@@ -974,4 +1011,5 @@ class Sample(BaseModel):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
+        """Return the sample identifier."""
         return str(self.identifier)

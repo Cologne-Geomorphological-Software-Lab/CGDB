@@ -50,7 +50,10 @@ class Migration(migrations.Migration):
                     "description",
                     models.CharField(blank=True, max_length=150, null=True),
                 ),
-                ("token", models.CharField(blank=True, max_length=5, null=True)),
+                (
+                    "token",
+                    models.CharField(blank=True, max_length=5, null=True),
+                ),
             ],
         ),
         migrations.CreateModel(
@@ -99,8 +102,14 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("name", models.CharField(max_length=40)),
-                ("description", models.CharField(blank=True, max_length=40, null=True)),
-                ("token", models.CharField(blank=True, max_length=5, null=True)),
+                (
+                    "description",
+                    models.CharField(blank=True, max_length=40, null=True),
+                ),
+                (
+                    "token",
+                    models.CharField(blank=True, max_length=5, null=True),
+                ),
                 (
                     "category",
                     models.CharField(
@@ -169,7 +178,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("date", models.DateField()),
                 ("remarks", models.TextField(blank=True, null=True)),
                 (

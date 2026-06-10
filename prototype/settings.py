@@ -29,7 +29,9 @@ if os.name == "nt" and _osgeo_bin.exists():
     if hasattr(os, "add_dll_directory"):
         os.add_dll_directory(_osgeo_bin_str)
     if _osgeo_bin_str not in os.environ.get("PATH", ""):
-        os.environ["PATH"] = _osgeo_bin_str + os.pathsep + os.environ.get("PATH", "")
+        os.environ["PATH"] = (
+            _osgeo_bin_str + os.pathsep + os.environ.get("PATH", "")
+        )
     GDAL_LIBRARY_PATH = str(_osgeo_bin / "gdal311.dll")
     GEOS_LIBRARY_PATH = str(_osgeo_bin / "geos_c.dll")
     os.environ.setdefault("PROJ_LIB", "C:/OSGeo4W/share/proj")
@@ -215,10 +217,26 @@ LOGGING = {
         "level": "WARNING",
     },
     "loggers": {
-        "prototype": {"handlers": ["console"], "level": "DEBUG", "propagate": False},
-        "field_data": {"handlers": ["console"], "level": "DEBUG", "propagate": False},
-        "analysis": {"handlers": ["console"], "level": "DEBUG", "propagate": False},
-        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "prototype": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "field_data": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "analysis": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 

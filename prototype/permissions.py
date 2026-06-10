@@ -8,7 +8,7 @@ from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 
 
-def _q(*specs, actions=None) -> Q:
+def _q(*specs: str, actions: list[str] | None = None) -> Q:
     """Build a Q-filter for the given model specs and actions.
 
     specs   - "app_label.model_name" strings
@@ -121,7 +121,11 @@ GROUPS = {
 }
 
 
-def create_permission_groups(reset=False, stdout=None) -> tuple:
+def create_permission_groups(
+    *,
+    reset: bool = False,
+    stdout: object = None,
+) -> tuple:
     """Create or update predefined permission groups. Idempotent.
 
     reset=True clears all permissions from each group before re-adding —
@@ -143,7 +147,9 @@ def create_permission_groups(reset=False, stdout=None) -> tuple:
 
         if stdout:
             label = "Created" if created else "Updated"
-            stdout.write(f"  {label:8s} '{group_name}' ({permissions.count()} permissions)\n")
+            stdout.write(
+                f"  {label:8s} '{group_name}' ({permissions.count()} permissions)\n",
+            )
 
         if created:
             created_count += 1
@@ -151,6 +157,8 @@ def create_permission_groups(reset=False, stdout=None) -> tuple:
             updated_count += 1
 
     if stdout:
-        stdout.write(f"\nDone. {created_count} group(s) created, {updated_count} group(s) updated.\n")
+        stdout.write(
+            f"\nDone. {created_count} group(s) created, {updated_count} group(s) updated.\n",
+        )
 
     return created_count, updated_count
