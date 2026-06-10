@@ -190,7 +190,9 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="luminescencedating",
             name="age_model",
-            field=models.CharField(blank=True, help_text="CAM/MAM/AM/FMM/…", max_length=30),
+            field=models.CharField(
+                blank=True, help_text="CAM/MAM/AM/FMM/…", max_length=30
+            ),
         ),
         migrations.AlterField(
             model_name="luminescencedating",
@@ -200,7 +202,9 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="luminescencedating",
             name="beta_source_calibration",
-            field=models.CharField(blank=True, default="2019-2", max_length=30),
+            field=models.CharField(
+                blank=True, default="2019-2", max_length=30
+            ),
         ),
         migrations.AlterField(
             model_name="luminescencedating",
@@ -240,7 +244,9 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="luminescencedating",
             name="laboratory_id",
-            field=models.CharField(blank=True, max_length=15, verbose_name="Laboratory ID"),
+            field=models.CharField(
+                blank=True, max_length=15, verbose_name="Laboratory ID"
+            ),
         ),
         migrations.AlterField(
             model_name="luminescencedating",
@@ -259,17 +265,23 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="luminescencedating",
             name="protocol",
-            field=models.CharField(blank=True, help_text="SAR/MAAD/…", max_length=30),
+            field=models.CharField(
+                blank=True, help_text="SAR/MAAD/…", max_length=30
+            ),
         ),
         migrations.AlterField(
             model_name="luminescencedating",
             name="sample_id_cll",
-            field=models.CharField(blank=True, max_length=15, verbose_name="Sample ID CLL"),
+            field=models.CharField(
+                blank=True, max_length=15, verbose_name="Sample ID CLL"
+            ),
         ),
         migrations.AlterField(
             model_name="luminescencedating",
             name="signal",
-            field=models.CharField(blank=True, help_text="BSL/IRSL/pIRSL/TL/…", max_length=30),
+            field=models.CharField(
+                blank=True, help_text="BSL/IRSL/pIRSL/TL/…", max_length=30
+            ),
         ),
         migrations.AlterField(
             model_name="luminescencedating",

@@ -30,7 +30,12 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "name",
-                    models.CharField(blank=True, help_text="Country name", max_length=100, null=True),
+                    models.CharField(
+                        blank=True,
+                        help_text="Country name",
+                        max_length=100,
+                        null=True,
+                    ),
                 ),
                 (
                     "iso_code",
@@ -45,7 +50,10 @@ class Migration(migrations.Migration):
                 (
                     "geometry",
                     django.contrib.gis.db.models.fields.MultiPolygonField(
-                        blank=True, help_text="Country borders", null=True, srid=4326
+                        blank=True,
+                        help_text="Country borders",
+                        null=True,
+                        srid=4326,
                     ),
                 ),
             ],
@@ -62,7 +70,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 (
                     "main_type",
                     models.CharField(
@@ -94,9 +105,15 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("identifier", models.IntegerField()),
-                ("token", models.CharField(blank=True, max_length=7, null=True)),
+                (
+                    "token",
+                    models.CharField(blank=True, max_length=7, null=True),
+                ),
                 (
                     "description",
                     models.CharField(blank=True, max_length=500, null=True),
@@ -222,7 +239,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 (
                     "data_source",
                     models.CharField(
@@ -246,20 +266,33 @@ class Migration(migrations.Migration):
                 ("date_of_record", models.DateField(blank=True, null=True)),
                 (
                     "easting",
-                    models.FloatField(blank=True, help_text="in decimal degrees.", null=True),
+                    models.FloatField(
+                        blank=True, help_text="in decimal degrees.", null=True
+                    ),
                 ),
                 (
                     "northing",
-                    models.FloatField(blank=True, help_text="in decimal degrees.", null=True),
+                    models.FloatField(
+                        blank=True, help_text="in decimal degrees.", null=True
+                    ),
                 ),
-                ("srid", models.IntegerField(default=4326, help_text="EPSG code")),
+                (
+                    "srid",
+                    models.IntegerField(default=4326, help_text="EPSG code"),
+                ),
                 (
                     "location",
-                    django.contrib.gis.db.models.fields.PointField(blank=True, null=True, srid=4326),
+                    django.contrib.gis.db.models.fields.PointField(
+                        blank=True, null=True, srid=4326
+                    ),
                 ),
                 (
                     "altitude",
-                    models.FloatField(blank=True, help_text="in meters above sea level", null=True),
+                    models.FloatField(
+                        blank=True,
+                        help_text="in meters above sea level",
+                        null=True,
+                    ),
                 ),
                 (
                     "liner",
@@ -270,10 +303,16 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "sampling",
-                    models.BooleanField(default=False, help_text="Were samples taken at the location?"),
+                    models.BooleanField(
+                        default=False,
+                        help_text="Were samples taken at the location?",
+                    ),
                 ),
                 ("gradient_upslope", models.FloatField(blank=True, null=True)),
-                ("gradient_downslope", models.FloatField(blank=True, null=True)),
+                (
+                    "gradient_downslope",
+                    models.FloatField(blank=True, null=True),
+                ),
                 (
                     "slope_aspect",
                     models.IntegerField(
@@ -357,7 +396,10 @@ class Migration(migrations.Migration):
                 (
                     "geometry",
                     django.contrib.gis.db.models.fields.MultiPolygonField(
-                        blank=True, help_text="Province borders", null=True, srid=4326
+                        blank=True,
+                        help_text="Province borders",
+                        null=True,
+                        srid=4326,
                     ),
                 ),
             ],
@@ -374,15 +416,29 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("identifier", models.CharField(max_length=40, unique=True)),
-                ("igsn", models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "igsn",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
                 ("date", models.DateField(blank=True, null=True)),
-                ("description", models.CharField(blank=True, max_length=40, null=True)),
-                ("material", models.CharField(blank=True, max_length=40, null=True)),
+                (
+                    "description",
+                    models.CharField(blank=True, max_length=40, null=True),
+                ),
+                (
+                    "material",
+                    models.CharField(blank=True, max_length=40, null=True),
+                ),
                 (
                     "weight",
-                    models.DecimalField(blank=True, decimal_places=2, max_digits=6, null=True),
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=6, null=True
+                    ),
                 ),
                 (
                     "depth_top",
@@ -430,7 +486,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "label",
-                    models.CharField(help_text="A short, abbreviated label.", max_length=5),
+                    models.CharField(
+                        help_text="A short, abbreviated label.", max_length=5
+                    ),
                 ),
                 (
                     "created_at",
@@ -456,7 +514,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("label", models.CharField(max_length=30)),
             ],
             options={
@@ -475,11 +536,16 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("label", models.CharField(max_length=20)),
                 (
                     "geometry",
-                    django.contrib.gis.db.models.fields.PolygonField(blank=True, null=True, srid=4326),
+                    django.contrib.gis.db.models.fields.PolygonField(
+                        blank=True, null=True, srid=4326
+                    ),
                 ),
                 (
                     "climate_koeppen",
@@ -513,24 +579,51 @@ class Migration(migrations.Migration):
                             (
                                 "C: Temperate climates",
                                 [
-                                    ("Csa", "Mediterranean hot summer climate"),
-                                    ("Csb", "Mediterranean warm/cool summer climate"),
-                                    ("Csc", "Mediterranean cold summer climate"),
+                                    (
+                                        "Csa",
+                                        "Mediterranean hot summer climate",
+                                    ),
+                                    (
+                                        "Csb",
+                                        "Mediterranean warm/cool summer climate",
+                                    ),
+                                    (
+                                        "Csc",
+                                        "Mediterranean cold summer climate",
+                                    ),
                                     ("Cfa", "Humid subtropical climate"),
                                     ("Cfb", "Oceanic climate"),
                                     ("Cfc", "Subpolar oceanic climate"),
-                                    ("Cwa", "Dry-winter humid subtropical climate"),
-                                    ("Cwb", "Dry-winter subtropical highland climate"),
-                                    ("Cwc", "Dry-winter subpolar oceanic climate"),
+                                    (
+                                        "Cwa",
+                                        "Dry-winter humid subtropical climate",
+                                    ),
+                                    (
+                                        "Cwb",
+                                        "Dry-winter subtropical highland climate",
+                                    ),
+                                    (
+                                        "Cwc",
+                                        "Dry-winter subpolar oceanic climate",
+                                    ),
                                 ],
                             ),
                             (
                                 "D: Continental climates",
                                 [
-                                    ("Dfa", "Hot-summer humid continental climate"),
-                                    ("Dfb", "Warm-summer humid continental climate"),
+                                    (
+                                        "Dfa",
+                                        "Hot-summer humid continental climate",
+                                    ),
+                                    (
+                                        "Dfb",
+                                        "Warm-summer humid continental climate",
+                                    ),
                                     ("Dfc", "Subarctic climate"),
-                                    ("Dfd", "Extremely cold subarctic climate"),
+                                    (
+                                        "Dfd",
+                                        "Extremely cold subarctic climate",
+                                    ),
                                     (
                                         "Dwa",
                                         "Monsoon-influenced hot-summer humid continental climate",
@@ -539,7 +632,10 @@ class Migration(migrations.Migration):
                                         "Dwb",
                                         "Monsoon-influenced warm-summer humid continental climate",
                                     ),
-                                    ("Dwc", "Monsoon-influenced subarctic climate"),
+                                    (
+                                        "Dwc",
+                                        "Monsoon-influenced subarctic climate",
+                                    ),
                                     (
                                         "Dwd",
                                         "Monsoon-influenced extremely cold subarctic climate",
@@ -564,7 +660,10 @@ class Migration(migrations.Migration):
                             ),
                             (
                                 "E: Polar and alpine climates",
-                                [("ET", "Tundra climate"), ("EF", "Ice cap climate")],
+                                [
+                                    ("ET", "Tundra climate"),
+                                    ("EF", "Ice cap climate"),
+                                ],
                             ),
                         ],
                         max_length=3,
@@ -610,11 +709,16 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("word", models.CharField(max_length=255)),
                 (
                     "slug",
-                    models.SlugField(blank=True, max_length=255, null=True, unique=True),
+                    models.SlugField(
+                        blank=True, max_length=255, null=True, unique=True
+                    ),
                 ),
             ],
             options={
@@ -633,7 +737,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("identifier", models.CharField(max_length=40)),
                 ("description", models.CharField(max_length=250)),
                 (
@@ -659,15 +766,22 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("label", models.CharField(max_length=20, unique=True)),
                 (
                     "date_start",
-                    models.DateField(blank=True, null=True, verbose_name="Starting date"),
+                    models.DateField(
+                        blank=True, null=True, verbose_name="Starting date"
+                    ),
                 ),
                 (
                     "date_end",
-                    models.DateField(blank=True, null=True, verbose_name="Ending date"),
+                    models.DateField(
+                        blank=True, null=True, verbose_name="Ending date"
+                    ),
                 ),
                 (
                     "season",
@@ -689,7 +803,12 @@ class Migration(migrations.Migration):
                             ),
                             (
                                 "Equatorial climates",
-                                [("NS", "No significant seasonality for plant growth")],
+                                [
+                                    (
+                                        "NS",
+                                        "No significant seasonality for plant growth",
+                                    )
+                                ],
                             ),
                         ],
                         max_length=2,

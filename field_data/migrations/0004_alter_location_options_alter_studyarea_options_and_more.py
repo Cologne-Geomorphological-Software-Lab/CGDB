@@ -6,21 +6,29 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('field_data', '0003_alter_campaign_options_alter_exposuretype_options_and_more'),
+        (
+            "field_data",
+            "0003_alter_campaign_options_alter_exposuretype_options_and_more",
+        ),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='location',
-            options={'verbose_name_plural': 'Locations'},
+            name="location",
+            options={"verbose_name_plural": "Locations"},
         ),
         migrations.AlterModelOptions(
-            name='studyarea',
-            options={'verbose_name_plural': 'Study areas'},
+            name="studyarea",
+            options={"verbose_name_plural": "Study areas"},
         ),
         migrations.AlterField(
-            model_name='sample',
-            name='igsn',
-            field=models.CharField(blank=True, max_length=100, null=True, verbose_name='International Generic Sample Number'),
+            model_name="sample",
+            name="igsn",
+            field=models.CharField(
+                blank=True,
+                max_length=100,
+                null=True,
+                verbose_name="International Generic Sample Number",
+            ),
         ),
     ]

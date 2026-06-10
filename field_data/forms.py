@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Column, Layout, Row, Submit
 from django.contrib.gis import forms
@@ -113,7 +112,11 @@ class StudyAreaForm(forms.ModelForm):
             "ecozone_schultz",
             "geometry",
         ]
-        widgets = {"area": forms.OSMWidget(attrs={"map_width": 800, "map_height": 500})}
+        widgets = {
+            "area": forms.OSMWidget(
+                attrs={"map_width": 800, "map_height": 500},
+            ),
+        }
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)

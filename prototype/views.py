@@ -1,8 +1,8 @@
 import json
 import logging
 from calendar import monthrange
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
@@ -11,11 +11,11 @@ from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware, now
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_GET
 
 from analysis.models import (
     GenericMeasurement,
@@ -62,7 +62,12 @@ _DASHBOARD_NAV = [
 def _nav(request: HttpRequest | None) -> list:
     path = request.path if request else ""
     return [
-        {"title": n["title"], "link": n["link"], "active": path == n["active_path"]} for n in _DASHBOARD_NAV
+        {
+            "title": n["title"],
+            "link": n["link"],
+            "active": path == n["active_path"],
+        }
+        for n in _DASHBOARD_NAV
     ]
 
 
@@ -79,15 +84,23 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
     if request.user.is_superuser:
         qs = Location.objects.exclude(location__isnull=True)
     else:
-        project_ids = _accessible_projects(request.user).values_list("id", flat=True)
-        qs = Location.objects.filter(Q(project_id__in=project_ids) | Q(data_source="literature")).exclude(
-            location__isnull=True
+        project_ids = _accessible_projects(request.user).values_list(
+            "id",
+            flat=True,
+        )
+        qs = Location.objects.filter(
+            Q(project_id__in=project_ids) | Q(data_source="literature"),
+        ).exclude(
+            location__isnull=True,
         )
 
     features = [
         {
             "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [loc.location.x, loc.location.y]},
+            "geometry": {
+                "type": "Point",
+                "coordinates": [loc.location.x, loc.location.y],
+            },
             "properties": {
                 "id": loc.id,
                 "identifier": loc.identifier,
@@ -97,7 +110,11 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
             },
         }
         for loc in qs.select_related("project").only(
-            "id", "identifier", "location", "data_source", "project__label"
+            "id",
+            "identifier",
+            "location",
+            "data_source",
+            "project__label",
         )
     ]
     return JsonResponse({"type": "FeatureCollection", "features": features})
@@ -135,27 +152,42 @@ def stat_data(period_days: int = 30) -> dict:
     def _footer(pct: float, period_days: int) -> str:
         return mark_safe(
             f'<strong class="text-green-700 font-semibold dark:text-green-400">'
-            f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days"
+            f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days",
         )
 
     # Projects
     project_total = Project.objects.count()
-    project_period_count = Project.objects.filter(start_date__gte=since, start_date__lt=now).count()
+    project_period_count = Project.objects.filter(
+        start_date__gte=since,
+        start_date__lt=now,
+    ).count()
     logger.debug("Project total: %s", project_total)
 
     # Locations
     location_total = Location.objects.count()
-    location_period_count = Location.objects.filter(created_at__gte=since, created_at__lt=now).count()
+    location_period_count = Location.objects.filter(
+        created_at__gte=since,
+        created_at__lt=now,
+    ).count()
 
     # Samples
     sample_total = Sample.objects.count()
-    sample_period_count = Sample.objects.filter(created_at__gte=since, created_at__lt=now).count()
+    sample_period_count = Sample.objects.filter(
+        created_at__gte=since,
+        created_at__lt=now,
+    ).count()
 
     # Measurements
-    measurement_models = [GenericMeasurement, GrainSize, LuminescenceDating, RadiocarbonDating]
+    measurement_models = [
+        GenericMeasurement,
+        GrainSize,
+        LuminescenceDating,
+        RadiocarbonDating,
+    ]
     measurements_total = sum(m.objects.count() for m in measurement_models)
     measurements_period_count = sum(
-        m.objects.filter(created_at__gte=since, created_at__lt=now).count() for m in measurement_models
+        m.objects.filter(created_at__gte=since, created_at__lt=now).count()
+        for m in measurement_models
     )
 
     return {
@@ -163,22 +195,34 @@ def stat_data(period_days: int = 30) -> dict:
             {
                 "title": "Projects",
                 "metric": f"{project_total}",
-                "footer": _footer(_pct(project_period_count, project_total), period_days),
+                "footer": _footer(
+                    _pct(project_period_count, project_total),
+                    period_days,
+                ),
             },
             {
                 "title": "Locations",
                 "metric": f"{location_total}",
-                "footer": _footer(_pct(location_period_count, location_total), period_days),
+                "footer": _footer(
+                    _pct(location_period_count, location_total),
+                    period_days,
+                ),
             },
             {
                 "title": "Samples",
                 "metric": f"{sample_total}",
-                "footer": _footer(_pct(sample_period_count, sample_total), period_days),
+                "footer": _footer(
+                    _pct(sample_period_count, sample_total),
+                    period_days,
+                ),
             },
             {
                 "title": "Measurements",
                 "metric": f"{measurements_total}",
-                "footer": _footer(_pct(measurements_period_count, measurements_total), period_days),
+                "footer": _footer(
+                    _pct(measurements_period_count, measurements_total),
+                    period_days,
+                ),
             },
         ],
         "performance": [
@@ -189,7 +233,9 @@ def stat_data(period_days: int = 30) -> dict:
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance([GenericMeasurement, GrainSize]),
+                                "data": _build_monthly_performance(
+                                    [GenericMeasurement, GrainSize],
+                                ),
                                 "borderColor": "var(--color-primary-700)",
                             },
                         ],
@@ -203,7 +249,9 @@ def stat_data(period_days: int = 30) -> dict:
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance([LuminescenceDating, RadiocarbonDating]),
+                                "data": _build_monthly_performance(
+                                    [LuminescenceDating, RadiocarbonDating],
+                                ),
                                 "borderColor": "var(--color-primary-300)",
                             },
                         ],
@@ -239,9 +287,14 @@ def _build_monthly_performance(model_classes: list) -> list:
         year = month_date.year
         month = month_date.month
         start_date = make_aware(datetime(year, month, 1))
-        end_date = make_aware(datetime(year, month, monthrange(year, month)[1], 23, 59, 59))
+        end_date = make_aware(
+            datetime(year, month, monthrange(year, month)[1], 23, 59, 59),
+        )
         count = sum(
-            model.objects.filter(created_at__gte=start_date, created_at__lte=end_date).count()
+            model.objects.filter(
+                created_at__gte=start_date,
+                created_at__lte=end_date,
+            ).count()
             for model in model_classes
         )
         result.append([f"{MONTH_NAMES[month - 1]} {year}", count])

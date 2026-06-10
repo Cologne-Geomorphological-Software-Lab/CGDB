@@ -16,7 +16,6 @@ Usage:
 
 from __future__ import annotations
 
-
 from django.core.management.base import BaseCommand
 
 from prototype.permissions import create_permission_groups
@@ -34,5 +33,6 @@ class Command(BaseCommand):
 
     def handle(self, *_args: object, **options: object) -> None:
         create_permission_groups(
-            reset=options["reset"], stdout=self.stdout
+            reset=options["reset"],
+            stdout=self.stdout,
         )

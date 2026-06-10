@@ -1,5 +1,5 @@
 [tool.ruff]
-line-length = 72
+line-length = 79
 
 # Exclude-Files
 exclude = [
@@ -14,10 +14,9 @@ exclude = [
 select = ["ALL"]
 ignore = [
     # --- Style / formatter conflicts ---
-    "I001",   # isort (handled by ruff-format)
-    "COM812", # Trailing comma missing (conflicts with ruff-format)
     "D",      # Docstring rules (D100–D107): no mandatory docstrings in this project
     "E501",   # Line too long (enforced by line-length above)
+    "COM812",
     # --- Django-specific exemptions ---
     "RUF012", # ClassVar annotation on mutable class attributes: Django field descriptors
     "SLF001", # Private member accessed: Django internals regularly need _meta, _registry etc.

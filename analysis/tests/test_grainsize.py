@@ -13,6 +13,7 @@ Boundary thresholds (µm):
   coarse_sand 630 – < 2000
   (>= 2000 is not assigned to any fraction)
 """
+
 import json
 
 from django.test import SimpleTestCase
@@ -106,8 +107,13 @@ class ReclassifyClassificationTest(SimpleTestCase):
         gs = _make_grain_size([1.0, 2000.0], [100.0, 100.0])
         gs._reclassify()
         total_fractions = (
-            gs.clay + gs.fine_silt + gs.medium_silt + gs.coarse_silt
-            + gs.fine_sand + gs.medium_sand + gs.coarse_sand
+            gs.clay
+            + gs.fine_silt
+            + gs.medium_silt
+            + gs.coarse_silt
+            + gs.fine_sand
+            + gs.medium_sand
+            + gs.coarse_sand
         )
         self.assertAlmostEqual(gs.clay, 50.0)
         self.assertAlmostEqual(total_fractions, 50.0)
@@ -124,7 +130,15 @@ class ReclassifyReturnValueTest(SimpleTestCase):
         result = gs._reclassify()
         total = sum(measured_data)
         self.assertEqual(len(result), 7)
-        fine_silt, medium_silt, coarse_silt, fine_sand, medium_sand, coarse_sand, clay = result
+        (
+            fine_silt,
+            medium_silt,
+            coarse_silt,
+            fine_sand,
+            medium_sand,
+            coarse_sand,
+            clay,
+        ) = result
         self.assertAlmostEqual(clay, 7.0 / total * 100, places=5)
         self.assertAlmostEqual(fine_silt, 6.0 / total * 100, places=5)
         self.assertAlmostEqual(medium_silt, 5.0 / total * 100, places=5)
@@ -139,8 +153,13 @@ class ReclassifyReturnValueTest(SimpleTestCase):
         gs = _make_grain_size(classes, measured_data)
         gs._reclassify()
         total_fractions = (
-            gs.clay + gs.fine_silt + gs.medium_silt + gs.coarse_silt
-            + gs.fine_sand + gs.medium_sand + gs.coarse_sand
+            gs.clay
+            + gs.fine_silt
+            + gs.medium_silt
+            + gs.coarse_silt
+            + gs.fine_sand
+            + gs.medium_sand
+            + gs.coarse_sand
         )
         self.assertAlmostEqual(total_fractions, 100.0, places=5)
 
@@ -149,13 +168,13 @@ class ReclassifyInputHandlingTest(SimpleTestCase):
     """_reclassify() handles different input types for measured_data."""
 
     def test_json_string_is_parsed_before_processing(self):
-        gs = _make_grain_size([1.0, 4.0], '[60.0, 40.0]')
+        gs = _make_grain_size([1.0, 4.0], "[60.0, 40.0]")
         gs._reclassify()
         self.assertAlmostEqual(gs.clay, 60.0)
         self.assertAlmostEqual(gs.fine_silt, 40.0)
 
     def test_json_string_is_converted_to_list(self):
-        gs = _make_grain_size([1.0], '[100.0]')
+        gs = _make_grain_size([1.0], "[100.0]")
         gs._reclassify()
         self.assertIsInstance(gs.measured_data, list)
 

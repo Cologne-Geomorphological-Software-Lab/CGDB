@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
@@ -182,8 +181,14 @@ class StudyArea(BaseModel):
             "A: Tropical climates",
             (
                 ("Af", "Tropical rainforest climate"),
-                ("Aw", "Tropical savanna climate with dry-winter characteristics"),
-                ("As", "Tropical savanna climate with dry-summer characteristics"),
+                (
+                    "Aw",
+                    "Tropical savanna climate with dry-winter characteristics",
+                ),
+                (
+                    "As",
+                    "Tropical savanna climate with dry-summer characteristics",
+                ),
                 ("Am", "Tropical monsoon climate"),
             ),
         ),
@@ -217,8 +222,14 @@ class StudyArea(BaseModel):
                 ("Dfb", "Warm-summer humid continental climate"),
                 ("Dfc", "Subarctic climate"),
                 ("Dfd", "Extremely cold subarctic climate"),
-                ("Dwa", "Monsoon-influenced hot-summer humid continental climate"),
-                ("Dwb", "Monsoon-influenced warm-summer humid continental climate"),
+                (
+                    "Dwa",
+                    "Monsoon-influenced hot-summer humid continental climate",
+                ),
+                (
+                    "Dwb",
+                    "Monsoon-influenced warm-summer humid continental climate",
+                ),
                 ("Dwc", "Monsoon-influenced subarctic climate"),
                 ("Dwd", "Monsoon-influenced extremely cold subarctic climate"),
                 (
@@ -230,7 +241,10 @@ class StudyArea(BaseModel):
                     "Mediterranean-influenced warm-summer humid continental climate",
                 ),
                 ("Dsc", "Mediterranean-influenced subarctic climate"),
-                ("Dsd", "Mediterranean-influenced extremely cold subarctic climate"),
+                (
+                    "Dsd",
+                    "Mediterranean-influenced extremely cold subarctic climate",
+                ),
             ),
         ),
         (
@@ -631,7 +645,10 @@ class Location(BaseModel):
         ("NW", "No rain in the last week"),
         ("ND", "No rain the last 24 hours"),
         ("RD", "Rain but no heavy rain the last 24 hours"),
-        ("RH", "Heavy rain for some days or excessive rain in the last 24 hours"),
+        (
+            "RH",
+            "Heavy rain for some days or excessive rain in the last 24 hours",
+        ),
         ("RE", "Extremely rainy or snow melting"),
     ]
 
@@ -964,8 +981,15 @@ class Sample(BaseModel):
                 "Sample must have either a project or a location.",
             )
 
-        if self.project and self.location and self.location.project and self.location.project != self.project:
-            raise ValidationError("Sample project must match location project.")
+        if (
+            self.project
+            and self.location
+            and self.location.project
+            and self.location.project != self.project
+        ):
+            raise ValidationError(
+                "Sample project must match location project.",
+            )
 
     def save(self, *args: object, **kwargs: object) -> None:
         if self.location and self.location.project and not self.project:

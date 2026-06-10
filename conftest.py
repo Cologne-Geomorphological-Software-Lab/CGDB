@@ -33,7 +33,9 @@ def pytest_configure(config) -> None:
         if hasattr(os, "add_dll_directory"):
             os.add_dll_directory(_bin_str)
         if _bin_str not in os.environ.get("PATH", ""):
-            os.environ["PATH"] = _bin_str + os.pathsep + os.environ.get("PATH", "")
+            os.environ["PATH"] = (
+                _bin_str + os.pathsep + os.environ.get("PATH", "")
+            )
         os.environ.setdefault("PROJ_LIB", "C:/OSGeo4W/share/proj")
 
     # -- Isolated media root --

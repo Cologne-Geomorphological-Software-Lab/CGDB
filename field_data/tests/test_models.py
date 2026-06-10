@@ -3,6 +3,7 @@
 Covers: Location (clean, save, PointField), Sample (clean, save, auto-project, depth_mid),
 Layer (thickness), Campaign (unique constraints).
 """
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -12,18 +13,22 @@ from bibliography.models import Author, Reference
 from field_data.models import Campaign, Layer, Location, Sample
 from prototype.models import Project
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture – one DB-hit for the entire module via setUpTestData
 # ---------------------------------------------------------------------------
+
 
 class _BaseSetup(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(username="fd_user", password="pw")
 
-        cls.project = Project.objects.create(title="Project A", label="PA01", status="ACTIVE")
-        cls.project2 = Project.objects.create(title="Project B", label="PB01", status="ACTIVE")
+        cls.project = Project.objects.create(
+            title="Project A", label="PA01", status="ACTIVE"
+        )
+        cls.project2 = Project.objects.create(
+            title="Project B", label="PB01", status="ACTIVE"
+        )
 
         cls.author = Author.objects.create(last_name="Doe", first_name="Jane")
         cls.reference = Reference.objects.create(
@@ -44,6 +49,7 @@ class _BaseSetup(TestCase):
 # ===========================================================================
 # Location.clean()
 # ===========================================================================
+
 
 class LocationCleanTest(_BaseSetup):
     """Unit-level validation tests for Location.clean()."""
@@ -85,18 +91,23 @@ class LocationCleanTest(_BaseSetup):
         self.assertIn("reference", str(cm.exception).lower())
 
     def test_literature_with_reference_passes(self):
-        loc = self._make_location(data_source="literature", reference=self.reference)
+        loc = self._make_location(
+            data_source="literature", reference=self.reference
+        )
         loc.clean()  # Must not raise
 
     def test_literature_without_project_passes(self):
         """Literature locations do not require a project."""
-        loc = self._make_location(data_source="literature", reference=self.reference)
+        loc = self._make_location(
+            data_source="literature", reference=self.reference
+        )
         loc.clean()  # Must not raise
 
 
 # ===========================================================================
 # Location.save()
 # ===========================================================================
+
 
 class LocationSaveTest(_BaseSetup):
     """Integration tests for Location.save() side-effects."""
@@ -190,6 +201,7 @@ class LocationSaveTest(_BaseSetup):
 # Sample.clean()
 # ===========================================================================
 
+
 class SampleCleanTest(_BaseSetup):
     """Unit-level validation tests for Sample.clean()."""
 
@@ -206,7 +218,7 @@ class SampleCleanTest(_BaseSetup):
 
     def test_project_location_mismatch_raises(self):
         sample = self._make_sample(
-            project=self.project2,      # Different project
+            project=self.project2,  # Different project
             location=self.internal_location,  # Belongs to project
         )
         with self.assertRaises(ValidationError) as cm:
@@ -237,6 +249,7 @@ class SampleCleanTest(_BaseSetup):
 # ===========================================================================
 # Sample.save()
 # ===========================================================================
+
 
 class SampleSaveTest(_BaseSetup):
     """Integration tests for Sample.save() behavior."""
@@ -269,7 +282,9 @@ class SampleSaveTest(_BaseSetup):
             )
 
     def test_str_returns_identifier(self):
-        sample = Sample.objects.create(identifier="STR01", project=self.project)
+        sample = Sample.objects.create(
+            identifier="STR01", project=self.project
+        )
         self.assertEqual(str(sample), "STR01")
 
     def test_identifier_is_unique(self):
@@ -282,23 +297,38 @@ class SampleSaveTest(_BaseSetup):
 # Sample.depth_mid property
 # ===========================================================================
 
+
 class SampleDepthMidTest(_BaseSetup):
     """Tests for the Sample.depth_mid computed property."""
 
     def test_depth_mid_integer_values(self):
-        s = Sample.objects.create(identifier="DM01", project=self.project, depth_top=10, depth_bottom=30)
+        s = Sample.objects.create(
+            identifier="DM01",
+            project=self.project,
+            depth_top=10,
+            depth_bottom=30,
+        )
         self.assertEqual(s.depth_mid, 20)
 
     def test_depth_mid_decimal_values(self):
-        s = Sample.objects.create(identifier="DM02", project=self.project, depth_top=5, depth_bottom=16)
+        s = Sample.objects.create(
+            identifier="DM02",
+            project=self.project,
+            depth_top=5,
+            depth_bottom=16,
+        )
         self.assertAlmostEqual(float(s.depth_mid), 10.5)
 
     def test_depth_mid_none_without_top(self):
-        s = Sample.objects.create(identifier="DM03", project=self.project, depth_bottom=20)
+        s = Sample.objects.create(
+            identifier="DM03", project=self.project, depth_bottom=20
+        )
         self.assertIsNone(s.depth_mid)
 
     def test_depth_mid_none_without_bottom(self):
-        s = Sample.objects.create(identifier="DM04", project=self.project, depth_top=10)
+        s = Sample.objects.create(
+            identifier="DM04", project=self.project, depth_top=10
+        )
         self.assertIsNone(s.depth_mid)
 
     def test_depth_mid_none_when_both_absent(self):
@@ -306,13 +336,19 @@ class SampleDepthMidTest(_BaseSetup):
         self.assertIsNone(s.depth_mid)
 
     def test_depth_mid_zero_values(self):
-        s = Sample.objects.create(identifier="DM06", project=self.project, depth_top=0, depth_bottom=0)
+        s = Sample.objects.create(
+            identifier="DM06",
+            project=self.project,
+            depth_top=0,
+            depth_bottom=0,
+        )
         self.assertEqual(s.depth_mid, 0)
 
 
 # ===========================================================================
 # Layer.thickness property
 # ===========================================================================
+
 
 class LayerThicknessTest(_BaseSetup):
     """Tests for the Layer.thickness computed property."""
@@ -336,21 +372,28 @@ class LayerThicknessTest(_BaseSetup):
         self.assertAlmostEqual(layer.thickness, 0.5)
 
     def test_thickness_none_without_top(self):
-        layer = Layer.objects.create(location=self.internal_location, identifier=3, depth_bottom=25.0)
+        layer = Layer.objects.create(
+            location=self.internal_location, identifier=3, depth_bottom=25.0
+        )
         self.assertIsNone(layer.thickness)
 
     def test_thickness_none_without_bottom(self):
-        layer = Layer.objects.create(location=self.internal_location, identifier=4, depth_top=5.0)
+        layer = Layer.objects.create(
+            location=self.internal_location, identifier=4, depth_top=5.0
+        )
         self.assertIsNone(layer.thickness)
 
     def test_thickness_none_when_both_absent(self):
-        layer = Layer.objects.create(location=self.internal_location, identifier=5)
+        layer = Layer.objects.create(
+            location=self.internal_location, identifier=5
+        )
         self.assertIsNone(layer.thickness)
 
 
 # ===========================================================================
 # Campaign
 # ===========================================================================
+
 
 class CampaignTest(_BaseSetup):
     """Tests for the Campaign model."""
@@ -371,12 +414,16 @@ class CampaignTest(_BaseSetup):
             Campaign.objects.create(label="CAMP_UNIQ01", project=self.project2)
 
     def test_str_contains_label(self):
-        campaign = Campaign.objects.create(label="CAMP_STR01", project=self.project)
+        campaign = Campaign.objects.create(
+            label="CAMP_STR01", project=self.project
+        )
         self.assertIn("CAMP_STR01", str(campaign))
 
     def test_location_unique_per_campaign(self):
         """Two locations in the same campaign cannot share an identifier."""
-        campaign = Campaign.objects.create(label="CAMP_DUP01", project=self.project)
+        campaign = Campaign.objects.create(
+            label="CAMP_DUP01", project=self.project
+        )
         Location.objects.create(
             identifier="DUP_LOC",
             data_source="internal",
@@ -393,8 +440,12 @@ class CampaignTest(_BaseSetup):
 
     def test_same_identifier_allowed_in_different_campaigns(self):
         """Same location identifier is valid across different campaigns."""
-        campaign_a = Campaign.objects.create(label="CAMP_A01", project=self.project)
-        campaign_b = Campaign.objects.create(label="CAMP_B01", project=self.project)
+        campaign_a = Campaign.objects.create(
+            label="CAMP_A01", project=self.project
+        )
+        campaign_b = Campaign.objects.create(
+            label="CAMP_B01", project=self.project
+        )
         Location.objects.create(
             identifier="SHARED_ID",
             data_source="internal",

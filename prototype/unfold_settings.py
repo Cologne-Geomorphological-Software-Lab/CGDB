@@ -81,7 +81,8 @@ def _generic_measurement_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse(
-            "admin:field_data_sample_genericmeasurement", args=[pk]
+            "admin:field_data_sample_genericmeasurement",
+            args=[pk],
         )
     return reverse("admin:analysis_genericmeasurement_changelist")
 
@@ -97,7 +98,8 @@ def _luminescence_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse(
-            "admin:field_data_sample_luminescencedating", args=[pk]
+            "admin:field_data_sample_luminescencedating",
+            args=[pk],
         )
     return reverse("admin:analysis_luminescencedating_changelist")
 
@@ -106,7 +108,8 @@ def _radiocarbon_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse(
-            "admin:field_data_sample_radiocarbondating", args=[pk]
+            "admin:field_data_sample_radiocarbondating",
+            args=[pk],
         )
     return reverse("admin:analysis_radiocarbondating_changelist")
 
@@ -122,7 +125,8 @@ def _microxrf_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse(
-            "admin:field_data_sample_microxrfmeasurement", args=[pk]
+            "admin:field_data_sample_microxrfmeasurement",
+            args=[pk],
         )
     return reverse("admin:analysis_microxrfmeasurement_changelist")
 
@@ -131,7 +135,8 @@ def _cosmogenic_link(request: HttpRequest) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse(
-            "admin:field_data_sample_cosmogenicnuclidedating", args=[pk]
+            "admin:field_data_sample_cosmogenicnuclidedating",
+            args=[pk],
         )
     return reverse("admin:analysis_cosmogenicnuclidedating_changelist")
 
@@ -217,14 +222,14 @@ UNFOLD = {
                         "title": _("Projects"),
                         "icon": "workspaces",
                         "link": reverse_lazy(
-                            "admin:prototype_project_changelist"
+                            "admin:prototype_project_changelist",
                         ),
                     },
                     {
                         "title": _("Literature"),
                         "icon": "menu_book",
                         "link": reverse_lazy(
-                            "admin:bibliography_reference_changelist"
+                            "admin:bibliography_reference_changelist",
                         ),
                     },
                 ],
@@ -236,28 +241,28 @@ UNFOLD = {
                         "title": _("Campaigns"),
                         "icon": "route",
                         "link": reverse_lazy(
-                            "admin:field_data_campaign_changelist"
+                            "admin:field_data_campaign_changelist",
                         ),
                     },
                     {
                         "title": _("Study Areas"),
                         "icon": "hexagon",
                         "link": reverse_lazy(
-                            "admin:field_data_studyarea_changelist"
+                            "admin:field_data_studyarea_changelist",
                         ),
                     },
                     {
                         "title": _("Locations"),
                         "icon": "pin_drop",
                         "link": reverse_lazy(
-                            "admin:field_data_location_changelist"
+                            "admin:field_data_location_changelist",
                         ),
                     },
                     {
                         "title": _("Samples"),
                         "icon": "total_dissolved_solids",
                         "link": reverse_lazy(
-                            "admin:field_data_sample_changelist"
+                            "admin:field_data_sample_changelist",
                         ),
                     },
                 ],
@@ -276,14 +281,14 @@ UNFOLD = {
                         "title": _("Raw Processings"),
                         "icon": "batch_prediction",
                         "link": reverse_lazy(
-                            "admin:analysis_rawprocessing_changelist"
+                            "admin:analysis_rawprocessing_changelist",
                         ),
                     },
                     {
                         "title": _("Algorithms"),
                         "icon": "code_blocks",
                         "link": reverse_lazy(
-                            "admin:analysis_algorithm_changelist"
+                            "admin:analysis_algorithm_changelist",
                         ),
                     },
                 ],
@@ -295,14 +300,14 @@ UNFOLD = {
                         "title": _("Devices"),
                         "icon": "precision_manufacturing",
                         "link": reverse_lazy(
-                            "admin:laboratory_device_changelist"
+                            "admin:laboratory_device_changelist",
                         ),
                     },
                     {
                         "title": _("Methods"),
                         "icon": "science",
                         "link": reverse_lazy(
-                            "admin:laboratory_method_changelist"
+                            "admin:laboratory_method_changelist",
                         ),
                     },
                     {
@@ -321,36 +326,30 @@ UNFOLD = {
                         "title": _("Researchers"),
                         "icon": "school",
                         "link": reverse_lazy(
-                            "admin:prototype_researcher_changelist"
+                            "admin:prototype_researcher_changelist",
                         ),
-                        "permission": lambda request: (
-                            request.user.has_perm(
-                                "auth.view_user",
-                            )
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_user",
                         ),
                     },
                     {
                         "title": _("Users"),
                         "icon": "person",
                         "link": reverse_lazy(
-                            "admin:auth_user_changelist"
+                            "admin:auth_user_changelist",
                         ),
-                        "permission": lambda request: (
-                            request.user.has_perm(
-                                "auth.view_user",
-                            )
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_user",
                         ),
                     },
                     {
                         "title": _("Groups"),
                         "icon": "group",
                         "link": reverse_lazy(
-                            "admin:auth_group_changelist"
+                            "admin:auth_group_changelist",
                         ),
-                        "permission": lambda request: (
-                            request.user.has_perm(
-                                "auth.view_group",
-                            )
+                        "permission": lambda request: request.user.has_perm(
+                            "auth.view_group",
                         ),
                     },
                 ],
@@ -407,9 +406,7 @@ UNFOLD = {
                 {
                     "title": _("Grain Size"),
                     "link": _grainsize_link,
-                    "active": lambda request: (
-                        "/grainsize/" in request.path
-                    ),
+                    "active": lambda request: "/grainsize/" in request.path,
                 },
                 {
                     "title": _("Luminescence Dating"),
@@ -428,9 +425,7 @@ UNFOLD = {
                 {
                     "title": _("Pollen"),
                     "link": _counting_link,
-                    "active": lambda request: (
-                        "/counting/" in request.path
-                    ),
+                    "active": lambda request: "/counting/" in request.path,
                 },
                 {
                     "title": _("MicroXRF"),

@@ -25,7 +25,8 @@ from .models import (
 
 
 class PermissionBasedModelAdmin(
-    GuardianPermissionMixin, admin.ModelAdmin
+    GuardianPermissionMixin,
+    admin.ModelAdmin,
 ):
     """Base admin class with object-level Guardian permissions."""
 
@@ -76,18 +77,20 @@ class ProjectUserObjectPermissionInline(TabularInline):
     @display(description="Access level")
     def permission_label(self, obj: ProjectUserObjectPermission) -> str:
         return _PERMISSION_LABELS.get(
-            obj.permission.codename, obj.permission.codename
+            obj.permission.codename,
+            obj.permission.codename,
         )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return (
-            super()
-            .get_queryset(request)
-            .select_related("user", "permission")
+            super().get_queryset(request).select_related("user", "permission")
         )
 
     def formfield_for_foreignkey(
-        self, db_field: object, request: HttpRequest, **kwargs: object
+        self,
+        db_field: object,
+        request: HttpRequest,
+        **kwargs: object,
     ) -> Field | None:
         if db_field.name == "permission":
             kwargs["queryset"] = Permission.objects.filter(
@@ -95,26 +98,36 @@ class ProjectUserObjectPermissionInline(TabularInline):
                 content_type__model="project",
             ).order_by("codename")
         return super().formfield_for_foreignkey(
-            db_field, request, **kwargs
+            db_field,
+            request,
+            **kwargs,
         )
 
     def has_add_permission(
-        self, request: HttpRequest, _obj: object | None = None
+        self,
+        request: HttpRequest,
+        _obj: object | None = None,
     ) -> bool:
         return request.user.is_superuser
 
     def has_change_permission(
-        self, request: HttpRequest, _obj: object | None = None
+        self,
+        request: HttpRequest,
+        _obj: object | None = None,
     ) -> bool:
         return request.user.is_superuser
 
     def has_delete_permission(
-        self, request: HttpRequest, _obj: object | None = None
+        self,
+        request: HttpRequest,
+        _obj: object | None = None,
     ) -> bool:
         return request.user.is_superuser
 
     def has_view_permission(
-        self, request: HttpRequest, obj: object | None = None
+        self,
+        request: HttpRequest,
+        obj: object | None = None,
     ) -> bool:
         return request.user.is_superuser or (
             obj is not None
@@ -224,10 +237,10 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
             ProjectUserObjectPermission.objects.filter(
                 content_object=project,
                 permission__codename__in=_MEMBER_PERMS,
-            ).values_list("user", flat=True)
+            ).values_list("user", flat=True),
         )
         existing_member_users = set(
-            User.objects.filter(pk__in=existing_user_ids)
+            User.objects.filter(pk__in=existing_user_ids),
         )
 
         for user in new_members:

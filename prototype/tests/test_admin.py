@@ -8,6 +8,7 @@ save_related() so we don't have to construct real admin formsets.
 The method only reads project.members and ProjectUserObjectPermission —
 both are real DB objects — so the tests are faithful integration tests.
 """
+
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -27,12 +28,18 @@ class SyncMemberPermissionsGrantTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.creator = User.objects.create_user(username="adm_creator", password="pw")
-        cls.member = User.objects.create_user(username="adm_member", password="pw")
+        cls.creator = User.objects.create_user(
+            username="adm_creator", password="pw"
+        )
+        cls.member = User.objects.create_user(
+            username="adm_member", password="pw"
+        )
 
     def setUp(self):
         self.project = Project.objects.create(
-            title="Admin Sync Test", label="AST01", status="ACTIVE",
+            title="Admin Sync Test",
+            label="AST01",
+            status="ACTIVE",
             created_by=self.creator,
         )
 
@@ -54,7 +61,9 @@ class SyncMemberPermissionsGrantTest(TestCase):
     def test_new_member_does_not_receive_delete_permission(self):
         self.project.members.add(self.member)
         _make_admin()._sync_member_permissions(self.project)
-        self.assertNotIn("delete_project", get_perms(self.member, self.project))
+        self.assertNotIn(
+            "delete_project", get_perms(self.member, self.project)
+        )
 
     def test_multiple_members_all_receive_permissions(self):
         extra = User.objects.create_user(username="adm_extra", password="pw")
@@ -71,12 +80,18 @@ class SyncMemberPermissionsRevokeTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.creator = User.objects.create_user(username="adm_rev_creator", password="pw")
-        cls.ex_member = User.objects.create_user(username="adm_ex_member", password="pw")
+        cls.creator = User.objects.create_user(
+            username="adm_rev_creator", password="pw"
+        )
+        cls.ex_member = User.objects.create_user(
+            username="adm_ex_member", password="pw"
+        )
 
     def setUp(self):
         self.project = Project.objects.create(
-            title="Admin Revoke Test", label="ART01", status="ACTIVE",
+            title="Admin Revoke Test",
+            label="ART01",
+            status="ACTIVE",
             created_by=self.creator,
         )
         for perm in _MEMBER_PERMS:
@@ -85,21 +100,29 @@ class SyncMemberPermissionsRevokeTest(TestCase):
     def test_removed_member_loses_view_permission(self):
         # ex_member not in members M2M → sync should revoke
         _make_admin()._sync_member_permissions(self.project)
-        self.assertNotIn("view_project", get_perms(self.ex_member, self.project))
+        self.assertNotIn(
+            "view_project", get_perms(self.ex_member, self.project)
+        )
 
     def test_removed_member_loses_add_permission(self):
         _make_admin()._sync_member_permissions(self.project)
-        self.assertNotIn("add_project", get_perms(self.ex_member, self.project))
+        self.assertNotIn(
+            "add_project", get_perms(self.ex_member, self.project)
+        )
 
     def test_removed_member_loses_change_permission(self):
         _make_admin()._sync_member_permissions(self.project)
-        self.assertNotIn("change_project", get_perms(self.ex_member, self.project))
+        self.assertNotIn(
+            "change_project", get_perms(self.ex_member, self.project)
+        )
 
     def test_removed_member_explicit_delete_perm_is_not_touched(self):
         """delete_project is outside _MEMBER_PERMS; sync never removes it."""
         assign_perm("delete_project", self.ex_member, self.project)
         _make_admin()._sync_member_permissions(self.project)
-        self.assertIn("delete_project", get_perms(self.ex_member, self.project))
+        self.assertIn(
+            "delete_project", get_perms(self.ex_member, self.project)
+        )
 
 
 class SyncMemberPermissionsCreatorTest(TestCase):
@@ -107,11 +130,15 @@ class SyncMemberPermissionsCreatorTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.creator = User.objects.create_user(username="adm_cre_creator", password="pw")
+        cls.creator = User.objects.create_user(
+            username="adm_cre_creator", password="pw"
+        )
 
     def setUp(self):
         self.project = Project.objects.create(
-            title="Creator Guard Test", label="CGT01", status="ACTIVE",
+            title="Creator Guard Test",
+            label="CGT01",
+            status="ACTIVE",
             created_by=self.creator,
         )
         for perm in _MEMBER_PERMS:
@@ -136,12 +163,18 @@ class SyncMemberPermissionsIdempotentTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.creator = User.objects.create_user(username="adm_idem_creator", password="pw")
-        cls.member = User.objects.create_user(username="adm_idem_member", password="pw")
+        cls.creator = User.objects.create_user(
+            username="adm_idem_creator", password="pw"
+        )
+        cls.member = User.objects.create_user(
+            username="adm_idem_member", password="pw"
+        )
 
     def setUp(self):
         self.project = Project.objects.create(
-            title="Idempotent Test", label="IDM01", status="ACTIVE",
+            title="Idempotent Test",
+            label="IDM01",
+            status="ACTIVE",
             created_by=self.creator,
         )
         self.project.members.add(self.member)

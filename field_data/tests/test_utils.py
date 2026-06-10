@@ -1,4 +1,5 @@
 """Unit tests for field_data.utils — no DB required."""
+
 from urllib.parse import urlencode
 
 from django.http import QueryDict
@@ -27,10 +28,14 @@ class ExtractSamplePkTest(SimpleTestCase):
     # --- ?sample__id__exact= ---
 
     def test_sample_id_exact_returns_value(self):
-        self.assertEqual(extract_sample_pk_from_get(_q("sample__id__exact=7")), "7")
+        self.assertEqual(
+            extract_sample_pk_from_get(_q("sample__id__exact=7")), "7"
+        )
 
     def test_sample_id_exact_non_digit_returns_none(self):
-        self.assertIsNone(extract_sample_pk_from_get(_q("sample__id__exact=xyz")))
+        self.assertIsNone(
+            extract_sample_pk_from_get(_q("sample__id__exact=xyz"))
+        )
 
     # --- priority: ?sample= wins over ?sample__id__exact= ---
 

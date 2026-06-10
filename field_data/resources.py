@@ -3,7 +3,16 @@ from import_export.widgets import ForeignKeyWidget
 
 from prototype.models import Researcher
 
-from .models import Campaign, ExposureType, Layer, Location, Project, Province, Sample, StudyArea
+from .models import (
+    Campaign,
+    ExposureType,
+    Layer,
+    Location,
+    Project,
+    Province,
+    Sample,
+    StudyArea,
+)
 
 
 class LocationResource(resources.ModelResource):

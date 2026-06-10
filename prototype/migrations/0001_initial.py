@@ -27,7 +27,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 (
                     "academic_rank",
                     models.CharField(
@@ -59,7 +62,10 @@ class Migration(migrations.Migration):
                         max_length=5,
                     ),
                 ),
-                ("orcid", models.CharField(blank=True, max_length=50, null=True)),
+                (
+                    "orcid",
+                    models.CharField(blank=True, max_length=50, null=True),
+                ),
                 (
                     "created_by",
                     models.ForeignKey(
@@ -104,7 +110,10 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("label", models.CharField(max_length=100)),
                 (
                     "auth_group",
@@ -161,9 +170,15 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("created_at", models.DateTimeField(auto_now_add=True, null=True)),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, null=True),
+                ),
                 ("title", models.CharField(max_length=200)),
-                ("subtitle", models.CharField(blank=True, max_length=200, null=True)),
+                (
+                    "subtitle",
+                    models.CharField(blank=True, max_length=200, null=True),
+                ),
                 ("label", models.CharField(max_length=50)),
                 ("start_date", models.DateField(blank=True, null=True)),
                 ("deadline", models.DateField(blank=True, null=True)),
@@ -184,7 +199,10 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "public",
-                    models.BooleanField(default=False, help_text="Is the project currently public?"),
+                    models.BooleanField(
+                        default=False,
+                        help_text="Is the project currently public?",
+                    ),
                 ),
                 (
                     "created_by",

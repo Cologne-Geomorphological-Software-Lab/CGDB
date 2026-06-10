@@ -10,7 +10,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prototype.settings")
 django.setup()
 
 
-@asset(description="Extract from Django models", group_name="django_extraction")
+@asset(
+    description="Extract from Django models",
+    group_name="django_extraction",
+)
 def extract_sample_data(context: AssetExecutionContext) -> dict:
     """Extract sample data from Django database."""
     try:

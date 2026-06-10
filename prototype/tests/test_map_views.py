@@ -4,6 +4,7 @@ Covers:
 - map_dashboard: authentication redirect, HTTP 200 for staff
 - locations_geojson: structure, permission filtering, geometry exclusion
 """
+
 from __future__ import annotations
 
 import json
@@ -18,7 +19,12 @@ from field_data.models import Location
 from prototype.models import Project
 
 
-def _make_point_location(identifier: str, project: object = None, data_source: str = "internal", with_geometry: bool = True):
+def _make_point_location(
+    identifier: str,
+    project: object = None,
+    data_source: str = "internal",
+    with_geometry: bool = True,
+):
     """Helper: create a Location; set easting/northing so save() builds the PointField."""
     loc = Location(
         identifier=identifier,
@@ -128,7 +134,11 @@ class LocationsGeoJSONStructureTest(TestCase):
         c = Client()
         c.login(username="geo_su", password="pw")
         data = json.loads(c.get("/api/locations.geojson").content)
-        feature = next(f for f in data["features"] if f["properties"]["identifier"] == "GJ_LOC1")
+        feature = next(
+            f
+            for f in data["features"]
+            if f["properties"]["identifier"] == "GJ_LOC1"
+        )
         self.assertEqual(feature["geometry"]["type"], "Point")
         self.assertEqual(len(feature["geometry"]["coordinates"]), 2)
 
@@ -136,7 +146,11 @@ class LocationsGeoJSONStructureTest(TestCase):
         c = Client()
         c.login(username="geo_su", password="pw")
         data = json.loads(c.get("/api/locations.geojson").content)
-        feature = next(f for f in data["features"] if f["properties"]["identifier"] == "GJ_LOC1")
+        feature = next(
+            f
+            for f in data["features"]
+            if f["properties"]["identifier"] == "GJ_LOC1"
+        )
         props = feature["properties"]
         for key in ("id", "identifier", "project", "data_source", "admin_url"):
             self.assertIn(key, props, msg=f"Missing property: {key}")
@@ -145,7 +159,11 @@ class LocationsGeoJSONStructureTest(TestCase):
         c = Client()
         c.login(username="geo_su", password="pw")
         data = json.loads(c.get("/api/locations.geojson").content)
-        feature = next(f for f in data["features"] if f["properties"]["identifier"] == "GJ_LOC1")
+        feature = next(
+            f
+            for f in data["features"]
+            if f["properties"]["identifier"] == "GJ_LOC1"
+        )
         self.assertIn(str(self.loc.id), feature["properties"]["admin_url"])
         self.assertIn("change", feature["properties"]["admin_url"])
 
@@ -216,7 +234,11 @@ class LocationsGeoJSONPermissionTest(TestCase):
     def test_literature_locations_visible_to_all(self):
         for user in (self.user_a, self.user_no_perm):
             ids = self._ids(self._fetch(user))
-            self.assertIn("GEO_LIT", ids, msg=f"{user.username} should see literature locations")
+            self.assertIn(
+                "GEO_LIT",
+                ids,
+                msg=f"{user.username} should see literature locations",
+            )
 
     def test_user_without_any_perm_sees_only_literature(self):
         features = self._fetch(self.user_no_perm)

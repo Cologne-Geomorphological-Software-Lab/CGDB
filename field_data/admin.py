@@ -12,7 +12,11 @@ from django.shortcuts import get_object_or_404
 from django.urls import path
 from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
-from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter, RelatedDropdownFilter
+from unfold.contrib.filters.admin import (
+    ChoicesDropdownFilter,
+    RangeDateFilter,
+    RelatedDropdownFilter,
+)
 from unfold.decorators import display
 
 from prototype.mixins import (
@@ -119,7 +123,13 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     warn_unsaved_form = True
     list_per_page = 20
     resource_classes = [LocationResource]
-    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
+    readonly_fields = [
+        "id",
+        "created_at",
+        "created_by",
+        "modified_at",
+        "updated_by",
+    ]
     list_display = [
         "identifier",
         "colored_data_source",
@@ -166,15 +176,25 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
     search_fields = ["identifier", "campaign__label"]
 
-    @display(label={"internal": "success", "literature": "info"}, description="Data Source")
+    @display(
+        label={"internal": "success", "literature": "info"},
+        description="Data Source",
+    )
     def colored_data_source(self, obj: Location) -> str:
         return obj.data_source
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return super().get_queryset(request).select_related("project", "campaign", "reference")
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("project", "campaign", "reference")
+        )
 
     def formfield_for_manytomany(
-        self, db_field: object, request: HttpRequest, **kwargs: object
+        self,
+        db_field: object,
+        request: HttpRequest,
+        **kwargs: object,
     ) -> Field | None:
         if db_field.name == "tags":
             location_ct = ContentType.objects.get_for_model(Location)
@@ -182,7 +202,10 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
             object_id = request.resolver_match.kwargs.get("object_id")
             if object_id:
                 try:
-                    project = Location.objects.values_list("project", flat=True).get(pk=object_id)
+                    project = Location.objects.values_list(
+                        "project",
+                        flat=True,
+                    ).get(pk=object_id)
                     if project:
                         qs = qs.filter(project=project)
                 except Location.DoesNotExist:
@@ -244,7 +267,9 @@ class LocationAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
             "Weather",
             {
                 "classes": ["tab"],
-                "fields": (("current_weather_conditions", "past_weather_conditions"),),
+                "fields": (
+                    ("current_weather_conditions", "past_weather_conditions"),
+                ),
             },
         ),
     )
@@ -255,8 +280,20 @@ class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     change_form_show_cancel_button = True
     compressed_fields = True
     warn_unsaved_form = True
-    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
-    list_display = ["label", "project", "province", "climate_koeppen", "ecozone_schultz"]
+    readonly_fields = [
+        "id",
+        "created_at",
+        "created_by",
+        "modified_at",
+        "updated_by",
+    ]
+    list_display = [
+        "label",
+        "project",
+        "province",
+        "climate_koeppen",
+        "ecozone_schultz",
+    ]
     search_fields = ["label", "project__title"]
     autocomplete_fields = ["project"]
     list_filter = [
@@ -330,7 +367,13 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     compressed_fields = True
     warn_unsaved_form = True
     list_per_page = 20
-    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
+    readonly_fields = [
+        "id",
+        "created_at",
+        "created_by",
+        "modified_at",
+        "updated_by",
+    ]
     list_display = [
         "label",
         "project",
@@ -422,9 +465,22 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     compressed_fields = True
     warn_unsaved_form = True
     show_full_result_count = False
-    readonly_fields = ["id", "created_at", "created_by", "modified_at", "updated_by"]
+    readonly_fields = [
+        "id",
+        "created_at",
+        "created_by",
+        "modified_at",
+        "updated_by",
+    ]
     search_fields = ["identifier", "location__identifier"]
-    autocomplete_fields = ["project", "location", "processor", "parent", "layer", "type"]
+    autocomplete_fields = [
+        "project",
+        "location",
+        "processor",
+        "parent",
+        "layer",
+        "type",
+    ]
     list_display = ["identifier", "project", "location", "depth_mid"]
     inlines = []
     list_filter = [
@@ -497,21 +553,40 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
 
             def make_views(m: type) -> tuple:
                 def _cl(request: HttpRequest, sample_pk: int) -> HttpResponse:
-                    return self._analysis_changelist_view(request, sample_pk, m)
+                    return self._analysis_changelist_view(
+                        request,
+                        sample_pk,
+                        m,
+                    )
 
                 def _add(request: HttpRequest, sample_pk: int) -> HttpResponse:
                     return self._analysis_add_view(request, sample_pk, m)
 
-                def _change(request: HttpRequest, sample_pk: int, object_id: str) -> HttpResponse:
-                    return self._analysis_change_view(request, sample_pk, m, object_id)
+                def _change(
+                    request: HttpRequest,
+                    sample_pk: int,
+                    object_id: str,
+                ) -> HttpResponse:
+                    return self._analysis_change_view(
+                        request,
+                        sample_pk,
+                        m,
+                        object_id,
+                    )
 
                 return _cl, _add, _change
 
             cl_view, add_view, change_view = make_views(model_class)
             custom_urls += [
-                path(f"<int:sample_pk>/{slug}/", self.admin_site.admin_view(cl_view), name=prefix),
                 path(
-                    f"<int:sample_pk>/{slug}/add/", self.admin_site.admin_view(add_view), name=f"{prefix}_add"
+                    f"<int:sample_pk>/{slug}/",
+                    self.admin_site.admin_view(cl_view),
+                    name=prefix,
+                ),
+                path(
+                    f"<int:sample_pk>/{slug}/add/",
+                    self.admin_site.admin_view(add_view),
+                    name=f"{prefix}_add",
                 ),
                 path(
                     f"<int:sample_pk>/{slug}/<path:object_id>/change/",
@@ -521,14 +596,21 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
             ]
         return custom_urls + super().get_urls()
 
-    def _get_accessible_sample(self, request: HttpRequest, sample_pk: int) -> None:
+    def _get_accessible_sample(
+        self,
+        request: HttpRequest,
+        sample_pk: int,
+    ) -> None:
         """Return Sample if accessible; raise 404 if missing, 403 if forbidden."""
         get_object_or_404(Sample, pk=sample_pk)
         if not self.get_queryset(request).filter(pk=sample_pk).exists():
             raise PermissionDenied
 
     def _analysis_changelist_view(
-        self, request: HttpRequest, sample_pk: int, model_class: type
+        self,
+        request: HttpRequest,
+        sample_pk: int,
+        model_class: type,
     ) -> HttpResponse:
         """Render an analysis model's changelist filtered for sample_pk."""
         self._get_accessible_sample(request, sample_pk)
@@ -547,7 +629,9 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
 
-            pf = urlencode({"_changelist_filters": f"sample__id__exact={sample_pk}"})
+            pf = urlencode(
+                {"_changelist_filters": f"sample__id__exact={sample_pk}"},
+            )
             response.context_data["preserved_filters"] = pf
             cl = response.context_data.get("cl")
             if cl is not None:
@@ -559,7 +643,12 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     # Add-view helpers
     # ------------------------------------------------------------------
 
-    def _analysis_add_view(self, request: HttpRequest, sample_pk: int, model_class: type) -> HttpResponse:
+    def _analysis_add_view(
+        self,
+        request: HttpRequest,
+        sample_pk: int,
+        model_class: type,
+    ) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
         analysis_admin = self.admin_site._registry[model_class]
         mutable_get = request.GET.copy()
@@ -579,7 +668,11 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
     # ------------------------------------------------------------------
 
     def _analysis_change_view(
-        self, request: HttpRequest, sample_pk: int, model_class: type, object_id: str
+        self,
+        request: HttpRequest,
+        sample_pk: int,
+        model_class: type,
+        object_id: str,
     ) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
         # Ensure the analysis object actually belongs to the declared sample so
@@ -597,7 +690,10 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
         return response
 
     def formfield_for_manytomany(
-        self, db_field: object, request: HttpRequest, **kwargs: object
+        self,
+        db_field: object,
+        request: HttpRequest,
+        **kwargs: object,
     ) -> Field | None:
         if db_field.name == "tags":
             sample_ct = ContentType.objects.get_for_model(Sample)
@@ -605,7 +701,10 @@ class SampleAdmin(ExportMixin, ModelAdmin, HybridProjectPermissionMixin):
             object_id = request.resolver_match.kwargs.get("object_id")
             if object_id:
                 try:
-                    project_id = Sample.objects.values_list("project", flat=True).get(pk=object_id)
+                    project_id = Sample.objects.values_list(
+                        "project",
+                        flat=True,
+                    ).get(pk=object_id)
                     if project_id:
                         qs = qs.filter(project=project_id)
                 except Sample.DoesNotExist:
@@ -639,24 +738,47 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     list_filter_sheet = False
     list_filter_submit = True
 
-    def get_search_results(self, request: HttpRequest, queryset: QuerySet, search_term: str) -> tuple:
-        queryset, may_have_duplicates = super().get_search_results(request, queryset, search_term)
+    def get_search_results(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet,
+        search_term: str,
+    ) -> tuple:
+        queryset, may_have_duplicates = super().get_search_results(
+            request,
+            queryset,
+            search_term,
+        )
         app_label = request.GET.get("app_label")
         field_name = request.GET.get("field_name")
         model_name = request.GET.get("model_name")
         model_map = {"location": Location, "sample": Sample}
-        if app_label == "field_data" and field_name == "tags" and model_name in model_map:
+        if (
+            app_label == "field_data"
+            and field_name == "tags"
+            and model_name in model_map
+        ):
             model_class = model_map[model_name]
-            queryset = queryset.filter(content_type=ContentType.objects.get_for_model(model_class))
-            match = re.search(rf"/{model_name}/(\d+)/change/", request.META.get("HTTP_REFERER", ""))
+            queryset = queryset.filter(
+                content_type=ContentType.objects.get_for_model(model_class),
+            )
+            match = re.search(
+                rf"/{model_name}/(\d+)/change/",
+                request.META.get("HTTP_REFERER", ""),
+            )
             if match:
                 object_pk = int(match.group(1))
                 # Validate via the model's own admin queryset (permission-filtered) so a
                 # crafted Referer header cannot expose data from inaccessible projects.
                 model_admin = self.admin_site._registry.get(model_class)
                 if model_admin:
-                    accessible = model_admin.get_queryset(request).filter(pk=object_pk)
-                    project_id = accessible.values_list("project", flat=True).first()
+                    accessible = model_admin.get_queryset(request).filter(
+                        pk=object_pk,
+                    )
+                    project_id = accessible.values_list(
+                        "project",
+                        flat=True,
+                    ).first()
                     if project_id:
                         queryset = queryset.filter(project=project_id)
         return queryset, may_have_duplicates

@@ -10,6 +10,7 @@ Tested mixins:
 - HybridProjectPermissionMixin
 - GuardianPermissionMixin
 """
+
 from unittest.mock import MagicMock
 
 from django.contrib.admin import ModelAdmin
@@ -29,10 +30,10 @@ from prototype.mixins import (
 )
 from prototype.models import Project
 
-
 # ---------------------------------------------------------------------------
 # Concrete admin classes for testing
 # ---------------------------------------------------------------------------
+
 
 class _LocationProjectAdmin(ProjectBasedPermissionMixin, ModelAdmin):
     """Tests ProjectBasedPermissionMixin on Location (which has a direct project FK)."""
@@ -95,8 +96,12 @@ class _MixinSetup(TestCase):
         # Assign guardian permission fresh for each test (not in setUpTestData
         # because guardian permissions interact with transactions).
         assign_perm("prototype.view_project", self.regular_user, self.project)
-        assign_perm("prototype.change_project", self.regular_user, self.project)
-        assign_perm("prototype.delete_project", self.regular_user, self.project)
+        assign_perm(
+            "prototype.change_project", self.regular_user, self.project
+        )
+        assign_perm(
+            "prototype.delete_project", self.regular_user, self.project
+        )
 
         self.site = AdminSite()
         self.project_admin = _LocationProjectAdmin(Location, self.site)
@@ -175,9 +180,11 @@ class ProjectBasedPermissionMixinQuerysetTest(_MixinSetup):
     def test_literature_location_visible_to_all(self):
         from field_data.admin import LocationAdmin
         from django.contrib.gis import admin as gis_admin
+
         loc_admin = LocationAdmin(Location, self.site)
         # Create a literature location (no project)
         from bibliography.models import Author, Reference
+
         author = Author.objects.create(last_name="Test", first_name="T")
         ref = Reference.objects.create(
             title="Lit Ref", lead_author=author, abstract="x", type="Paper"
@@ -201,7 +208,9 @@ class ProjectBasedPermissionMixinPermTest(_MixinSetup):
 
     def test_has_change_permission_no_obj_returns_true(self):
         request = _make_request(self.regular_user)
-        self.assertTrue(self.project_admin.has_change_permission(request, obj=None))
+        self.assertTrue(
+            self.project_admin.has_change_permission(request, obj=None)
+        )
 
     def test_has_change_permission_with_project_checks_guardian(self):
         request = _make_request(self.regular_user)
@@ -257,6 +266,7 @@ class NestedProjectPermissionMixinTest(_MixinSetup):
     def test_get_project_filter_path_without_project_path_raises(self):
         class _NoPP(NestedProjectPermissionMixin, ModelAdmin):
             project_path = None
+
         admin_obj = _NoPP(Location, self.site)
         with self.assertRaises(NotImplementedError):
             admin_obj.get_project_filter_path()
@@ -264,6 +274,7 @@ class NestedProjectPermissionMixinTest(_MixinSetup):
     def test_two_level_traversal(self):
         class _TwoLevel(NestedProjectPermissionMixin, ModelAdmin):
             project_path = "location__project"
+
         admin_obj = _TwoLevel(Sample, self.site)
         loc = MagicMock()
         loc.project = self.project
@@ -275,6 +286,7 @@ class NestedProjectPermissionMixinTest(_MixinSetup):
     def test_two_level_traversal_with_none_intermediate(self):
         class _TwoLevel(NestedProjectPermissionMixin, ModelAdmin):
             project_path = "location__project"
+
         admin_obj = _TwoLevel(Sample, self.site)
         sample = MagicMock()
         sample.location = None
@@ -323,7 +335,9 @@ class HybridProjectPermissionMixinTest(_MixinSetup):
     def test_has_change_permission_with_direct_project(self):
         request = _make_request(self.regular_user)
         self.assertTrue(
-            self.sample_admin.has_change_permission(request, obj=self.sample_direct)
+            self.sample_admin.has_change_permission(
+                request, obj=self.sample_direct
+            )
         )
 
 
@@ -334,7 +348,8 @@ class HybridProjectPermissionMixinTest(_MixinSetup):
 
 class HasAddPermissionTest(_MixinSetup):
     """has_add_permission returns True only when the user has add_project on at
-    least one project via Guardian (object-level), regardless of view_project."""
+    least one project via Guardian (object-level), regardless of view_project.
+    """
 
     def setUp(self):
         super().setUp()
@@ -411,25 +426,33 @@ class GuardianPermissionMixinTest(_MixinSetup):
     def test_has_change_permission_with_guardian_perm(self):
         request = _make_request(self.regular_user)
         self.assertTrue(
-            self.guardian_admin.has_change_permission(request, obj=self.project)
+            self.guardian_admin.has_change_permission(
+                request, obj=self.project
+            )
         )
 
     def test_has_change_permission_without_guardian_perm(self):
         request = _make_request(self.other_user)
         self.assertFalse(
-            self.guardian_admin.has_change_permission(request, obj=self.project)
+            self.guardian_admin.has_change_permission(
+                request, obj=self.project
+            )
         )
 
     def test_has_delete_permission_with_guardian_perm(self):
         request = _make_request(self.regular_user)
         self.assertTrue(
-            self.guardian_admin.has_delete_permission(request, obj=self.project)
+            self.guardian_admin.has_delete_permission(
+                request, obj=self.project
+            )
         )
 
     def test_has_delete_permission_without_guardian_perm(self):
         request = _make_request(self.other_user)
         self.assertFalse(
-            self.guardian_admin.has_delete_permission(request, obj=self.project)
+            self.guardian_admin.has_delete_permission(
+                request, obj=self.project
+            )
         )
 
     def test_has_view_permission_with_guardian_perm(self):

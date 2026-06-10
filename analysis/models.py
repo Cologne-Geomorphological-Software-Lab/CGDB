@@ -33,7 +33,11 @@ class Algorithm(models.Model):
     version = models.CharField(max_length=10)
     description = models.TextField(blank=True)
     link = models.URLField(blank=True)
-    file = models.FileField(upload_to="analysis/algorithms/", blank=True, null=True)
+    file = models.FileField(
+        upload_to="analysis/algorithms/",
+        blank=True,
+        null=True,
+    )
     CHOICES = [
         ("Python", "Python"),
         ("R", "R"),
@@ -150,7 +154,11 @@ class RawProcessing(BaseModel):
     )
 
     def processed_filename(self) -> str | None:
-        return Path(self.processed_file.name).name if self.processed_file else None
+        return (
+            Path(self.processed_file.name).name
+            if self.processed_file
+            else None
+        )
 
     def __str__(self) -> str:
         return f"Processed data for {self.raw_measurement}"
@@ -461,7 +469,10 @@ class LuminescenceDating(BaseModel):
 
     year_of_publication = models.PositiveIntegerField(
         default=current_year,
-        validators=[MinValueValidator(1984), MaxValueValidator(current_year())],
+        validators=[
+            MinValueValidator(1984),
+            MaxValueValidator(current_year()),
+        ],
         blank=True,
         null=True,
     )
@@ -770,7 +781,11 @@ class LuminescenceDating(BaseModel):
 
     def __str__(self) -> str:
         mineral_str = self.mineral or "Unknown"
-        lab_id = (self.laboratory_id or f"ID-{self.pk}") if self.pk else (self.laboratory_id or "Unsaved")
+        lab_id = (
+            (self.laboratory_id or f"ID-{self.pk}")
+            if self.pk
+            else (self.laboratory_id or "Unsaved")
+        )
         return f"{lab_id} {mineral_str}"
 
 
@@ -863,9 +878,21 @@ class CosmogenicNuclideDating(BaseModel):
         null=True,
     )
     lab_id = models.CharField(max_length=30, blank=True)
-    nuclide = models.CharField(max_length=5, choices=NUCLIDE_CHOICES, blank=True)
-    mineral = models.CharField(max_length=10, choices=MINERAL_CHOICES, blank=True)
-    dating_approach = models.CharField(max_length=10, choices=APPROACH_CHOICES, blank=True)
+    nuclide = models.CharField(
+        max_length=5,
+        choices=NUCLIDE_CHOICES,
+        blank=True,
+    )
+    mineral = models.CharField(
+        max_length=10,
+        choices=MINERAL_CHOICES,
+        blank=True,
+    )
+    dating_approach = models.CharField(
+        max_length=10,
+        choices=APPROACH_CHOICES,
+        blank=True,
+    )
 
     # --- Concentration (published + standardized) ---
     # Concentrations are large integers (1e4–1e7 atoms/g); decimal_places=0
@@ -965,7 +992,11 @@ class CosmogenicNuclideDating(BaseModel):
     )
 
     # --- Production rate & scaling ---
-    scaling_method = models.CharField(max_length=10, choices=SCALING_CHOICES, blank=True)
+    scaling_method = models.CharField(
+        max_length=10,
+        choices=SCALING_CHOICES,
+        blank=True,
+    )
     calculation_software = models.CharField(
         max_length=50,
         blank=True,
@@ -1088,7 +1119,12 @@ class CosmogenicNuclideDating(BaseModel):
     )
     thesis = models.CharField(
         max_length=4,
-        choices=[("BSc", "BSc"), ("MSc", "MSc"), ("PhD", "PhD"), ("None", "None")],
+        choices=[
+            ("BSc", "BSc"),
+            ("MSc", "MSc"),
+            ("PhD", "PhD"),
+            ("None", "None"),
+        ],
         default="None",
     )
     comments = models.TextField(blank=True)
@@ -1521,7 +1557,10 @@ class GrainSize(BaseModel):
         verbose_name="Gravel (≥ 2000 µm) [%]",
     )
 
-    SOURCE_CHOICES = [("file", "Imported from file"), ("manual", "Entered manually")]
+    SOURCE_CHOICES = [
+        ("file", "Imported from file"),
+        ("manual", "Entered manually"),
+    ]
     source = models.CharField(
         max_length=10,
         choices=SOURCE_CHOICES,
@@ -1585,16 +1624,24 @@ class GrainSize(BaseModel):
         verbose_name="Folk & Ward Kurtosis",
     )
 
-    def _reclassify(self) -> tuple[float, float, float, float, float, float, float]:
+    def _reclassify(
+        self,
+    ) -> tuple[float, float, float, float, float, float, float]:
         if isinstance(self.measured_data, str):
             self.measured_data = json.loads(self.measured_data)
         elif not isinstance(self.measured_data, list):
             raise TypeError("Measured data must be a string or a list.")
 
-        fraction_names = [name for _, name in _WENTWORTH_FRACTIONS] + ["gravel"]
+        fraction_names = [name for _, name in _WENTWORTH_FRACTIONS] + [
+            "gravel",
+        ]
         sums: dict[str, float] = dict.fromkeys(fraction_names, 0.0)
 
-        for class_value, data_value in zip(self.classes, self.measured_data, strict=False):
+        for class_value, data_value in zip(
+            self.classes,
+            self.measured_data,
+            strict=False,
+        ):
             sums[_classify_fraction(class_value)] += data_value
 
         total = sum(self.measured_data)
@@ -1678,15 +1725,24 @@ class GrainSize(BaseModel):
         }
 
     @classmethod
-    def from_file(cls, file_path: str | Path, sample: Sample, method: Method) -> Self:
+    def from_file(
+        cls,
+        file_path: str | Path,
+        sample: Sample,
+        method: Method,
+    ) -> Self:
         """Create a GrainSize instance by parsing a .mps instrument file."""
         with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
             parsed = cls._parse_file_lines(file.readlines())
 
         try:
-            sample_concentration = sum(parsed["concentration"]) / len(parsed["concentration"])
+            sample_concentration = sum(parsed["concentration"]) / len(
+                parsed["concentration"],
+            )
         except (ZeroDivisionError, TypeError):
-            raise ValueError("No concentration data found in the file.") from None
+            raise ValueError(
+                "No concentration data found in the file.",
+            ) from None
 
         return cls(
             sample=sample,

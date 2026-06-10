@@ -24,12 +24,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="reference",
             name="second_author",
-            field=models.ManyToManyField(related_name="second_author", to="bibliography.author"),
+            field=models.ManyToManyField(
+                related_name="second_author", to="bibliography.author"
+            ),
         ),
         migrations.AddField(
             model_name="reference",
             name="supervisor",
-            field=models.ManyToManyField(blank=True, related_name="supervisor", to="bibliography.author"),
+            field=models.ManyToManyField(
+                blank=True, related_name="supervisor", to="bibliography.author"
+            ),
         ),
         migrations.AddField(
             model_name="reference",
@@ -67,6 +71,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="reference",
             name="keywords",
-            field=models.ManyToManyField(blank=True, to="bibliography.referencekeyword"),
+            field=models.ManyToManyField(
+                blank=True, to="bibliography.referencekeyword"
+            ),
         ),
     ]

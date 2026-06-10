@@ -7,6 +7,7 @@ Verifies that:
 - reset=True clears permissions before re-adding.
 - Domain groups only contain permissions for their own models.
 """
+
 from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 
@@ -27,14 +28,22 @@ class CreatePermissionGroupsTest(TestCase):
         codenames = set(group.permissions.values_list("codename", flat=True))
         for codename in codenames:
             action = codename.split("_")[0]
-            self.assertEqual(action, "view", msg=f"Viewer has non-view permission: {codename}")
+            self.assertEqual(
+                action,
+                "view",
+                msg=f"Viewer has non-view permission: {codename}",
+            )
 
     def test_researcher_has_no_delete_permissions(self):
         create_permission_groups()
         group = Group.objects.get(name="Researcher")
         codenames = set(group.permissions.values_list("codename", flat=True))
         delete_perms = [c for c in codenames if c.startswith("delete_")]
-        self.assertEqual(delete_perms, [], msg=f"Researcher must not have delete perms: {delete_perms}")
+        self.assertEqual(
+            delete_perms,
+            [],
+            msg=f"Researcher must not have delete perms: {delete_perms}",
+        )
 
     def test_researcher_has_view_add_change(self):
         create_permission_groups()
@@ -60,7 +69,11 @@ class CreatePermissionGroupsTest(TestCase):
         create_permission_groups()
         for group_name in GROUPS:
             count = Group.objects.filter(name=group_name).count()
-            self.assertEqual(count, 1, msg=f"Group '{group_name}' exists {count} times after two calls")
+            self.assertEqual(
+                count,
+                1,
+                msg=f"Group '{group_name}' exists {count} times after two calls",
+            )
 
     def test_idempotent_does_not_duplicate_permissions(self):
         create_permission_groups()
@@ -118,6 +131,7 @@ class CreatePermissionGroupsTest(TestCase):
 
     def test_stdout_output_is_written(self):
         import io
+
         buf = io.StringIO()
 
         class _FakeStdout:

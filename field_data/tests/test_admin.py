@@ -7,6 +7,7 @@ Tests cover:
 - Unknown sample pk returns 404
 - preserved_filters is set so the back-button points to the right URL
 """
+
 from urllib.parse import parse_qs, unquote
 
 from django.contrib.auth.models import User
@@ -15,7 +16,6 @@ from django.urls import reverse
 
 from field_data.models import Location, Sample
 from prototype.models import Project
-
 
 ANALYSIS_SLUGS = [
     "genericmeasurement",
@@ -69,7 +69,8 @@ class UrlRegistrationTest(_AdminSetup):
         for slug in ANALYSIS_SLUGS:
             with self.subTest(slug=slug):
                 url = reverse(
-                    f"admin:field_data_sample_{slug}_add", args=[self.sample.pk]
+                    f"admin:field_data_sample_{slug}_add",
+                    args=[self.sample.pk],
                 )
                 self.assertIn(
                     f"/field_data/sample/{self.sample.pk}/{slug}/add/", url
@@ -83,7 +84,8 @@ class UrlRegistrationTest(_AdminSetup):
                     args=[self.sample.pk, 99],
                 )
                 self.assertIn(
-                    f"/field_data/sample/{self.sample.pk}/{slug}/99/change/", url
+                    f"/field_data/sample/{self.sample.pk}/{slug}/99/change/",
+                    url,
                 )
 
 
@@ -122,7 +124,9 @@ class ChangelistViewTest(_AdminSetup):
         self.assertIn(f"sample__id__exact={self.sample.pk}", decoded)
 
     def test_unknown_sample_returns_404(self):
-        url = reverse("admin:field_data_sample_genericmeasurement", args=[999999])
+        url = reverse(
+            "admin:field_data_sample_genericmeasurement", args=[999999]
+        )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
 
@@ -136,12 +140,15 @@ class AddViewTest(_AdminSetup):
 
     def test_returns_200(self):
         url = reverse(
-            "admin:field_data_sample_genericmeasurement_add", args=[self.sample.pk]
+            "admin:field_data_sample_genericmeasurement_add",
+            args=[self.sample.pk],
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_unknown_sample_returns_404(self):
-        url = reverse("admin:field_data_sample_genericmeasurement_add", args=[999999])
+        url = reverse(
+            "admin:field_data_sample_genericmeasurement_add", args=[999999]
+        )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)

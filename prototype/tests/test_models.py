@@ -4,6 +4,7 @@ Covers: Researcher.__str__, ResearchGroup.__str__, Project.__str__,
 Country.__str__, Province.__str__ (field_data geo models tested here
 because they are simple enough for SimpleTestCase).
 """
+
 from __future__ import annotations
 
 from django.contrib.auth.models import Group, User
@@ -11,7 +12,6 @@ from django.test import SimpleTestCase, TestCase
 
 from field_data.models import Country, Province
 from prototype.models import Project, Researcher, ResearchGroup
-
 
 # ===========================================================================
 # Researcher.__str__
@@ -51,7 +51,9 @@ class ResearcherStrTest(SimpleTestCase):
 class ResearchGroupStrTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="rg_model_u", password="pw")
+        cls.user = User.objects.create_user(
+            username="rg_model_u", password="pw"
+        )
         cls.researcher = Researcher.objects.create(
             user=cls.user, academic_rank="D", position="WiMa"
         )

@@ -5,6 +5,7 @@ MicroXRFMeasurement, MicroXRFElementMap __str__ methods;
 RawMeasurement.filename(), RawProcessing.processed_filename();
 GrainSize.save() integration (reclassify triggered, no-data path).
 """
+
 from decimal import Decimal
 from unittest.mock import MagicMock
 
@@ -33,7 +34,9 @@ from prototype.models import Project, Researcher
 class _AnalysisExtSetup(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="aext_user", password="pw")
+        cls.user = User.objects.create_user(
+            username="aext_user", password="pw"
+        )
         cls.researcher = Researcher.objects.create(
             user=cls.user, academic_rank="D", position="WiMa"
         )
@@ -51,7 +54,9 @@ class _AnalysisExtSetup(TestCase):
             location=cls.location,
         )
         cls.device = Device.objects.create(name="XRF Device")
-        cls.method = Method.objects.create(name="XRF Analysis", category="CHEM")
+        cls.method = Method.objects.create(
+            name="XRF Analysis", category="CHEM"
+        )
         cls.parameter = Parameter.objects.create(
             name="Iron", token="Fe", unit="mg/kg"
         )
@@ -93,9 +98,7 @@ class RadiocarbonDatingStrTest(_AnalysisExtSetup):
 class CountingStrTest(_AnalysisExtSetup):
 
     def test_str_returns_sample_str(self):
-        counting = Counting.objects.create(
-            sample=self.sample, type="Percent"
-        )
+        counting = Counting.objects.create(sample=self.sample, type="Percent")
         self.assertEqual(str(counting), str(self.sample))
 
 
@@ -120,9 +123,13 @@ class PollenStrTest(SimpleTestCase):
 class PollenCountStrTest(_AnalysisExtSetup):
 
     def test_str_format(self):
-        counting = Counting.objects.create(sample=self.sample, type="Absolute numbers")
+        counting = Counting.objects.create(
+            sample=self.sample, type="Absolute numbers"
+        )
         pollen = Pollen.objects.create(name="Betula", token="BET")
-        pc = PollenCount.objects.create(counting=counting, pollen=pollen, number=42)
+        pc = PollenCount.objects.create(
+            counting=counting, pollen=pollen, number=42
+        )
         expected = f"{counting} - {pollen}"
         self.assertEqual(str(pc), expected)
 
@@ -201,7 +208,9 @@ class MicroXRFElementMapStrTest(_AnalysisExtSetup):
 class RawMeasurementFilenameTest(_AnalysisExtSetup):
 
     def test_filename_with_file(self):
-        uploaded = SimpleUploadedFile("testdata.txt", b"content", content_type="text/plain")
+        uploaded = SimpleUploadedFile(
+            "testdata.txt", b"content", content_type="text/plain"
+        )
         rm = RawMeasurement.objects.create(
             project=self.project,
             device=self.device,

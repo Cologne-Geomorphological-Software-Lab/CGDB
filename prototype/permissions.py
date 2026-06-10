@@ -121,7 +121,10 @@ GROUPS = {
 }
 
 
-def create_permission_groups(reset: bool = False, stdout: object = None) -> tuple:
+def create_permission_groups(
+    reset: bool = False,
+    stdout: object = None,
+) -> tuple:
     """Create or update predefined permission groups. Idempotent.
 
     reset=True clears all permissions from each group before re-adding —
@@ -143,7 +146,9 @@ def create_permission_groups(reset: bool = False, stdout: object = None) -> tupl
 
         if stdout:
             label = "Created" if created else "Updated"
-            stdout.write(f"  {label:8s} '{group_name}' ({permissions.count()} permissions)\n")
+            stdout.write(
+                f"  {label:8s} '{group_name}' ({permissions.count()} permissions)\n",
+            )
 
         if created:
             created_count += 1
@@ -151,6 +156,8 @@ def create_permission_groups(reset: bool = False, stdout: object = None) -> tupl
             updated_count += 1
 
     if stdout:
-        stdout.write(f"\nDone. {created_count} group(s) created, {updated_count} group(s) updated.\n")
+        stdout.write(
+            f"\nDone. {created_count} group(s) created, {updated_count} group(s) updated.\n",
+        )
 
     return created_count, updated_count

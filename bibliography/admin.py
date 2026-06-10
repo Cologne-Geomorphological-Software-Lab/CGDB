@@ -130,18 +130,20 @@ class ReferenceAdmin(ModelAdmin):
         return super().get_queryset(request)
 
     def has_view_permission(
-        self, _request: HttpRequest, _obj: Reference | None = None
+        self,
+        _request: HttpRequest,
+        _obj: Reference | None = None,
     ) -> bool:
         return True
 
     def has_change_permission(
-        self, request: HttpRequest, obj: Reference | None = None
+        self,
+        request: HttpRequest,
+        obj: Reference | None = None,
     ) -> bool:
         if obj is None:
             return True
-        change_perm = (
-            f"{self.opts.app_label}.change_{self.opts.model_name}"
-        )
+        change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
         return request.user.has_perm(change_perm, obj)
 
 

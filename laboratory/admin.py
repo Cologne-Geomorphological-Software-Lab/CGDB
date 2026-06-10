@@ -2,10 +2,21 @@ from __future__ import annotations
 
 from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline
-from unfold.contrib.filters.admin import ChoicesDropdownFilter, RelatedDropdownFilter
+from unfold.contrib.filters.admin import (
+    ChoicesDropdownFilter,
+    RelatedDropdownFilter,
+)
 from unfold.decorators import display
 
-from .models import Accessory, AccessoryParameter, Calibration, Device, Firmware, Manufacturer, Method
+from .models import (
+    Accessory,
+    AccessoryParameter,
+    Calibration,
+    Device,
+    Firmware,
+    Manufacturer,
+    Method,
+)
 
 
 class DeviceInline(TabularInline):

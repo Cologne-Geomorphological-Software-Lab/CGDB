@@ -23,7 +23,10 @@ def setup_permission_groups(sender: type, **_kwargs: object) -> None:
 
 @receiver(post_save)
 def assign_permissions_to_creator(
-    sender: type, instance: object, created: bool, **_kwargs: object
+    sender: type,
+    instance: object,
+    created: bool,
+    **_kwargs: object,
 ) -> None:
     """Assigns all object-related permissions to the creator when the object is newly created."""
     if not issubclass(sender, BaseModel):

@@ -8,6 +8,7 @@ TestCase wraps tests in a transaction that is never committed, so
 on_commit callbacks do not run by default. We use
 captureOnCommitCallbacks(execute=True) to force execution within the test.
 """
+
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
 
@@ -22,7 +23,9 @@ class PermissionSignalTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(username="sig_user", password="pw")
-        cls.other_user = User.objects.create_user(username="sig_other", password="pw")
+        cls.other_user = User.objects.create_user(
+            username="sig_other", password="pw"
+        )
 
     # ------------------------------------------------------------------
     # Happy path: permissions are assigned on creation
@@ -148,8 +151,12 @@ class PermissionSignalTest(TestCase):
 
     def test_signal_fires_for_researcher_model(self):
         """Signal assigns permissions on any BaseModel subclass, not just Project."""
-        user_for_researcher = User.objects.create_user(username="res_sig_u", password="pw")
-        researcher_user = User.objects.create_user(username="res_own", password="pw")
+        user_for_researcher = User.objects.create_user(
+            username="res_sig_u", password="pw"
+        )
+        researcher_user = User.objects.create_user(
+            username="res_own", password="pw"
+        )
         with self.captureOnCommitCallbacks(execute=True):
             researcher = Researcher.objects.create(
                 user=researcher_user,
