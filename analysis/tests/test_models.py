@@ -248,10 +248,10 @@ class RawMeasurementModelTest(TestCase):
             researcher=self.researcher,
             file=self.test_file,
             accessories=None,
-            description=None,
+            description="",
         )
         self.assertIsNone(raw_measurement.accessories)
-        self.assertIsNone(raw_measurement.description)
+        self.assertEqual(raw_measurement.description, "")
 
     def test_sample_relation(self):
         self.assertIn(self.sample, self.raw_measurement.sample.all())
