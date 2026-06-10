@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
@@ -33,7 +35,7 @@ class Country(models.Model):
         help_text="Country borders",
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name or f"Country {self.id}"
 
 
@@ -59,7 +61,7 @@ class Province(models.Model):
         help_text="Province borders",
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name or f"Province {self.id}"
 
 
@@ -97,10 +99,10 @@ class Tag(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.word} ({self.content_type.name})"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Tag: {self.word}, {self.content_type}>"
 
 
@@ -129,7 +131,7 @@ class SampleType(BaseModel):
         help_text="The creation timestamp, automatically set.",
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns:
         str: The unique word identifier of the sample type.
         """
@@ -265,7 +267,7 @@ class StudyArea(BaseModel):
     class Meta:
         verbose_name_plural = "Study areas"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.label)
 
 
@@ -288,7 +290,7 @@ class Site(BaseModel):
     )
     tags = models.ManyToManyField(Tag)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.label)
 
 
@@ -366,7 +368,7 @@ class Campaign(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.label)
 
 
@@ -402,7 +404,7 @@ class Transect(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.identifier)
 
 
@@ -437,7 +439,7 @@ class ExposureType(BaseModel):
         max_length=100,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.main_type}: {self.name_en} ({self.abbreviation})"
 
 
@@ -650,10 +652,10 @@ class Location(BaseModel):
         )
         verbose_name_plural = "Locations"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.identifier}"
 
-    def clean(self):
+    def clean(self) -> None:
         """Validate the data_source logic for project/reference assignment."""
         if self.data_source == "internal":
             if not self.project:
@@ -670,7 +672,7 @@ class Location(BaseModel):
                     "Literature data source requires a reference assignment.",
                 )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if self.easting is not None and self.northing is not None:
             self.location = Point(
                 self.easting,
@@ -734,7 +736,7 @@ class Layer(BaseModel):
     )
 
     @property
-    def thickness(self):
+    def thickness(self) -> float | None:
         """Calculates layer thickness from depth_top and depth_bottom."""
         if self.depth_top is not None and self.depth_bottom is not None:
             return self.depth_bottom - self.depth_top
@@ -830,7 +832,7 @@ class Layer(BaseModel):
         Tag,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(f"{self.location}-{self.identifier}")
 
 
@@ -938,7 +940,7 @@ class Sample(BaseModel):
     )
 
     @property
-    def depth_mid(self):
+    def depth_mid(self) -> float | None:
         """Calculate the midpoint depth of the sample."""
         if self.depth_top is not None and self.depth_bottom is not None:
             return (self.depth_top + self.depth_bottom) / 2
@@ -955,22 +957,21 @@ class Sample(BaseModel):
         blank=True,
     )
 
-    def clean(self):
+    def clean(self) -> None:
         if not self.project and not self.location:
             raise ValidationError(
                 "Sample must have either a project or a location.",
             )
 
-        if self.project and self.location and self.location.project:
-            if self.location.project != self.project:
-                raise ValidationError("Sample project must match location project.")
+        if self.project and self.location and self.location.project and self.location.project != self.project:
+            raise ValidationError("Sample project must match location project.")
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if self.location and self.location.project and not self.project:
             self.project = self.location.project
 
         self.clean()
         super().save(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.identifier)

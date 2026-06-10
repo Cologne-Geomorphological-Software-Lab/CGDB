@@ -1,4 +1,4 @@
-The Cologne Geomorphological Database System (CGDB)  is a comprehensive information system for managing complex geoscientific research data. It is specifically designed to support small research projects that must adhere to strict data management requirements set by funding bodies but often lack the financial and human resources to do so. The framework supports the transformation of raw research data into scientific knowledge. It addresses critical challenges, such as the rapid increase in the volume, variety, and complexity of geoscientific datasets, data heterogeneity, spatial complexity, and the need to comply with the FAIR (Findable, Accessible, Interoperable, and Reusable) principles. The approach optimizes the research management process by enhancing scalability and enabling interdisciplinary integration. It is adaptable to evolving research requirements and supports various data types and methodological approaches, such as machine learning and deep learning, that place high demands on the data and their formats. 
+The Cologne Geomorphological Database System (CGDB)  is a comprehensive information system for managing complex geoscientific research data. It is specifically designed to support small research projects that must adhere to strict data management requirements set by funding bodies but often lack the financial and human resources to do so. The framework supports the transformation of raw research data into scientific knowledge. It addresses critical challenges, such as the rapid increase in the volume, variety, and complexity of geoscientific datasets, data heterogeneity, spatial complexity, and the need to comply with the FAIR (Findable, Accessible, Interoperable, and Reusable) principles. The approach optimizes the research management process by enhancing scalability and enabling interdisciplinary integration. It is adaptable to evolving research requirements and supports various data types and methodological approaches, such as machine learning and deep learning, that place high demands on the data and their formats.
 
 ![admin_samples](admin_samples.png)
 
@@ -167,7 +167,7 @@ pytest --cov=. --cov-report=term-missing
 
 CGDB includes an optional data orchestration module that provides a boilerplate for implementing data pipelines with [Dagster](https://dagster.io/). This enables data ingestion, ETL processes, data quality checks, integration with OLAP systems like DuckDB or whole analysis pipelines.
 
-The orchestration layer is designed as a **starting point** that can be customised for your specific IT environment. 
+The orchestration layer is designed as a **starting point** that can be customised for your specific IT environment.
 
 **To enable:**
 
@@ -251,5 +251,5 @@ Handy, D., & van der Meij, M. (2025). Cologne-Geomorphological-Software-Lab/CGDB
    - Use read replicas or separate OLAP databases for analytics workloads
    - Avoid running heavy ETL jobs during peak operational hours
 
-See Django deployment checklist: 
+See Django deployment checklist:
 https://docs.djangoproject.com/en/stable/howto/deployment/checklist/

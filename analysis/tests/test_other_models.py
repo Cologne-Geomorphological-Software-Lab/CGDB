@@ -82,7 +82,7 @@ class RadiocarbonDatingStrTest(_AnalysisExtSetup):
         )
         result = str(dating)
         self.assertIn("Poz-99999", result)
-        self.assertIn("None", result)
+        self.assertIn("undated", result)
 
 
 # ===========================================================================

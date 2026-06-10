@@ -7,7 +7,6 @@ from .models import Campaign, ExposureType, Layer, Location, Project, Province, 
 
 
 class LocationResource(resources.ModelResource):
-
     exposure_type = fields.Field(
         column_name="exposure_type",
         attribute="exposure_type",

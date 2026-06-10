@@ -1,5 +1,6 @@
 """Test-only settings using SpatiaLite (no PostgreSQL/PostGIS needed)."""
-from .settings import *  # noqa: F401, F403
+
+from .settings import *  # noqa: F403
 
 DATABASES = {
     "default": {

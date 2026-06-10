@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 from django.conf import settings
@@ -8,7 +10,7 @@ from django.utils.translation import gettext_lazy as _
 _UNSET = object()
 
 
-def _sample_pk_from_request(request):
+def _sample_pk_from_request(request) -> str | None:
     """Extract the current sample PK from the request URL context.
 
     Covers four cases:
@@ -29,7 +31,7 @@ def _sample_pk_from_request(request):
     return result
 
 
-def _compute_sample_pk(request):
+def _compute_sample_pk(request) -> str | None:
     m = re.search(r"/field_data/sample/(\d+)/", request.path)
     if m:
         return m.group(1)
@@ -47,6 +49,7 @@ def _compute_sample_pk(request):
         ("counting", "Counting"),
         ("microxrfmeasurement", "MicroXRFMeasurement"),
         ("genericmeasurement", "GenericMeasurement"),
+        ("cosmogenicnuclidedating", "CosmogenicNuclideDating"),
     ):
         m = re.search(rf"/analysis/{url_frag}/(\d+)/", request.path)
         if m:
@@ -54,11 +57,7 @@ def _compute_sample_pk(request):
                 from django.apps import apps
                 from django.core.exceptions import ObjectDoesNotExist
 
-                obj = (
-                    apps.get_model("analysis", model_name)
-                    .objects.only("sample_id")
-                    .get(pk=m.group(1))
-                )
+                obj = apps.get_model("analysis", model_name).objects.only("sample_id").get(pk=m.group(1))
                 return str(obj.sample_id)
             except (LookupError, ObjectDoesNotExist, ValueError):
                 return None
@@ -66,53 +65,60 @@ def _compute_sample_pk(request):
     return None
 
 
-def _sample_link(request):
+def _sample_link(request) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_change", args=[pk])
     return reverse("admin:field_data_sample_changelist")
 
 
-def _generic_measurement_link(request):
+def _generic_measurement_link(request) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_genericmeasurement", args=[pk])
     return reverse("admin:analysis_genericmeasurement_changelist")
 
 
-def _grainsize_link(request):
+def _grainsize_link(request) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_grainsize", args=[pk])
     return reverse("admin:analysis_grainsize_changelist")
 
 
-def _luminescence_link(request):
+def _luminescence_link(request) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_luminescencedating", args=[pk])
     return reverse("admin:analysis_luminescencedating_changelist")
 
 
-def _radiocarbon_link(request):
+def _radiocarbon_link(request) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_radiocarbondating", args=[pk])
     return reverse("admin:analysis_radiocarbondating_changelist")
 
 
-def _counting_link(request):
+def _counting_link(request) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_counting", args=[pk])
     return reverse("admin:analysis_counting_changelist")
 
 
-def _microxrf_link(request):
+def _microxrf_link(request) -> str:
     pk = _sample_pk_from_request(request)
     if pk:
         return reverse("admin:field_data_sample_microxrfmeasurement", args=[pk])
     return reverse("admin:analysis_microxrfmeasurement_changelist")
+
+
+def _cosmogenic_link(request) -> str:
+    pk = _sample_pk_from_request(request)
+    if pk:
+        return reverse("admin:field_data_sample_cosmogenicnuclidedating", args=[pk])
+    return reverse("admin:analysis_cosmogenicnuclidedating_changelist")
 
 
 UNFOLD = {
@@ -281,7 +287,7 @@ UNFOLD = {
                         "icon": "school",
                         "link": reverse_lazy("admin:prototype_researcher_changelist"),
                         "permission": lambda request: request.user.has_perm(
-                            "auth.view_user"
+                            "auth.view_user",
                         ),
                     },
                     {
@@ -289,7 +295,7 @@ UNFOLD = {
                         "icon": "person",
                         "link": reverse_lazy("admin:auth_user_changelist"),
                         "permission": lambda request: request.user.has_perm(
-                            "auth.view_user"
+                            "auth.view_user",
                         ),
                     },
                     {
@@ -297,7 +303,7 @@ UNFOLD = {
                         "icon": "group",
                         "link": reverse_lazy("admin:auth_group_changelist"),
                         "permission": lambda request: request.user.has_perm(
-                            "auth.view_group"
+                            "auth.view_group",
                         ),
                     },
                 ],
@@ -316,6 +322,7 @@ UNFOLD = {
                 "analysis.radiocarbondating",
                 "analysis.counting",
                 "analysis.microxrfmeasurement",
+                "analysis.cosmogenicnuclidedating",
                 # Analysis changeforms (add/edit individual records)
                 {"name": "analysis.genericmeasurement", "detail": True},
                 {"name": "analysis.grainsize", "detail": True},
@@ -323,6 +330,7 @@ UNFOLD = {
                 {"name": "analysis.radiocarbondating", "detail": True},
                 {"name": "analysis.counting", "detail": True},
                 {"name": "analysis.microxrfmeasurement", "detail": True},
+                {"name": "analysis.cosmogenicnuclidedating", "detail": True},
             ],
             "items": [
                 {
@@ -330,7 +338,7 @@ UNFOLD = {
                     "link": _sample_link,
                     # Match only /field_data/sample/<pk>/change/ — not measurement sub-paths
                     "active": lambda request: bool(
-                        re.search(r"/field_data/sample/\d+/change/?$", request.path)
+                        re.search(r"/field_data/sample/\d+/change/?$", request.path),
                     ),
                 },
                 {
@@ -363,6 +371,11 @@ UNFOLD = {
                     "link": _microxrf_link,
                     "active": lambda request: "/microxrfmeasurement/" in request.path,
                 },
+                {
+                    "title": _("Cosmogenic Nuclides"),
+                    "link": _cosmogenic_link,
+                    "active": lambda request: "/cosmogenicnuclidedating/" in request.path,
+                },
             ],
         },
     ],
@@ -377,7 +390,7 @@ CRISPY_TEMPLATE_PACK = "unfold_crispy"
 CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 
 
-def environment_callback(request):
+def environment_callback(request) -> list:
     """Callback has to return a list of two values representing text value and the color type of the label
     displayed in top right corner."""
     label = getattr(settings, "UNFOLD_ENVIRONMENT_LABEL", "Production")
@@ -385,7 +398,7 @@ def environment_callback(request):
     return [label, color]
 
 
-def badge_callback(request):
+def badge_callback(request) -> int:
     """Return an integer badge value based on the current user.
 
     Currently this returns the number of permissions for authenticated users, or 0 for anonymous users.
@@ -396,5 +409,5 @@ def badge_callback(request):
     return len(user.get_all_permissions())
 
 
-def permission_callback(request):
+def permission_callback(request) -> bool:
     return request.user.has_perm("prototype.change_project")

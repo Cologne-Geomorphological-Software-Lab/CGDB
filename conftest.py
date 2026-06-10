@@ -11,6 +11,9 @@ A temporary MEDIA_ROOT is created per session so that FileField uploads
 do not accumulate inside the source tree. It is cleaned up automatically
 in pytest_sessionfinish.
 """
+
+from __future__ import annotations
+
 import os
 import shutil
 import sys
@@ -20,7 +23,7 @@ from pathlib import Path
 _TEST_MEDIA_ROOT: str | None = None
 
 
-def pytest_configure(config):
+def pytest_configure(config) -> None:
     global _TEST_MEDIA_ROOT
 
     # -- OSGeo4W DLL registration (Windows only) --
@@ -39,6 +42,6 @@ def pytest_configure(config):
     os.environ["CGDB_TEST_MEDIA_ROOT"] = _TEST_MEDIA_ROOT
 
 
-def pytest_sessionfinish(session, exitstatus):
+def pytest_sessionfinish(session, exitstatus) -> None:
     if _TEST_MEDIA_ROOT:
         shutil.rmtree(_TEST_MEDIA_ROOT, ignore_errors=True)

@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as DjangoGroupAdmin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import Group, Permission, User
+from django.db.models import QuerySet
+from django.forms import Field
 from guardian.shortcuts import assign_perm, remove_perm
-from unfold.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import ChoicesDropdownFilter, RangeDateFilter
 from unfold.decorators import display
 
@@ -14,13 +18,13 @@ from .models import Project, ProjectUserObjectPermission, Researcher, ResearchGr
 class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
     """Base admin class with object-level Guardian permissions."""
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request) -> bool:
         if request.user.is_superuser:
             return True
         add_perm = f"{self.opts.app_label}.add_{self.opts.model_name}"
         return request.user.has_perm(add_perm)
 
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request, obj, form, change) -> None:
         if not obj.pk:
             obj.created_by = request.user
         obj.updated_by = request.user
@@ -28,8 +32,8 @@ class PermissionBasedModelAdmin(GuardianPermissionMixin, admin.ModelAdmin):
 
 
 _PERMISSION_LABELS = {
-    "view_project":   "View data",
-    "add_project":    "Add data",
+    "view_project": "View data",
+    "add_project": "Add data",
     "change_project": "Edit data",
     "delete_project": "Delete data",
 }
@@ -49,13 +53,13 @@ class ProjectUserObjectPermissionInline(TabularInline):
     ordering = ["user__last_name", "user__first_name", "permission__codename"]
 
     @display(description="Access level")
-    def permission_label(self, obj):
+    def permission_label(self, obj) -> str:
         return _PERMISSION_LABELS.get(obj.permission.codename, obj.permission.codename)
 
-    def get_queryset(self, request):
+    def get_queryset(self, request) -> QuerySet:
         return super().get_queryset(request).select_related("user", "permission")
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+    def formfield_for_foreignkey(self, db_field, request, **kwargs) -> Field | None:
         if db_field.name == "permission":
             kwargs["queryset"] = Permission.objects.filter(
                 content_type__app_label="prototype",
@@ -63,19 +67,18 @@ class ProjectUserObjectPermissionInline(TabularInline):
             ).order_by("codename")
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request, obj=None) -> bool:
         return request.user.is_superuser
 
-    def has_change_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None) -> bool:
         return request.user.is_superuser
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         return request.user.is_superuser
 
-    def has_view_permission(self, request, obj=None):
+    def has_view_permission(self, request, obj=None) -> bool:
         return request.user.is_superuser or (
-            obj is not None
-            and request.user.has_perm("prototype.change_project", obj)
+            obj is not None and request.user.has_perm("prototype.change_project", obj)
         )
 
 
@@ -95,11 +98,9 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
     readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
 
     @display(header=True, description="Researcher")
-    def display_researcher(self, obj):
+    def display_researcher(self, obj) -> list:
         if obj.user:
-            initials = "".join(
-                n[0].upper() for n in [obj.user.first_name, obj.user.last_name] if n
-            )
+            initials = "".join(n[0].upper() for n in [obj.user.first_name, obj.user.last_name] if n)
             return [obj.user.get_full_name(), obj.get_position_display() or "", initials or "?"]
         return [str(obj), "", "?"]
 
@@ -121,11 +122,11 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_filter_submit = True
     inlines = [ProjectUserObjectPermissionInline]
 
-    def save_related(self, request, form, formsets, change):
+    def save_related(self, request, form, formsets, change) -> None:
         super().save_related(request, form, formsets, change)
         self._sync_member_permissions(form.instance)
 
-    def _sync_member_permissions(self, project):
+    def _sync_member_permissions(self, project) -> None:
         """Sync Guardian object-permissions to match the current members M2M.
 
         Called after save_related so that project.members already reflects the
@@ -156,7 +157,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
         label={"ACTIVE": "success", "COMPLETED": "info", "PAUSED": "warning", "CANCELLED": "danger"},
         description="Status",
     )
-    def colored_status(self, obj):
+    def colored_status(self, obj) -> str:
         return obj.status
 
     fieldsets = (
@@ -201,6 +202,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
 # ---------------------------------------------------------------------------
 # Django Auth — User and Group
 # ---------------------------------------------------------------------------
+
 
 class GroupAdmin(DjangoGroupAdmin, ModelAdmin):
     search_fields = ["name"]

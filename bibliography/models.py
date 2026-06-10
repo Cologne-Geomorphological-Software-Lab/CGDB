@@ -22,7 +22,7 @@ class Author(BaseModel):
         on_delete=models.RESTRICT,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string representation of the author in the format "{last_name}, {first_name}"."""
         return f"{self.last_name}, {self.first_name}"
 
@@ -35,7 +35,7 @@ class ReferenceKeyword(BaseModel):
         null=True,
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.keyword}"
 
 
@@ -176,5 +176,5 @@ class Reference(BaseModel):
         verbose_name = "Reference"
         verbose_name_plural = "References"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.lead_author} ({self.year}): {self.title}"

@@ -14,7 +14,7 @@ django.setup()
 all_assets = load_assets_from_modules([assets])
 
 
-def get_dagster_resources():
+def get_dagster_resources() -> dict:
     """Dagster resources from Django settings."""
     return {}
 
