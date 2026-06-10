@@ -16,10 +16,10 @@ def extract_sample_data(context: AssetExecutionContext) -> dict:
     try:
         Sample = apps.get_model("field_data", "Sample")
         sample_count = Sample.objects.count()
-        context.log.info(f"Extracted {sample_count} samples")
+        context.log.info("Extracted %d samples", sample_count)
         return {"total_samples": sample_count, "status": "success"}
     except Exception as e:
-        context.log.error(f"Extraction failed: {e}")
+        context.log.error("Extraction failed: %s", e)
         return {"status": "error", "message": str(e)}
 
 
@@ -34,7 +34,7 @@ def validate_sample_data(
 ) -> dict:
     """Validate extracted data quality."""
     passed = extract_sample_data.get("status") == "success"
-    context.log.info(f"Quality check {'passed' if passed else 'failed'}")
+    context.log.info("Quality check %s", "passed" if passed else "failed")
     return {
         "validation": "passed" if passed else "failed",
         "details": extract_sample_data,

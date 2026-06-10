@@ -41,15 +41,9 @@ ignore = [
     "TRY400", # logging.error vs logging.exception: intentional in several hooks
     "BLE001", # Blind except Exception: necessary in some admin hooks for safety
     # --- Intentionally kept for readability in scientific/admin context ---
-    "DTZ001", # datetime without tzinfo: intentional in date-only contexts
-    "ERA001", # Commented-out code: used for planned features and disabled Dagster assets
-    "G004",   # Logging f-string: accepted project style
-    "PLR2004",# Magic value comparison: obvious constants in admin/model validators
-    "PLW2901",# for-loop variable overwritten: intentional in some queryset loops
-    "C901",   # Function too complex: Django admin views are inherently complex
-    "PLR0912",# Too many branches: same as above
-    "PLR0915",# Too many statements: same as above
-    "INT001", # f-string resolved before function call
+    "DTZ001", # datetime without tzinfo: make_aware(datetime(...)) IS the Django tz pattern
+    "ERA001", # Commented-out code: disabled Dagster schedules and planned features
+    "PLR2004",# Magic value comparison: thresholds in admin display methods are self-evident
     "INP001", # Implicit namespace package: project layout
     # --- TYPE_CHECKING import splitting: Django ORM metaclasses make this fragile ---
     "TC001",  # Move first-party import into TYPE_CHECKING block

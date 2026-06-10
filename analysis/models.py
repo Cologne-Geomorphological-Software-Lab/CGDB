@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import datetime
 import json
 from pathlib import Path
@@ -1366,6 +1367,61 @@ class GenericMeasurement(BaseModel):
         return f"{self.sample} - {self.method} - {self.parameter}"
 
 
+# Wentworth grain size class boundaries in µm (Wentworth 1922 / Folk & Ward)
+_W_CLAY = 2
+_W_FINE_SILT = 6.3
+_W_MEDIUM_SILT = 20
+_W_COARSE_SILT = 63
+_W_FINE_SAND = 200
+_W_MEDIUM_SAND = 630
+_W_COARSE_SAND = 2000
+
+# Ordered lookup: (upper boundary µm, field name). "gravel" has no upper bound.
+_WENTWORTH_FRACTIONS: list[tuple[float, str]] = [
+    (_W_CLAY, "clay"),
+    (_W_FINE_SILT, "fine_silt"),
+    (_W_MEDIUM_SILT, "medium_silt"),
+    (_W_COARSE_SILT, "coarse_silt"),
+    (_W_FINE_SAND, "fine_sand"),
+    (_W_MEDIUM_SAND, "medium_sand"),
+    (_W_COARSE_SAND, "coarse_sand"),
+]
+
+# Maps .mps file stat key → model field name
+_STATS_KEY_MAP: dict[str, str] = {
+    "Mean": "mean",
+    "Mode": "mode",
+    "Median": "median",
+    "SD": "std",
+    "Skew": "skew",
+    "Kurtosis": "kurtosis",
+    "FWMean": "fwmean",
+    "FWMedian": "fwmedian",
+    "FWSD": "fwsd",
+    "FWSkew": "fwskew",
+    "FWKurt": "fwkurt",
+}
+
+
+def _classify_fraction(class_value: float) -> str:
+    """Return the Wentworth fraction name for a given grain size in µm."""
+    for boundary, name in _WENTWORTH_FRACTIONS:
+        if class_value < boundary:
+            return name
+    return "gravel"
+
+
+def _parse_stats_line(line: str, stats: dict) -> None:
+    """Parse one key=value line from a [SizeStats] block into the stats dict."""
+    try:
+        key, value = line.split("=")
+        attr = _STATS_KEY_MAP.get(key.strip())
+        if attr:
+            stats[attr] = float(value.strip())
+    except ValueError:
+        pass
+
+
 class GrainSize(BaseModel):
     """Represents the grain size distribution of a sediment sample.
 
@@ -1538,44 +1594,19 @@ class GrainSize(BaseModel):
             self.measured_data = json.loads(self.measured_data)
         elif not isinstance(self.measured_data, list):
             raise TypeError("Measured data must be a string or a list.")
-        self.clay = 0
-        self.fine_silt = 0
-        self.medium_silt = 0
-        self.coarse_silt = 0
-        self.fine_sand = 0
-        self.medium_sand = 0
-        self.coarse_sand = 0
-        self.gravel = 0
+
+        fraction_names = [name for _, name in _WENTWORTH_FRACTIONS] + ["gravel"]
+        sums: dict[str, float] = dict.fromkeys(fraction_names, 0.0)
 
         for class_value, data_value in zip(self.classes, self.measured_data, strict=False):
-            if class_value < 2:
-                self.clay += data_value
-            elif class_value < 6.3:
-                self.fine_silt += data_value
-            elif class_value < 20:
-                self.medium_silt += data_value
-            elif class_value < 63:
-                self.coarse_silt += data_value
-            elif class_value < 200:
-                self.fine_sand += data_value
-            elif class_value < 630:
-                self.medium_sand += data_value
-            elif class_value < 2000:
-                self.coarse_sand += data_value
-            else:
-                self.gravel += data_value
+            sums[_classify_fraction(class_value)] += data_value
 
         total = sum(self.measured_data)
         if total == 0:
             raise ValueError("measured_data must not sum to zero.")
-        self.clay = self.clay / total * 100
-        self.fine_silt = self.fine_silt / total * 100
-        self.medium_silt = self.medium_silt / total * 100
-        self.coarse_silt = self.coarse_silt / total * 100
-        self.fine_sand = self.fine_sand / total * 100
-        self.medium_sand = self.medium_sand / total * 100
-        self.coarse_sand = self.coarse_sand / total * 100
-        self.gravel = self.gravel / total * 100
+
+        for attr, value in sums.items():
+            setattr(self, attr, value / total * 100)
 
         return (
             self.fine_silt,
@@ -1606,112 +1637,68 @@ class GrainSize(BaseModel):
     class Meta:
         verbose_name_plural = "Grain size"
 
+    @staticmethod
+    def _parse_block_line(line: str, block: str | None, state: dict) -> None:
+        """Update mutable parse state for one data line based on the current block."""
+        if block == "#Bindiam":
+            with contextlib.suppress(ValueError):
+                state["classes"].append(float(line))
+        elif block == "#Binheight":
+            with contextlib.suppress(ValueError):
+                state["measured_data"].append(float(line))
+        elif block in {"Size0", "Size1", "Size2"}:
+            try:
+                key, value = line.split("=")
+                if key.strip() == "Obs":
+                    state["concentration"].append(float(value.strip()))
+            except ValueError:
+                pass
+        elif block == "SizeStats":
+            _parse_stats_line(line, state["stats"])
+
     @classmethod
-    def from_file(cls, file_path, sample, method) -> Self:
-        """Create an instance of the class from a file.
+    def _parse_file_lines(cls, lines: list[str]) -> dict:
+        """Parse .mps file lines into a structured data dict."""
+        state: dict = {
+            "classes": [],
+            "measured_data": [],
+            "concentration": [],
+            "stats": dict.fromkeys(_STATS_KEY_MAP.values(), None),
+        }
+        current_block: str | None = None
 
-        Args:
-            file_path (str): The path to the file to read.
-            sample (str): The sample identifier.
-            method (str): The method used for measurement.
-
-        Returns:
-            An instance of the class with data populated from the file.
-        The file should have sections denoted by square brackets, e.g., [CLASSES] and [MEASURED_DATA].
-        The data under [CLASSES] should be float values representing different classes.
-        The data under [MEASURED_DATA] should be float values representing measured data.
-        """
-        with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
-            lines = file.readlines()
-
-        classes = []
-        measured_data = []
-        concentration = []
-        current_block = None
-        mean = None
-        mode = None
-        median = None
-        std = None
-        skew = None
-        kurtosis = None
-        fwmean = None
-        fwmedian = None
-        fwsd = None
-        fwskew = None
-        fwkurt = None
-
-        for line in lines:
-            line = line.strip()
+        for raw_line in lines:
+            line = raw_line.strip()
             if line.startswith("[") and line.endswith("]"):
                 current_block = line[1:-1]
-            elif current_block == "#Bindiam":
-                try:
-                    classes.append(float(line))
-                except ValueError:
-                    continue
-            elif current_block == "#Binheight":
-                try:
-                    measured_data.append(float(line))
-                except ValueError:
-                    continue
-            elif current_block in ["Size0", "Size1", "Size2"]:
-                try:
-                    key, value = line.split("=")
-                    if key.strip() == "Obs":
-                        concentration.append(float(value.strip()))
-                except ValueError:
-                    continue
+            else:
+                cls._parse_block_line(line, current_block, state)
 
-            elif current_block == "SizeStats":
-                try:
-                    key, value = line.split("=")
-                    if key.strip() == "Mean":
-                        mean = float(value.strip())
-                    elif key.strip() == "Mode":
-                        mode = float(value.strip())
-                    elif key.strip() == "Median":
-                        median = float(value.strip())
-                    elif key.strip() == "SD":
-                        std = float(value.strip())
-                    elif key.strip() == "Skew":
-                        skew = float(value.strip())
-                    elif key.strip() == "Kurtosis":
-                        kurtosis = float(value.strip())
-                    elif key.strip() == "FWMean":
-                        fwmean = float(value.strip())
-                    elif key.strip() == "FWMedian":
-                        fwmedian = float(value.strip())
-                    elif key.strip() == "FWSD":
-                        fwsd = float(value.strip())
-                    elif key.strip() == "FWSkew":
-                        fwskew = float(value.strip())
-                    elif key.strip() == "FWKurt":
-                        fwkurt = float(value.strip())
-                except ValueError:
-                    continue
+        return {
+            "classes": state["classes"],
+            "measured_data": state["measured_data"],
+            "concentration": state["concentration"],
+            **state["stats"],
+        }
+
+    @classmethod
+    def from_file(cls, file_path, sample, method) -> Self:
+        """Create a GrainSize instance by parsing a .mps instrument file."""
+        with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
+            parsed = cls._parse_file_lines(file.readlines())
 
         try:
-            sample_concentration = sum(concentration) / len(concentration)
+            sample_concentration = sum(parsed["concentration"]) / len(parsed["concentration"])
         except (ZeroDivisionError, TypeError):
             raise ValueError("No concentration data found in the file.") from None
 
         return cls(
             sample=sample,
             method=method,
-            classes=classes,
-            measured_data=measured_data,
+            classes=parsed["classes"],
+            measured_data=parsed["measured_data"],
             sample_concentration=sample_concentration,
-            mean=mean,
-            mode=mode,
-            median=median,
-            std=std,
-            skew=skew,
-            kurtosis=kurtosis,
-            fwmean=fwmean,
-            fwmedian=fwmedian,
-            fwsd=fwsd,
-            fwskew=fwskew,
-            fwkurt=fwkurt,
+            **{k: parsed[k] for k in _STATS_KEY_MAP.values()},
         )
 
 

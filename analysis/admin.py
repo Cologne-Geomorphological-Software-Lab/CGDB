@@ -519,9 +519,8 @@ class GrainSizeImportForm(forms.ModelForm):
         max_size_mb = 10
         if file.size > max_size_mb * 1024 * 1024:
             raise ValidationError(
-                _(
-                    f"File size ({file.size / (1024 * 1024):.1f}MB) exceeds maximum allowed size of {max_size_mb}MB.",
-                ),
+                _("File size (%(size).1fMB) exceeds maximum allowed size of %(max)sMB.")
+                % {"size": file.size / (1024 * 1024), "max": max_size_mb},
             )
 
         try:
@@ -532,7 +531,7 @@ class GrainSizeImportForm(forms.ModelForm):
             if len(first_chunk) == 0:
                 raise ValidationError(_("File is empty or corrupted."))
         except Exception as e:
-            raise ValidationError(_(f"Unable to read file: {e!s}")) from None
+            raise ValidationError(_("Unable to read file: %s") % e) from None
 
         return file
 
