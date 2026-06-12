@@ -14,11 +14,12 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
 <style>
   #cgdb-map {
-    height: calc(100vh - 220px);
-    min-height: 400px;
+    min-height: 500px;
     border-radius: 6px;
     overflow: hidden;
   }
+
+  /* Popup */
   .cgdb-popup strong { display: block; margin-bottom: 4px; }
   .cgdb-popup a { color: #3b82f6; text-decoration: none; }
   .cgdb-popup a:hover { text-decoration: underline; }
@@ -32,6 +33,65 @@
   }
   .cgdb-popup .badge-internal   { background: #dbeafe; color: #1e40af; }
   .cgdb-popup .badge-literature { background: #f3f4f6; color: #374151; }
+  .cgdb-popup .popup-row {
+    display: flex;
+    gap: 6px;
+    font-size: 0.85em;
+    margin-top: 3px;
+  }
+  .cgdb-popup .popup-label {
+    color: #6b7280;
+    min-width: 58px;
+    flex-shrink: 0;
+  }
+  .cgdb-popup .popup-analyses {
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px solid #e5e7eb;
+    font-size: 0.82em;
+    color: #374151;
+  }
+
+  /* Filter control */
+  .cgdb-filter {
+    background: white;
+    border-radius: 4px !important;
+    padding: 8px 10px;
+    min-width: 148px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-top: 10px;
+  }
+  .cgdb-filter-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
+  .cgdb-filter label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    margin-bottom: 3px;
+    padding: 2px 0;
+    color: #111827;
+  }
+  .cgdb-filter select {
+    display: block;
+    width: 100%;
+    margin-top: 7px;
+    font-size: 12px;
+    padding: 3px 5px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #111827;
+    background: white;
+  }
 </style>
 {% endblock %}
 
@@ -41,13 +101,10 @@
 
 {% block content %}
 {% include "unfold/helpers/messages.html" %}
-
-{% component "unfold/components/container.html" %}
-    <div class="flex flex-col gap-4 sm:flex-row mb-6">
-        {% component "unfold/components/navigation.html" with items=navigation %}{% endcomponent %}
-    </div>
-    <div id="cgdb-map"></div>
-{% endcomponent %}
+<div class="mb-3">
+    {% component "unfold/components/navigation.html" with items=navigation %}{% endcomponent %}
+</div>
+<div id="cgdb-map"></div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -56,92 +113,166 @@ document.addEventListener('DOMContentLoaded', function () {
         d.appendChild(document.createTextNode(str == null ? '' : String(str)));
         return d.innerHTML;
     }
-    var dark = document.documentElement.classList.contains('dark');
 
+    /* ── Tile layers ── */
     var lightTile = L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>',
-            maxZoom: 19,
-        }
+        { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
     );
     var darkTile = L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>',
-            maxZoom: 19,
-        }
+        { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
     );
-    var googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
-            maxZoom: 20,
-            subdomains:['mt0','mt1','mt2','mt3']
-    });
-    var satelliteTile = L.tileLayer(
+    var googleSat = L.tileLayer(
+        'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'] }
+    );
+    var esriSat = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-            maxZoom: 17,
-        }
+        { attribution: 'Tiles &copy; Esri', maxZoom: 17 }
     );
-    var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-	maxZoom: 17,
-	attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-});
+    var topoMap = L.tileLayer(
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        { maxZoom: 17, attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)' }
+    );
 
-    var map = L.map('cgdb-map', {
-        center: [30, 10],
-        zoom: 2,
-        layers: [googleSat],
-    });
+    /* ── Map ── */
+    var map = L.map('cgdb-map', { center: [30, 10], zoom: 2, layers: [googleSat] });
 
     L.control.layers(
-        { 'Light': lightTile, 'Dark': darkTile, 'OpenTopoMap': OpenTopoMap, 'Esri Satellite': satelliteTile },
+        { 'Light': lightTile, 'Dark': darkTile, 'Google Satellite': googleSat, 'Esri Satellite': esriSat, 'OpenTopoMap': topoMap },
         {},
         { position: 'topright' }
     ).addTo(map);
 
-    var clusters = L.markerClusterGroup({ chunkedLoading: true });
+    /* ── Dynamic height: fill viewport below this element ── */
+    function resizeMap() {
+        var el = document.getElementById('cgdb-map');
+        var top = el.getBoundingClientRect().top + window.scrollY;
+        el.style.height = Math.max(500, window.innerHeight - top - 8) + 'px';
+        map.invalidateSize();
+    }
+    resizeMap();
+    window.addEventListener('resize', resizeMap);
 
-    fetch('/api/locations.geojson')
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            var layer = L.geoJSON(data, {
+    /* ── Cluster group ── */
+    var clusters = L.markerClusterGroup({ chunkedLoading: true });
+    map.addLayer(clusters);
+
+    /* ── Popup builder ── */
+    function buildPopup(p) {
+        var badge = p.data_source === 'literature'
+            ? '<span class="badge badge-literature">Literature</span>'
+            : '<span class="badge badge-internal">Internal</span>';
+        var rows = '';
+        if (p.project)        rows += '<div class="popup-row"><span class="popup-label">Project</span>'  + esc(p.project) + '</div>';
+        if (p.campaign)       rows += '<div class="popup-row"><span class="popup-label">Campaign</span>' + esc(p.campaign) + '</div>';
+        if (p.date_of_record) rows += '<div class="popup-row"><span class="popup-label">Date</span>'     + esc(p.date_of_record) + '</div>';
+        if (p.altitude != null) rows += '<div class="popup-row"><span class="popup-label">Altitude</span>' + esc(p.altitude) + ' m</div>';
+        if (p.exposure_type)  rows += '<div class="popup-row"><span class="popup-label">Type</span>'     + esc(p.exposure_type) + '</div>';
+        var analyses = '';
+        if (p.sample_count > 0) {
+            analyses = '<div class="popup-analyses">' + p.sample_count + ' sample(s)';
+            if (p.luminescence_count) analyses += ' \xb7 ' + p.luminescence_count + ' OSL/IRSL';
+            if (p.radiocarbon_count)  analyses += ' \xb7 ' + p.radiocarbon_count  + ' \xb9⁴C';
+            analyses += '</div>';
+        }
+        return '<div class="cgdb-popup">' +
+            '<strong>' + esc(p.identifier || '—') + '</strong>' +
+            rows + badge + analyses +
+            '<div style="margin-top:6px"><a href="' + esc(p.admin_url) + '">Open in admin →</a></div>' +
+            '</div>';
+    }
+
+    /* ── GeoJSON layer factory (reused by filter) ── */
+    function makeLayer(features) {
+        return L.geoJSON(
+            { type: 'FeatureCollection', features: features },
+            {
                 pointToLayer: function (feature, latlng) {
                     var isLit = feature.properties.data_source === 'literature';
                     return L.circleMarker(latlng, {
                         radius: 7,
                         fillColor: isLit ? '#9ca3af' : '#3b82f6',
-                        color: isLit ? '#6b7280' : '#1d4ed8',
-                        weight: 1.5,
-                        opacity: 1,
-                        fillOpacity: 0.8,
+                        color:     isLit ? '#6b7280' : '#1d4ed8',
+                        weight: 1.5, opacity: 1, fillOpacity: 0.8,
                     });
                 },
                 onEachFeature: function (feature, layer) {
-                    var p = feature.properties;
-                    var badge = p.data_source === 'literature'
-                        ? '<span class="badge badge-literature">Literature</span>'
-                        : '<span class="badge badge-internal">Internal</span>';
-                    layer.bindPopup(
-                        '<div class="cgdb-popup">' +
-                        '<strong>' + esc(p.identifier || '—') + '</strong>' +
-                        (p.project ? '<div>' + esc(p.project) + '</div>' : '') +
-                        badge +
-                        '<div style="margin-top:6px">' +
-                        '<a href="' + esc(p.admin_url) + '">Open in admin →</a>' +
-                        '</div></div>'
-                    );
+                    layer.bindPopup(buildPopup(feature.properties));
                 },
+            }
+        );
+    }
+
+    /* ── Filter state ── */
+    var allFeatures = [];
+    var cbInternal, cbLiterature, projectSelect;
+
+    function applyFilters() {
+        clusters.clearLayers();
+        var showInt = cbInternal.checked;
+        var showLit = cbLiterature.checked;
+        var proj    = projectSelect.value;
+        var filtered = allFeatures.filter(function (f) {
+            var p = f.properties;
+            if (p.data_source === 'internal'   && !showInt) return false;
+            if (p.data_source === 'literature' && !showLit) return false;
+            if (proj && p.project !== proj) return false;
+            return true;
+        });
+        clusters.addLayer(makeLayer(filtered));
+    }
+
+    /* ── Filter control ── */
+    var FilterControl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function () {
+            var c = L.DomUtil.create('div', 'cgdb-filter leaflet-control');
+            L.DomEvent.disableClickPropagation(c);
+            L.DomEvent.disableScrollPropagation(c);
+            c.innerHTML =
+                '<div class="cgdb-filter-title">Filter</div>' +
+                '<label><input type="checkbox" id="cb-internal"   checked> Internal</label>' +
+                '<label><input type="checkbox" id="cb-literature" checked> Literature</label>' +
+                '<select id="project-select"><option value="">All projects</option></select>';
+            return c;
+        }
+    });
+    new FilterControl().addTo(map);
+
+    cbInternal    = document.getElementById('cb-internal');
+    cbLiterature  = document.getElementById('cb-literature');
+    projectSelect = document.getElementById('project-select');
+    [cbInternal, cbLiterature, projectSelect].forEach(function (el) {
+        el.addEventListener('change', applyFilters);
+    });
+
+    /* ── Load GeoJSON ── */
+    fetch('/api/locations.geojson')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            allFeatures = data.features || [];
+
+            /* Populate project dropdown */
+            var projects = [];
+            allFeatures.forEach(function (f) {
+                var p = f.properties.project;
+                if (p && projects.indexOf(p) === -1) projects.push(p);
+            });
+            projects.sort().forEach(function (p) {
+                var opt = document.createElement('option');
+                opt.value = p; opt.textContent = p;
+                projectSelect.appendChild(opt);
             });
 
+            /* Initial render */
+            var layer = makeLayer(allFeatures);
             clusters.addLayer(layer);
-            map.addLayer(clusters);
 
-            if (data.features.length > 0) {
+            if (allFeatures.length > 0) {
                 var bounds = layer.getBounds();
-                if (bounds.isValid()) {
-                    map.fitBounds(bounds, { padding: [40, 40] });
-                }
+                if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
             }
         })
         .catch(function (err) {
