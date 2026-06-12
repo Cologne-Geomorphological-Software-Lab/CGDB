@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -100,6 +100,16 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
             location__isnull=True,
         )
 
+    qs = qs.select_related("project", "campaign", "exposure_type").annotate(
+        sample_count=Count("sample", distinct=True),
+        luminescence_count=Count(
+            "sample__luminescence_datings", distinct=True
+        ),
+        radiocarbon_count=Count(
+            "sample__analysis_radiocarbon_datings", distinct=True
+        ),
+    )
+
     features = [
         {
             "type": "Feature",
@@ -113,15 +123,20 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
                 "project": str(loc.project) if loc.project else None,
                 "data_source": loc.data_source,
                 "admin_url": f"/field_data/location/{loc.id}/change/",
+                "altitude": loc.altitude,
+                "exposure_type": loc.exposure_type.name_en
+                if loc.exposure_type
+                else None,
+                "campaign": loc.campaign.label if loc.campaign else None,
+                "date_of_record": loc.date_of_record.isoformat()
+                if loc.date_of_record
+                else None,
+                "sample_count": loc.sample_count,
+                "luminescence_count": loc.luminescence_count,
+                "radiocarbon_count": loc.radiocarbon_count,
             },
         }
-        for loc in qs.select_related("project").only(
-            "id",
-            "identifier",
-            "location",
-            "data_source",
-            "project__label",
-        )
+        for loc in qs
     ]
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
