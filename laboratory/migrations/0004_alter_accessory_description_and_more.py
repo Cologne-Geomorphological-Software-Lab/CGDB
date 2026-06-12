@@ -25,6 +25,8 @@ def fill_null_fields(apps, _schema_editor):
 
 class Migration(migrations.Migration):
 
+    atomic = False
+
     dependencies = [
         ('laboratory', '0003_alter_calibration_options_calibration_modified_at_and_more'),
     ]

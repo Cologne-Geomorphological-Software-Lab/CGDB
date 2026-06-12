@@ -3,7 +3,7 @@
 from django.db import migrations, models
 
 
-def fill_null_fields(apps, schema_editor):
+def fill_null_fields(apps, _schema_editor):
     Project = apps.get_model('prototype', 'Project')
     Project.objects.filter(description__isnull=True).update(description='')
     Project.objects.filter(subtitle__isnull=True).update(subtitle='')
@@ -12,6 +12,8 @@ def fill_null_fields(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+
+    atomic = False
 
     dependencies = [
         ('prototype', '0003_add_members_to_project'),
