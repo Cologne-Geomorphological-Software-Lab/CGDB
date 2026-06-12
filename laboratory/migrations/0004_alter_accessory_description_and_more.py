@@ -3,6 +3,26 @@
 from django.db import migrations, models
 
 
+def fill_null_fields(apps, schema_editor):
+    Accessory = apps.get_model('laboratory', 'Accessory')
+    Accessory.objects.filter(description__isnull=True).update(description='')
+    AccessoryParameter = apps.get_model('laboratory', 'AccessoryParameter')
+    AccessoryParameter.objects.filter(parameter_unit__isnull=True).update(parameter_unit='')
+    Calibration = apps.get_model('laboratory', 'Calibration')
+    Calibration.objects.filter(remarks__isnull=True).update(remarks='')
+    Device = apps.get_model('laboratory', 'Device')
+    Device.objects.filter(description__isnull=True).update(description='')
+    Device.objects.filter(token__isnull=True).update(token='')
+    Firmware = apps.get_model('laboratory', 'Firmware')
+    Firmware.objects.filter(changelog__isnull=True).update(changelog='')
+    Manufacturer = apps.get_model('laboratory', 'Manufacturer')
+    Manufacturer.objects.filter(website__isnull=True).update(website='')
+    Method = apps.get_model('laboratory', 'Method')
+    Method.objects.filter(description__isnull=True).update(description='')
+    Method.objects.filter(laboratory__isnull=True).update(laboratory='')
+    Method.objects.filter(token__isnull=True).update(token='')
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +30,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(fill_null_fields, migrations.RunPython.noop),
         migrations.AlterField(
             model_name='accessory',
             name='description',

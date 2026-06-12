@@ -3,6 +3,14 @@
 from django.db import migrations, models
 
 
+def fill_null_fields(apps, schema_editor):
+    Project = apps.get_model('prototype', 'Project')
+    Project.objects.filter(description__isnull=True).update(description='')
+    Project.objects.filter(subtitle__isnull=True).update(subtitle='')
+    Researcher = apps.get_model('prototype', 'Researcher')
+    Researcher.objects.filter(orcid__isnull=True).update(orcid='')
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +18,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(fill_null_fields, migrations.RunPython.noop),
         migrations.AlterField(
             model_name='project',
             name='description',

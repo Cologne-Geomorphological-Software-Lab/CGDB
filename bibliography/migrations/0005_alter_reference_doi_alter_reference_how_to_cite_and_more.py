@@ -3,6 +3,20 @@
 from django.db import migrations, models
 
 
+def fill_null_fields(apps, schema_editor):
+    Reference = apps.get_model('bibliography', 'Reference')
+    Reference.objects.filter(doi__isnull=True).update(doi='')
+    Reference.objects.filter(how_to_cite__isnull=True).update(how_to_cite='')
+    Reference.objects.filter(isbn_online__isnull=True).update(isbn_online='')
+    Reference.objects.filter(isbn_print__isnull=True).update(isbn_print='')
+    Reference.objects.filter(journal__isnull=True).update(journal='')
+    Reference.objects.filter(location_of_publication__isnull=True).update(location_of_publication='')
+    Reference.objects.filter(pages__isnull=True).update(pages='')
+    Reference.objects.filter(publisher__isnull=True).update(publisher='')
+    ReferenceKeyword = apps.get_model('bibliography', 'ReferenceKeyword')
+    ReferenceKeyword.objects.filter(keyword_ger__isnull=True).update(keyword_ger='')
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +24,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(fill_null_fields, migrations.RunPython.noop),
         migrations.AlterField(
             model_name='reference',
             name='doi',
