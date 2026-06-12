@@ -3,7 +3,7 @@
 from django.db import migrations, models
 
 
-def fill_null_fields(apps, schema_editor):
+def fill_null_fields(apps, _schema_editor):
     Accessory = apps.get_model('laboratory', 'Accessory')
     Accessory.objects.filter(description__isnull=True).update(description='')
     AccessoryParameter = apps.get_model('laboratory', 'AccessoryParameter')

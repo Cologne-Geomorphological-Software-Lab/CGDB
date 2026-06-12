@@ -3,7 +3,7 @@
 from django.db import migrations, models
 
 
-def fill_null_comments(apps, schema_editor):
+def fill_null_comments(apps, _schema_editor):
     LuminescenceDating = apps.get_model('analysis', 'LuminescenceDating')
     LuminescenceDating.objects.filter(comments__isnull=True).update(comments='')
     CosmogenicNuclideDating = apps.get_model('analysis', 'CosmogenicNuclideDating')
@@ -11,6 +11,8 @@ def fill_null_comments(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+
+    atomic = False
 
     dependencies = [
         ('analysis', '0008_alter_microxrfmeasurement_options_and_more'),

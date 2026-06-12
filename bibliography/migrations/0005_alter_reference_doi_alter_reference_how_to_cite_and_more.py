@@ -3,7 +3,7 @@
 from django.db import migrations, models
 
 
-def fill_null_fields(apps, schema_editor):
+def fill_null_fields(apps, _schema_editor):
     Reference = apps.get_model('bibliography', 'Reference')
     Reference.objects.filter(doi__isnull=True).update(doi='')
     Reference.objects.filter(how_to_cite__isnull=True).update(how_to_cite='')
@@ -18,6 +18,8 @@ def fill_null_fields(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+
+    atomic = False
 
     dependencies = [
         ('bibliography', '0004_alter_reference_isbn_online_and_more'),
