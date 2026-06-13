@@ -101,6 +101,7 @@
 
 {% block content %}
 {% include "unfold/helpers/messages.html" %}
+{% component "unfold/components/container.html" %}
 <div class="mb-3">
     {% component "unfold/components/navigation.html" with items=navigation %}{% endcomponent %}
 </div>
@@ -280,4 +281,5 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 });
 </script>
+{% endcomponent %}
 {% endblock %}
