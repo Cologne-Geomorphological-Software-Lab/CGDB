@@ -43,20 +43,6 @@
                 {% endfor %}
             </div>
 
-            {# Project status breakdown #}
-            {% component "unfold/components/card.html" %}
-                <div class="flex flex-col gap-3">
-                    <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{% trans "Project Status" %}</p>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:gap-4">
-                        {% for s in project_status %}
-                            <div class="flex items-center gap-2 flex-1">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ s.badge }}">{{ s.label }}</span>
-                                <span class="text-lg font-bold text-gray-800 dark:text-gray-100">{{ s.count }}</span>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endcomponent %}
         </div>
     {% endcomponent %}
 
