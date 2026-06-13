@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -48,7 +48,7 @@ class Command(BaseCommand):
             raise CommandError(msg) from exc
 
         run.status = "running"
-        run.started_at = datetime.now(timezone.utc)
+        run.started_at = datetime.now(UTC)
         run.save(update_fields=["status", "started_at"])
 
         output_dir = Path(settings.MEDIA_ROOT) / "maintenance"
@@ -111,7 +111,7 @@ class Command(BaseCommand):
             run.log = traceback.format_exc()
 
         finally:
-            run.finished_at = datetime.now(timezone.utc)
+            run.finished_at = datetime.now(UTC)
             run.save(
                 update_fields=["status", "finished_at", "log", "result_file"]
             )

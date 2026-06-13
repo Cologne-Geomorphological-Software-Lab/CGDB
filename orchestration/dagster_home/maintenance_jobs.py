@@ -11,7 +11,7 @@ import json
 import os
 import subprocess
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import django
@@ -121,7 +121,7 @@ def run_pg_dump(context) -> str:
     engine: str = db.get("ENGINE", "")
     output_dir: str = context.op_config["output_dir"]
     dump_format: str = context.op_config.get("dump_format", "custom")
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
     if _is_sqlite(engine):
         output_path = _backup_sqlite(context, db, output_dir, timestamp)
@@ -159,7 +159,7 @@ def export_to_duckdb(context) -> str:
     from orchestration.models import DuckDBTableConfig
 
     output_dir: str = context.op_config["output_dir"]
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     filename = f"cgdb_{timestamp}.duckdb"
     output_path = Path(output_dir) / filename
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,7 +250,7 @@ def run_integrity_checks(context) -> str:
 
     output_dir: str = context.op_config["output_dir"]
     run_id: int = context.op_config["run_id"]
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     filename = f"integrity_{timestamp}.json"
     output_path = Path(output_dir) / filename
     output_path.parent.mkdir(parents=True, exist_ok=True)
