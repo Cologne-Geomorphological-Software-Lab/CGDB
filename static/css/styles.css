@@ -1,2 +1,26 @@
-/* Placeholder for project-specific CSS overrides.
-   Add custom styles here that supplement Unfold's built-in Tailwind stylesheet. */
+/* Classes used in the dashboard location-type breakdown that are not part of
+   Unfold's pre-compiled Tailwind bundle (assembled dynamically or rarely used). */
+
+/* Progress bar track */
+.h-2           { height: 0.5rem; }
+.rounded-full  { border-radius: 9999px; }
+.bg-gray-100   { background-color: #f3f4f6; }
+
+/* Progress bar fill — uses Unfold's primary CSS variable with blue fallback */
+.bg-primary-500 { background-color: var(--color-primary-500, #6366f1); }
+
+/* Location label column */
+.w-36   { width: 9rem; }
+.shrink-0 { flex-shrink: 0; }
+
+/* Dark mode overrides (Unfold uses class-based dark mode: .dark on <html>) */
+.dark .dark\:bg-gray-800 { background-color: #1f2937; }
+
+/* Footer growth indicator colours (assembled dynamically in _footer()) */
+.text-green-700 { color: #15803d; }
+.text-red-600   { color: #dc2626; }
+.text-gray-500  { color: #6b7280; }
+
+.dark .dark\:text-green-400 { color: #4ade80; }
+.dark .dark\:text-red-400   { color: #f87171; }
+.dark .dark\:text-gray-400  { color: #9ca3af; }
