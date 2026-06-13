@@ -15,7 +15,7 @@
 storage:
   sqlite:
     base_dir:
-      env: DAGSTER_HOME
+      env: DAGSTER_STORAGE_DIR
 
 run_launcher:
   module: dagster.core.launcher
