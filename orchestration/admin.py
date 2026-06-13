@@ -8,18 +8,39 @@ import sys
 from typing import TYPE_CHECKING
 
 from django.contrib import admin, messages
+from django.db.models import Count
+from django.urls import reverse
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 
 from prototype.mixins import CreatedUpdatedModelAdminMixin
 
-from .models import DuckDBTableConfig, MaintenanceRun
+from .models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
     from django.forms import ModelForm
     from django.http import HttpRequest
+
+# Maps check_type to (app_label, model_name) for admin change-page links
+_CHECK_TYPE_MODEL_MAP: dict[str, tuple[str, str]] = {
+    "orphan_samples": ("field_data", "sample"),
+    "missing_geometries": ("field_data", "location"),
+}
+
+# Maps check_type to a filtered changelist URL suffix
+_CHECK_TYPE_CHANGELIST_FILTER: dict[str, str] = {
+    "orphan_samples": "location__isnull=True",
+    "missing_geometries": "location__isnull=True",
+}
+
+# Human-readable labels per check type for the summary column
+_CHECK_TYPE_LABELS: dict[str, str] = {
+    "orphan_samples": "Orphans",
+    "missing_geometries": "Missing geometry",
+    "guardian_maintenance_permissions": "Guardian",
+}
 
 
 def _fire_maintenance_subprocess(run: MaintenanceRun) -> None:
@@ -51,6 +72,36 @@ def _fire_maintenance_subprocess(run: MaintenanceRun) -> None:
     subprocess.Popen(cmd, **kwargs)  # noqa: S603 — cmd is fully static; no user-controlled input
 
 
+class IntegrityIssueInline(TabularInline):
+    """Read-only inline showing integrity issues found during a run."""
+
+    model = IntegrityIssue
+    fields = ["check_type", "description", "admin_link"]
+    readonly_fields = ["check_type", "description", "admin_link"]
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(
+        self, _request: HttpRequest, _obj: object = None
+    ) -> bool:
+        """Disallow adding issues manually."""
+        return False
+
+    @display(description="Object")
+    def admin_link(self, obj: IntegrityIssue) -> str:
+        """Return an admin change-page link for the affected object, if applicable."""
+        if obj.object_id is None:
+            return "—"
+        entry = _CHECK_TYPE_MODEL_MAP.get(obj.check_type)
+        if entry is None:
+            return str(obj.object_id)
+        app_label, model_name = entry
+        url = reverse(
+            f"admin:{app_label}_{model_name}_change", args=[obj.object_id]
+        )
+        return format_html('<a href="{}">View →</a>', url)
+
+
 @admin.register(MaintenanceRun)
 class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     """Admin for the MaintenanceRun model — superuser access only."""
@@ -62,6 +113,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
         "triggered_by",
         "started_at",
         "finished_at",
+        "issues_summary",
         "download_link",
     ]
     readonly_fields = [
@@ -79,6 +131,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     ]
     list_filter = ["job_type", "status"]
     actions = ["trigger_maintenance_job"]
+    inlines = [IntegrityIssueInline]
 
     # ------------------------------------------------------------------
     # Permission lockdown: superuser only
@@ -138,6 +191,36 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     def status_display(self, obj: MaintenanceRun) -> str:
         """Return the status value used for the colored label badge."""
         return obj.status
+
+    @display(description="Issues")
+    def issues_summary(self, obj: MaintenanceRun) -> str:
+        """Return per-check-type counts with links to filtered changelists."""
+        if obj.job_type != "integrity" or obj.status != "success":
+            return "—"
+
+        counts: dict[str, int] = {
+            r["check_type"]: r["n"]
+            for r in obj.issues.values("check_type").annotate(n=Count("id"))
+        }
+
+        parts: list[str] = []
+        for check_type, label in _CHECK_TYPE_LABELS.items():
+            n = counts.get(check_type, 0)
+            filter_suffix = _CHECK_TYPE_CHANGELIST_FILTER.get(check_type)
+            model_entry = _CHECK_TYPE_MODEL_MAP.get(check_type)
+            if filter_suffix and model_entry:
+                app_label, model_name = model_entry
+                url = (
+                    reverse(f"admin:{app_label}_{model_name}_changelist")
+                    + f"?{filter_suffix}"
+                )
+                parts.append(
+                    format_html('<a href="{}">{}: {}</a>', url, label, n)
+                )
+            else:
+                parts.append(format_html("{}: {}", label, n))
+
+        return format_html(" · ".join(["{}"] * len(parts)), *parts)
 
     @display(description="Download")
     def download_link(self, obj: MaintenanceRun) -> str:
