@@ -253,3 +253,183 @@ class TestGetJobForType:
     def test_raises_for_unknown_type(self):
         with pytest.raises(ValueError, match="Unknown maintenance job type"):
             get_job_for_type("unknown")
+
+
+# ===========================================================================
+# _get_queryset — queryset field selection
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestGetQueryset:
+    """Tests for the _get_queryset helper extracted from export_to_duckdb."""
+
+    from orchestration.dagster_home.maintenance_jobs import _get_queryset
+
+    def _make_cfg(self, include_fields=None, exclude_fields=None):
+        cfg = MagicMock()
+        cfg.include_fields = include_fields or []
+        cfg.exclude_fields = exclude_fields or []
+        return cfg
+
+    def test_include_fields_limits_columns(self):
+        from orchestration.dagster_home.maintenance_jobs import _get_queryset
+        from prototype.models import Project
+
+        Project.objects.create(title="P1", label="L1", status="ACTIVE")
+        cfg = self._make_cfg(include_fields=["title"])
+        rows = list(_get_queryset(Project, cfg))
+        assert rows
+        assert "title" in rows[0]
+        assert "label" not in rows[0]
+
+    def test_exclude_fields_removes_columns(self):
+        from orchestration.dagster_home.maintenance_jobs import _get_queryset
+        from prototype.models import Project
+
+        Project.objects.create(title="P2", label="L2", status="ACTIVE")
+        cfg = self._make_cfg(exclude_fields=["description"])
+        rows = list(_get_queryset(Project, cfg))
+        assert rows
+        assert "description" not in rows[0]
+        assert "title" in rows[0]
+
+    def test_no_fields_returns_all_columns(self):
+        from orchestration.dagster_home.maintenance_jobs import _get_queryset
+        from prototype.models import Project
+
+        Project.objects.create(title="P3", label="L3", status="ACTIVE")
+        cfg = self._make_cfg()
+        rows = list(_get_queryset(Project, cfg))
+        assert rows
+        assert "title" in rows[0]
+        assert "label" in rows[0]
+
+
+# ===========================================================================
+# _coerce_df_columns — type coercion
+# ===========================================================================
+
+
+class TestCoerceDfColumns:
+    """Tests for the _coerce_df_columns helper."""
+
+    def test_non_serialisable_object_coerced_to_str(self):
+        import pandas as pd
+
+        from orchestration.dagster_home.maintenance_jobs import _coerce_df_columns
+
+        class Opaque:
+            def __str__(self):
+                return "opaque"
+
+        df = pd.DataFrame({"val": [Opaque()]})
+        _coerce_df_columns(df)
+        assert df["val"][0] == "opaque"
+
+    def test_none_values_kept_as_none(self):
+        import pandas as pd
+
+        from orchestration.dagster_home.maintenance_jobs import _coerce_df_columns
+
+        df = pd.DataFrame({"val": [None]})
+        _coerce_df_columns(df)
+        assert df["val"][0] is None
+
+    def test_strings_not_coerced(self):
+        import pandas as pd
+
+        from orchestration.dagster_home.maintenance_jobs import _coerce_df_columns
+
+        df = pd.DataFrame({"val": ["hello"]})
+        _coerce_df_columns(df)
+        assert df["val"][0] == "hello"
+
+    def test_integers_not_coerced(self):
+        import pandas as pd
+
+        from orchestration.dagster_home.maintenance_jobs import _coerce_df_columns
+
+        df = pd.DataFrame({"val": pd.array([42], dtype="int64")})
+        _coerce_df_columns(df)
+        assert df["val"][0] == 42
+
+    def test_mixed_column_coerces_only_opaque(self):
+        import pandas as pd
+
+        from orchestration.dagster_home.maintenance_jobs import _coerce_df_columns
+
+        class Opaque:
+            def __str__(self):
+                return "x"
+
+        df = pd.DataFrame({"val": ["keep", Opaque(), None]})
+        _coerce_df_columns(df)
+        assert df["val"][0] == "keep"
+        assert df["val"][1] == "x"
+        # pandas may store None as NaN in object columns after apply()
+        assert df["val"][2] is None or pd.isna(df["val"][2])
+
+
+# ===========================================================================
+# _export_model_table — per-table export logic
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestExportModelTable:
+    """Tests for the _export_model_table helper."""
+
+    def _make_cfg(self, app_label="prototype", model_name="Project"):
+        cfg = MagicMock()
+        cfg.app_label = app_label
+        cfg.model_name = model_name
+        cfg.include_fields = []
+        cfg.exclude_fields = []
+        return cfg
+
+    def test_exports_rows_calls_conn_execute(self):
+        """_export_model_table calls conn.execute with CREATE TABLE SQL on non-empty table."""
+        from orchestration.dagster_home.maintenance_jobs import _export_model_table
+        from prototype.models import Project
+
+        Project.objects.create(title="ExpT", label="ET01", status="ACTIVE")
+        cfg = self._make_cfg()
+        conn = MagicMock()
+        context = MagicMock()
+
+        _export_model_table(conn, cfg, Project, context)
+
+        conn.execute.assert_called_once()
+        sql = conn.execute.call_args[0][0]
+        assert "CREATE TABLE prototype__project" in sql
+
+    def test_empty_table_skipped(self):
+        from orchestration.dagster_home.maintenance_jobs import _export_model_table
+        from prototype.models import Project
+
+        Project.objects.all().delete()
+        cfg = self._make_cfg()
+        conn = MagicMock()
+        context = MagicMock()
+
+        _export_model_table(conn, cfg, Project, context)
+
+        conn.execute.assert_not_called()
+        context.log.info.assert_called_with(
+            "Table %s is empty, skipping", "prototype__project"
+        )
+
+    def test_exception_logged_not_raised(self):
+        from orchestration.dagster_home.maintenance_jobs import _export_model_table
+        from prototype.models import Project
+
+        Project.objects.create(title="ErrT", label="ER01", status="ACTIVE")
+        cfg = self._make_cfg()
+        conn = MagicMock()
+        conn.execute.side_effect = RuntimeError("db error")
+        context = MagicMock()
+
+        _export_model_table(conn, cfg, Project, context)  # must not raise
+
+        context.log.error.assert_called_once()
