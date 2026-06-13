@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.test import TestCase
 
-from orchestration.models import DuckDBTableConfig, MaintenanceRun
+from orchestration.models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
 
 
 class MaintenanceRunModelTests(TestCase):
@@ -78,6 +78,58 @@ class MaintenanceRunModelTests(TestCase):
         codes = [code for code, _ in MaintenanceRun.DUMP_FORMATS]
         self.assertIn("custom", codes)
         self.assertIn("plain", codes)
+
+
+class IntegrityIssueModelTests(TestCase):
+    def setUp(self):
+        self.run = MaintenanceRun.objects.create(job_type="integrity")
+
+    def test_create_issue(self):
+        issue = IntegrityIssue.objects.create(
+            run=self.run,
+            check_type="orphan_samples",
+            object_id=42,
+            description="Sample 'X' has no location.",
+        )
+        self.assertEqual(issue.check_type, "orphan_samples")
+        self.assertEqual(issue.object_id, 42)
+
+    def test_object_id_nullable(self):
+        issue = IntegrityIssue.objects.create(
+            run=self.run,
+            check_type="guardian_maintenance_permissions",
+            object_id=None,
+            description="0 objects have guardian permissions.",
+        )
+        self.assertIsNone(issue.object_id)
+
+    def test_related_name_issues(self):
+        IntegrityIssue.objects.create(
+            run=self.run, check_type="orphan_samples", description="a"
+        )
+        IntegrityIssue.objects.create(
+            run=self.run, check_type="missing_geometries", description="b"
+        )
+        self.assertEqual(self.run.issues.count(), 2)
+
+    def test_cascade_delete(self):
+        extra_run = MaintenanceRun.objects.create(job_type="integrity")
+        issue = IntegrityIssue.objects.create(
+            run=extra_run, check_type="orphan_samples", description="x"
+        )
+        issue_pk = issue.pk
+        extra_run.delete()
+        self.assertEqual(IntegrityIssue.objects.filter(pk=issue_pk).count(), 0)
+
+    def test_str(self):
+        issue = IntegrityIssue.objects.create(
+            run=self.run,
+            check_type="orphan_samples",
+            object_id=7,
+            description="Sample has no location.",
+        )
+        self.assertIn("orphan_samples", str(issue))
+        self.assertIn("7", str(issue))
 
 
 class DuckDBTableConfigModelTests(TestCase):

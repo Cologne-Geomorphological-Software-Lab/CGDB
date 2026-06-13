@@ -7,8 +7,13 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from orchestration.admin import DuckDBTableConfigAdmin, MaintenanceRunAdmin, _fire_maintenance_subprocess
-from orchestration.models import DuckDBTableConfig, MaintenanceRun
+from orchestration.admin import (
+    DuckDBTableConfigAdmin,
+    IntegrityIssueInline,
+    MaintenanceRunAdmin,
+    _fire_maintenance_subprocess,
+)
+from orchestration.models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
 
 
 class MaintenanceRunAdminPermissionTests(TestCase):
@@ -237,3 +242,107 @@ class AdminChangelistAccessTests(TestCase):
         url = reverse("admin:orchestration_duckdbtableconfig_changelist")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
+
+
+class IntegrityIssueInlineTests(TestCase):
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="super_inline", password="pw", email="si@test.com"
+        )
+        self.run = MaintenanceRun.objects.create(
+            job_type="integrity", status="success"
+        )
+        self.issue_with_obj = IntegrityIssue.objects.create(
+            run=self.run,
+            check_type="orphan_samples",
+            object_id=99,
+            description="Sample 'X' has no location.",
+        )
+        self.issue_no_obj = IntegrityIssue.objects.create(
+            run=self.run,
+            check_type="guardian_maintenance_permissions",
+            object_id=None,
+            description="0 objects have guardian permissions.",
+        )
+        self.site = AdminSite()
+        self.inline = IntegrityIssueInline(MaintenanceRun, self.site)
+        self.factory = RequestFactory()
+
+    def _request(self, user):
+        request = self.factory.get("/")
+        request.user = user
+        return request
+
+    def test_has_no_add_permission(self):
+        request = self._request(self.superuser)
+        self.assertFalse(self.inline.has_add_permission(request))
+
+    def test_admin_link_with_object_id(self):
+        link = self.inline.admin_link(self.issue_with_obj)
+        self.assertIn("View →", link)
+        self.assertIn("/field_data/sample/", link)
+
+    def test_admin_link_without_object_id(self):
+        link = self.inline.admin_link(self.issue_no_obj)
+        self.assertEqual(link, "—")
+
+    def test_admin_link_unknown_check_type(self):
+        issue = IntegrityIssue(
+            run=self.run, check_type="unknown_check", object_id=5, description="x"
+        )
+        link = self.inline.admin_link(issue)
+        self.assertEqual(link, "5")
+
+
+class IssuesSummaryDisplayTests(TestCase):
+    def setUp(self):
+        self.run_integrity = MaintenanceRun.objects.create(
+            job_type="integrity", status="success"
+        )
+        IntegrityIssue.objects.create(
+            run=self.run_integrity,
+            check_type="orphan_samples",
+            object_id=1,
+            description="a",
+        )
+        IntegrityIssue.objects.create(
+            run=self.run_integrity,
+            check_type="orphan_samples",
+            object_id=2,
+            description="b",
+        )
+        IntegrityIssue.objects.create(
+            run=self.run_integrity,
+            check_type="guardian_maintenance_permissions",
+            description="0 objects.",
+        )
+        self.run_backup = MaintenanceRun.objects.create(
+            job_type="backup", status="success"
+        )
+        self.run_pending = MaintenanceRun.objects.create(
+            job_type="integrity", status="pending"
+        )
+        self.site = AdminSite()
+        self.admin = MaintenanceRunAdmin(MaintenanceRun, self.site)
+
+    def test_dash_for_non_integrity_run(self):
+        result = self.admin.issues_summary(self.run_backup)
+        self.assertEqual(result, "—")
+
+    def test_dash_for_non_success_integrity_run(self):
+        result = self.admin.issues_summary(self.run_pending)
+        self.assertEqual(result, "—")
+
+    def test_shows_orphan_count(self):
+        result = self.admin.issues_summary(self.run_integrity)
+        self.assertIn("2", result)
+        self.assertIn("Orphans", result)
+
+    def test_shows_link_to_orphan_changelist(self):
+        result = self.admin.issues_summary(self.run_integrity)
+        self.assertIn("field_data/sample/", result)
+        self.assertIn("location__isnull=True", result)
+
+    def test_shows_guardian_count(self):
+        result = self.admin.issues_summary(self.run_integrity)
+        self.assertIn("Guardian", result)

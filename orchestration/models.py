@@ -59,6 +59,29 @@ class MaintenanceRun(BaseModel):
         )
 
 
+class IntegrityIssue(models.Model):
+    """A single finding produced by an integrity check run."""
+
+    run = models.ForeignKey(
+        MaintenanceRun,
+        on_delete=models.CASCADE,
+        related_name="issues",
+    )
+    check_type = models.CharField(max_length=50)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    description = models.TextField()
+
+    class Meta:
+        """Meta options for IntegrityIssue."""
+
+        verbose_name = "Integrity Issue"
+        verbose_name_plural = "Integrity Issues"
+
+    def __str__(self) -> str:
+        """Return a human-readable representation of this issue."""
+        return f"{self.check_type} (run={self.run_id}, obj={self.object_id})"
+
+
 class DuckDBTableConfig(BaseModel):
     """Configuration controlling which Django models are exported to DuckDB."""
 

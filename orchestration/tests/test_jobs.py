@@ -23,6 +23,7 @@ from orchestration.dagster_home.maintenance_jobs import (
     get_job_for_type,
     integrity_check_job,
 )
+from orchestration.models import IntegrityIssue, MaintenanceRun
 
 
 def _run_config(output_dir: str, run_id: int = 1) -> dict:
@@ -37,42 +38,39 @@ def _run_config(output_dir: str, run_id: int = 1) -> dict:
 
 @pytest.mark.django_db
 class TestIntegrityCheckJob:
-    def test_job_succeeds(self, tmp_path):
-        cfg = _run_config(str(tmp_path))
-        cfg["ops"] = {
-            "run_integrity_checks": cfg["ops"]["<OP>"]
+    def _make_run(self) -> MaintenanceRun:
+        return MaintenanceRun.objects.create(job_type="integrity")
+
+    def _cfg(self, run: MaintenanceRun, tmp_path) -> dict:
+        return {
+            "ops": {
+                "run_integrity_checks": {
+                    "config": {"run_id": run.pk, "output_dir": str(tmp_path)}
+                }
+            }
         }
+
+    def test_job_succeeds(self, tmp_path):
+        run = self._make_run()
         result = integrity_check_job.execute_in_process(
-            run_config=cfg,
+            run_config=self._cfg(run, tmp_path),
             instance=DagsterInstance.ephemeral(),
         )
         assert result.success
 
     def test_output_file_created(self, tmp_path):
-        cfg = {
-            "ops": {
-                "run_integrity_checks": {
-                    "config": {"run_id": 1, "output_dir": str(tmp_path)}
-                }
-            }
-        }
+        run = self._make_run()
         integrity_check_job.execute_in_process(
-            run_config=cfg,
+            run_config=self._cfg(run, tmp_path),
             instance=DagsterInstance.ephemeral(),
         )
         files = list(tmp_path.glob("integrity_*.json"))
         assert len(files) == 1
 
     def test_output_file_is_valid_json(self, tmp_path):
-        cfg = {
-            "ops": {
-                "run_integrity_checks": {
-                    "config": {"run_id": 1, "output_dir": str(tmp_path)}
-                }
-            }
-        }
+        run = self._make_run()
         integrity_check_job.execute_in_process(
-            run_config=cfg,
+            run_config=self._cfg(run, tmp_path),
             instance=DagsterInstance.ephemeral(),
         )
         output_file = next(tmp_path.glob("integrity_*.json"))
@@ -82,21 +80,39 @@ class TestIntegrityCheckJob:
         assert "guardian_maintenance_permissions" in data
 
     def test_output_contains_count_keys(self, tmp_path):
-        cfg = {
-            "ops": {
-                "run_integrity_checks": {
-                    "config": {"run_id": 1, "output_dir": str(tmp_path)}
-                }
-            }
-        }
+        run = self._make_run()
         integrity_check_job.execute_in_process(
-            run_config=cfg,
+            run_config=self._cfg(run, tmp_path),
             instance=DagsterInstance.ephemeral(),
         )
         output_file = next(tmp_path.glob("integrity_*.json"))
         data = json.loads(output_file.read_text())
         assert "count" in data["orphan_samples"]
-        assert "count" in data["missing_geometries"]  # missing_geometries = locations without location field
+        assert "count" in data["missing_geometries"]
+
+    def test_integrity_issues_created(self, tmp_path):
+        run = self._make_run()
+        integrity_check_job.execute_in_process(
+            run_config=self._cfg(run, tmp_path),
+            instance=DagsterInstance.ephemeral(),
+        )
+        # Guardian summary issue is always created
+        assert IntegrityIssue.objects.filter(
+            run=run, check_type="guardian_maintenance_permissions"
+        ).exists()
+
+    def test_integrity_issues_idempotent(self, tmp_path):
+        run = self._make_run()
+        cfg = self._cfg(run, tmp_path)
+        integrity_check_job.execute_in_process(
+            run_config=cfg, instance=DagsterInstance.ephemeral()
+        )
+        count_first = IntegrityIssue.objects.filter(run=run).count()
+        integrity_check_job.execute_in_process(
+            run_config=cfg, instance=DagsterInstance.ephemeral()
+        )
+        count_second = IntegrityIssue.objects.filter(run=run).count()
+        assert count_first == count_second
 
 
 class TestBackupSQLiteHelper:

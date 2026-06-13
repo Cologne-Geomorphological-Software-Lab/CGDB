@@ -246,11 +246,17 @@ def run_integrity_checks(context) -> str:
     from django.contrib.contenttypes.models import ContentType
     from guardian.models import UserObjectPermission
 
+    from orchestration.models import IntegrityIssue, MaintenanceRun
+
     output_dir: str = context.op_config["output_dir"]
+    run_id: int = context.op_config["run_id"]
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"integrity_{timestamp}.json"
     output_path = Path(output_dir) / filename
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    run = MaintenanceRun.objects.get(pk=run_id)
+    run.issues.all().delete()  # idempotent: clear any previous issues for this run
 
     results: dict = {}
 
@@ -263,6 +269,13 @@ def run_integrity_checks(context) -> str:
     )
     results["orphan_samples"] = {"count": len(orphan_ids), "ids": orphan_ids}
     context.log.info("Orphan samples (no location): %d", len(orphan_ids))
+    for sid, identifier in orphan_ids:
+        IntegrityIssue.objects.create(
+            run=run,
+            check_type="orphan_samples",
+            object_id=sid,
+            description=f"Sample '{identifier}' (id={sid}) has no location assigned.",
+        )
 
     # Check 2: Locations missing geometry
     Location = apps.get_model("field_data", "Location")
@@ -276,10 +289,15 @@ def run_integrity_checks(context) -> str:
         "ids": missing_geom,
     }
     context.log.info("Locations missing geometry: %d", len(missing_geom))
+    for lid in missing_geom:
+        IntegrityIssue.objects.create(
+            run=run,
+            check_type="missing_geometries",
+            object_id=lid,
+            description=f"Location id={lid} has no geometry (location field is null).",
+        )
 
     # Check 3: Guardian permission count for MaintenanceRun objects
-    from orchestration.models import MaintenanceRun
-
     ct = ContentType.objects.get_for_model(MaintenanceRun)
     guardian_count = (
         UserObjectPermission.objects.filter(content_type=ct)
@@ -292,6 +310,15 @@ def run_integrity_checks(context) -> str:
     }
     context.log.info(
         "MaintenanceRun objects with guardian permissions: %d", guardian_count
+    )
+    IntegrityIssue.objects.create(
+        run=run,
+        check_type="guardian_maintenance_permissions",
+        object_id=None,
+        description=(
+            f"{guardian_count} MaintenanceRun object(s) have"
+            " guardian object permissions assigned."
+        ),
     )
 
     output_path.write_text(json.dumps(results, indent=2, default=str))
