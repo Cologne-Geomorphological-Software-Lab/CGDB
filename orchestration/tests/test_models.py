@@ -1,7 +1,6 @@
 """Tests for orchestration models: MaintenanceRun and DuckDBTableConfig."""
 
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 
