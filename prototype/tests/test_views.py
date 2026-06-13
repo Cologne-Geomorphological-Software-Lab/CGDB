@@ -53,9 +53,9 @@ class StatDataStructureTest(_ViewSetup):
         result = stat_data()
         self.assertIn("performance", result)
 
-    def test_performance_has_two_entries(self):
+    def test_performance_has_three_entries(self):
         result = stat_data()
-        self.assertEqual(len(result["performance"]), 2)
+        self.assertEqual(len(result["performance"]), 3)
 
     def test_zero_objects_no_division_error(self):
         # Empty DB → no ZeroDivisionError

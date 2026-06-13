@@ -27,9 +27,11 @@
 
                 {% component "unfold/components/navigation.html" with class="sm:ml-auto" items=filters %}{% endcomponent %}
             </div>
+
+            {# Main stat cards #}
             <div class="flex flex-col gap-8 lg:flex-row">
                 {% for stats in project %}
-                    {% component "unfold/components/card.html" with class="lg:w-1/3" label=_("Total") footer=stats.footer %}
+                    {% component "unfold/components/card.html" with class="lg:w-1/4" label=_("Total") footer=stats.footer %}
                         {% component "unfold/components/text.html" %}
                             {{ stats.title }}
                         {% endcomponent %}
@@ -40,13 +42,29 @@
                     {% endcomponent %}
                 {% endfor %}
             </div>
+
+            {# Project status breakdown #}
+            {% component "unfold/components/card.html" %}
+                <div class="flex flex-col gap-3">
+                    <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{% trans "Project Status" %}</p>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:gap-4">
+                        {% for s in project_status %}
+                            <div class="flex items-center gap-2 flex-1">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ s.badge }}">{{ s.label }}</span>
+                                <span class="text-lg font-bold text-gray-800 dark:text-gray-100">{{ s.count }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endcomponent %}
         </div>
     {% endcomponent %}
 
+    {# Performance charts — three side by side #}
     {% component "unfold/components/container.html" %}
         <div class="flex flex-row items-center gap-8 mb-8">
         {% for stats in performance %}
-            {% component "unfold/components/card.html" with class="basis-1/2" %}
+            {% component "unfold/components/card.html" with class="basis-1/3" %}
                 {% component "unfold/components/text.html" %}
                     {{ stats.title }}
                 {% endcomponent %}
@@ -61,19 +79,55 @@
         </div>
     {% endcomponent %}
 
+    {# Location type breakdown #}
     {% component "unfold/components/container.html" %}
-    <div class="flex flex-col gap-8 mb-12">
+        <div class="flex flex-col gap-8 lg:flex-row mb-8">
+            {% component "unfold/components/card.html" with class="lg:w-2/3" %}
+                <div class="flex flex-col gap-4">
+                    <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{% trans "Location Types" %}</p>
+                    {% for entry in location_breakdown %}
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-gray-700 dark:text-gray-300 w-36 shrink-0 truncate">{{ entry.label }}</span>
+                            <div class="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2">
+                                <div class="bg-primary-500 h-2 rounded-full" style="width: {{ entry.pct }}%"></div>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-8 text-right shrink-0">{{ entry.n }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endcomponent %}
 
-
-        {% component "unfold/components/card.html"  %}
-        The Cologne Geomorphological Database System (CGDB) is a comprehensive platform designed to manage, analyze, and share geomorphological data. It supports research projects by providing tools for data collection, processing, and visualization across various domains, including sedimentology, geochronology, paleobotany, and field data management.
-        {% endcomponent %}
-
-
-    </div>
+            {% component "unfold/components/card.html" with class="lg:w-1/3" %}
+                <div class="flex flex-col gap-4">
+                    <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{% trans "Data Source" %}</p>
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">{% trans "Internal" %}</span>
+                            <span class="text-lg font-bold text-gray-800 dark:text-gray-100">{{ internal_count }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-700 dark:text-gray-300">{% trans "Literature" %}</span>
+                            <span class="text-lg font-bold text-gray-800 dark:text-gray-100">{{ literature_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            {% endcomponent %}
+        </div>
     {% endcomponent %}
 
-
-
+    {# About card #}
+    {% component "unfold/components/container.html" %}
+    <div class="flex flex-col gap-8 mb-12">
+        {% component "unfold/components/card.html" %}
+            <p class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">{% trans "About CGDB" %}</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                The Cologne Geomorphological Database System (CGDB) is a comprehensive platform designed to manage, analyze, and share geomorphological data. It supports research projects by providing tools for data collection, processing, and visualization across various domains, including sedimentology, geochronology, paleobotany, and field data management.
+            </p>
+            <a href="/map/" class="inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-200">
+                {% trans "Open map view" %} →
+            </a>
+        {% endcomponent %}
+    </div>
+    {% endcomponent %}
 
 {% endblock %}

@@ -56,6 +56,36 @@ _PERIOD_OPTIONS = [
     {"days": 365, "label": "1 year"},
 ]
 
+_LOCATION_TYPE_LABELS = {
+    "sampling_location": "Sampling Location",
+    "camp": "Camp",
+    "road_access": "Road Access",
+    "infrastructure": "Infrastructure",
+    "weather_station": "Weather Station",
+    "survey_point": "Survey Point",
+    "observation": "Observation",
+    "other": "Other",
+}
+
+_PROJECT_STATUS_STYLES = {
+    "ACTIVE": {
+        "label": "Active",
+        "badge": "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+    },
+    "COMPLETED": {
+        "label": "Completed",
+        "badge": "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+    },
+    "PAUSED": {
+        "label": "Paused",
+        "badge": "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
+    },
+    "CANCELLED": {
+        "label": "Cancelled",
+        "badge": "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+    },
+}
+
 
 _DASHBOARD_NAV = [
     {"title": _("Overview"), "link": "/", "active_path": "/"},
@@ -174,10 +204,21 @@ def stat_data(period_days: int = 30) -> dict:
     def _pct(count: int, total: int) -> float:
         return round(count / total * 100, 2) if total > 0 else 0
 
-    def _footer(pct: float, period_days: int) -> str:
-        return mark_safe(  # noqa: S308  # nosec B703, B308 — only floats interpolated, no user input
-            f'<strong class="text-green-700 font-semibold dark:text-green-400">'
-            f"+{intcomma(pct)}%</strong>&nbsp; last {period_days} days",
+    def _footer(count: int, total: int) -> str:  # nosec B703, B308 — only floats interpolated
+        pct = _pct(count, total)
+        if pct == 0:
+            return mark_safe(
+                '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
+            )
+        color = (
+            "text-green-700 dark:text-green-400"
+            if pct > 0
+            else "text-red-600 dark:text-red-400"
+        )
+        sign = "+" if pct > 0 else ""
+        return mark_safe(  # noqa: S308
+            f'<strong class="{color} font-semibold">{sign}{intcomma(pct)}%</strong>'
+            f"&nbsp; last {period_days} days",
         )
 
     # Projects
@@ -215,41 +256,71 @@ def stat_data(period_days: int = 30) -> dict:
         for m in measurement_models
     )
 
+    # Project status breakdown
+    status_counts = dict(
+        Project.objects.values_list("status").annotate(n=Count("id"))
+    )
+    project_status = [
+        {
+            "label": meta["label"],
+            "count": status_counts.get(key, 0),
+            "badge": meta["badge"],
+        }
+        for key, meta in _PROJECT_STATUS_STYLES.items()
+    ]
+
+    # Location type breakdown
+    location_by_type_rows = list(
+        Location.objects.values("location_type")
+        .annotate(n=Count("id"))
+        .order_by("-n")
+    )
+    location_max = max((row["n"] for row in location_by_type_rows), default=1)
+    location_breakdown = [
+        {
+            "label": _LOCATION_TYPE_LABELS.get(
+                row["location_type"],
+                row["location_type"].replace("_", " ").title(),
+            ),
+            "n": row["n"],
+            "pct": round(row["n"] / location_max * 100),
+        }
+        for row in location_by_type_rows
+    ]
+    literature_count = Location.objects.filter(
+        data_source="literature"
+    ).count()
+    internal_count = Location.objects.filter(data_source="internal").count()
+
     return {
         "project": [
             {
                 "title": "Projects",
                 "metric": f"{project_total}",
-                "footer": _footer(
-                    _pct(project_period_count, project_total),
-                    period_days,
-                ),
+                "footer": _footer(project_period_count, project_total),
             },
             {
                 "title": "Locations",
                 "metric": f"{location_total}",
-                "footer": _footer(
-                    _pct(location_period_count, location_total),
-                    period_days,
-                ),
+                "footer": _footer(location_period_count, location_total),
             },
             {
                 "title": "Samples",
                 "metric": f"{sample_total}",
-                "footer": _footer(
-                    _pct(sample_period_count, sample_total),
-                    period_days,
-                ),
+                "footer": _footer(sample_period_count, sample_total),
             },
             {
                 "title": "Measurements",
                 "metric": f"{measurements_total}",
                 "footer": _footer(
-                    _pct(measurements_period_count, measurements_total),
-                    period_days,
+                    measurements_period_count, measurements_total
                 ),
             },
         ],
+        "project_status": project_status,
+        "location_breakdown": location_breakdown,
+        "literature_count": literature_count,
+        "internal_count": internal_count,
         "performance": [
             {
                 "title": _("Sedimentological Measurements"),
@@ -278,6 +349,20 @@ def stat_data(period_days: int = 30) -> dict:
                                     [LuminescenceDating, RadiocarbonDating],
                                 ),
                                 "borderColor": "var(--color-primary-300)",
+                            },
+                        ],
+                    },
+                ),
+            },
+            {
+                "title": _("Field Samples Collected"),
+                "metric": f"{sample_total}",
+                "chart": json.dumps(
+                    {
+                        "datasets": [
+                            {
+                                "data": _build_monthly_performance([Sample]),
+                                "borderColor": "var(--color-primary-500)",
                             },
                         ],
                     },
