@@ -10,8 +10,12 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="anonymous" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.css" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@3.0.2/Control.FullScreen.css" crossorigin="anonymous" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet.fullscreen@3.0.2/Control.FullScreen.js" crossorigin="anonymous"></script>
 <style>
   #cgdb-map {
     min-height: 500px;
@@ -125,6 +129,19 @@
     flex-shrink: 0;
     border: 1.5px solid rgba(0,0,0,0.25);
   }
+
+  /* Coordinate display */
+  .cgdb-coords {
+    background: rgba(255,255,255,0.85);
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-family: monospace;
+    color: #374151;
+    min-width: 160px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    margin-bottom: 4px;
+  }
 </style>
 {% endblock %}
 
@@ -171,13 +188,41 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     /* ── Map ── */
-    var map = L.map('cgdb-map', { center: [30, 10], zoom: 2, layers: [googleSat] });
+    var map = L.map('cgdb-map', { center: [30, 10], zoom: 2, layers: [googleSat], fullscreenControl: false });
 
     L.control.layers(
         { 'Light': lightTile, 'Dark': darkTile, 'Google Satellite': googleSat, 'Esri Satellite': esriSat, 'OpenTopoMap': topoMap },
         {},
         { position: 'topright' }
     ).addTo(map);
+
+    L.control.fullscreen({ position: 'topright' }).addTo(map);
+
+    L.control.measure({
+        position: 'topright',
+        primaryLengthUnit: 'meters',
+        secondaryLengthUnit: 'kilometers',
+        primaryAreaUnit: 'sqmeters',
+        secondaryAreaUnit: 'hectares',
+        activeColor: '#3b82f6',
+        completedColor: '#1d4ed8',
+    }).addTo(map);
+
+    L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+
+    /* ── Coordinate display ── */
+    var CoordControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd: function () {
+            var el = L.DomUtil.create('div', 'cgdb-coords leaflet-control');
+            map.on('mousemove', function (e) {
+                el.textContent = e.latlng.lat.toFixed(5) + ',  ' + e.latlng.lng.toFixed(5);
+            });
+            map.on('mouseout', function () { el.textContent = ''; });
+            return el;
+        }
+    });
+    new CoordControl().addTo(map);
 
     /* ── Dynamic height: fill viewport below this element ── */
     function resizeMap() {
@@ -193,26 +238,44 @@ document.addEventListener('DOMContentLoaded', function () {
     var clusters = L.markerClusterGroup({ chunkedLoading: true });
     map.addLayer(clusters);
 
-    /* ── Project color palette (cycles if more projects than colors) ── */
-    var PALETTE = [
-        { fill: '#3b82f6', stroke: '#1d4ed8' },  // blue
-        { fill: '#10b981', stroke: '#059669' },  // emerald
-        { fill: '#f59e0b', stroke: '#d97706' },  // amber
-        { fill: '#ef4444', stroke: '#b91c1c' },  // red
-        { fill: '#8b5cf6', stroke: '#7c3aed' },  // violet
-        { fill: '#06b6d4', stroke: '#0e7490' },  // cyan
-        { fill: '#f97316', stroke: '#c2410c' },  // orange
-        { fill: '#84cc16', stroke: '#4d7c0f' },  // lime
-        { fill: '#ec4899', stroke: '#be185d' },  // pink
-        { fill: '#14b8a6', stroke: '#0f766e' },  // teal
-    ];
+    /* ── Colors by location_type ── */
+    var TYPE_COLORS = {
+        sampling_location: { fill: '#3b82f6', stroke: '#1d4ed8' },
+        camp:              { fill: '#f59e0b', stroke: '#d97706' },
+        road_access:       { fill: '#f59e0b', stroke: '#d97706' },
+        infrastructure:    { fill: '#f59e0b', stroke: '#d97706' },
+        weather_station:   { fill: '#10b981', stroke: '#059669' },
+        survey_point:      { fill: '#10b981', stroke: '#059669' },
+        observation:       { fill: '#10b981', stroke: '#059669' },
+        other:             { fill: '#8b5cf6', stroke: '#7c3aed' },
+    };
     var LITERATURE_COLOR = { fill: '#9ca3af', stroke: '#6b7280' };
-    var PROJECT_COLORS = {};  // populated after GeoJSON loads
 
-    function colorForProject(project) {
-        if (!project) return LITERATURE_COLOR;
-        return PROJECT_COLORS[project] || LITERATURE_COLOR;
-    }
+    /* ── Legend (static, location_type) ── */
+    var LegendControl = L.Control.extend({
+        options: { position: 'bottomright' },
+        onAdd: function () {
+            var c = L.DomUtil.create('div', 'cgdb-legend leaflet-control');
+            L.DomEvent.disableClickPropagation(c);
+            var entries = [
+                { label: 'Sampling Location',     fill: '#3b82f6', stroke: '#1d4ed8' },
+                { label: 'Camp / Infrastructure', fill: '#f59e0b', stroke: '#d97706' },
+                { label: 'Scientific',            fill: '#10b981', stroke: '#059669' },
+                { label: 'Other',                 fill: '#8b5cf6', stroke: '#7c3aed' },
+                { label: 'Literature',            fill: '#9ca3af', stroke: '#6b7280' },
+            ];
+            var html = '<div class="cgdb-legend-title">Location type</div>';
+            entries.forEach(function (e) {
+                html += '<div class="cgdb-legend-row">' +
+                    '<span class="cgdb-legend-dot" style="background:' + e.fill + ';border-color:' + e.stroke + '"></span>' +
+                    esc(e.label) +
+                    '</div>';
+            });
+            c.innerHTML = html;
+            return c;
+        }
+    });
+    new LegendControl().addTo(map);
 
     /* ── Popup builder ── */
     function buildPopup(p) {
@@ -224,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (p.project)        rows += '<div class="popup-row"><span class="popup-label">Project</span>'  + esc(p.project) + '</div>';
         if (p.campaign)       rows += '<div class="popup-row"><span class="popup-label">Campaign</span>' + esc(p.campaign) + '</div>';
         if (p.date_of_record) rows += '<div class="popup-row"><span class="popup-label">Date</span>'     + esc(p.date_of_record) + '</div>';
-        if (p.altitude != null) rows += '<div class="popup-row"><span class="popup-label">Altitude</span>' + esc(p.altitude) + ' m</div>';
+        if (p.altitude != null) rows += '<div class="popup-row"><span class="popup-label">Altitude</span>' + esc(p.altitude) + ' m</div>';
         if (p.exposure_type)  rows += '<div class="popup-row"><span class="popup-label">Type</span>'     + esc(p.exposure_type) + '</div>';
         var analyses = '';
         if (p.sample_count > 0) {
@@ -240,36 +303,6 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>';
     }
 
-    /* ── Legend control (bottom-right, filled after GeoJSON loads) ── */
-    var legendEl = null;
-    var LegendControl = L.Control.extend({
-        options: { position: 'bottomright' },
-        onAdd: function () {
-            legendEl = L.DomUtil.create('div', 'cgdb-legend leaflet-control');
-            L.DomEvent.disableClickPropagation(legendEl);
-            legendEl.innerHTML = '<div class="cgdb-legend-title">Projects</div>';
-            return legendEl;
-        }
-    });
-    new LegendControl().addTo(map);
-
-    function updateLegend(projects) {
-        if (!legendEl) return;
-        var html = '<div class="cgdb-legend-title">Projects</div>';
-        projects.forEach(function (proj) {
-            var c = PROJECT_COLORS[proj];
-            html += '<div class="cgdb-legend-row">' +
-                '<span class="cgdb-legend-dot" style="background:' + c.fill + ';border-color:' + c.stroke + '"></span>' +
-                esc(proj) +
-                '</div>';
-        });
-        html += '<div class="cgdb-legend-row">' +
-            '<span class="cgdb-legend-dot" style="background:' + LITERATURE_COLOR.fill + ';border-color:' + LITERATURE_COLOR.stroke + '"></span>' +
-            'Literature' +
-            '</div>';
-        legendEl.innerHTML = html;
-    }
-
     /* ── GeoJSON layer factory (reused by filter) ── */
     function makeLayer(features) {
         return L.geoJSON(
@@ -277,7 +310,9 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 pointToLayer: function (feature, latlng) {
                     var p = feature.properties;
-                    var c = colorForProject(p.project);
+                    var c = p.data_source === 'literature'
+                        ? LITERATURE_COLOR
+                        : (TYPE_COLORS[p.location_type] || TYPE_COLORS['other']);
                     return L.circleMarker(latlng, {
                         radius: 7,
                         fillColor: c.fill,
@@ -361,20 +396,17 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(function (data) {
             allFeatures = data.features || [];
 
-            /* Assign project colors and populate dropdown + legend */
+            /* Populate project dropdown */
             var projects = [];
             allFeatures.forEach(function (f) {
                 var p = f.properties.project;
                 if (p && projects.indexOf(p) === -1) projects.push(p);
             });
-            projects.sort();
-            projects.forEach(function (p, i) {
-                PROJECT_COLORS[p] = PALETTE[i % PALETTE.length];
+            projects.sort().forEach(function (p) {
                 var opt = document.createElement('option');
                 opt.value = p; opt.textContent = p;
                 projectSelect.appendChild(opt);
             });
-            updateLegend(projects);
 
             /* Populate location type dropdown */
             var types = [];
