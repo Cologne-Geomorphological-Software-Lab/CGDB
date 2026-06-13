@@ -579,6 +579,47 @@ class Location(BaseModel):
         null=True,
         help_text="in meters above sea level",
     )
+    gps_accuracy = models.FloatField(
+        blank=True,
+        null=True,
+        help_text="Horizontal accuracy of the GPS measurement in meters.",
+    )
+    POSITIONING_METHOD_CHOICES = [
+        (
+            "Centimeter-level",
+            [
+                ("rtk_gnss", "RTK GNSS"),
+                ("total_station", "Total Station / Theodolite"),
+            ],
+        ),
+        (
+            "Submeter-level",
+            [
+                ("gnss_rover", "GNSS Rover (survey-grade)"),
+            ],
+        ),
+        (
+            "Meter-level",
+            [
+                ("handheld_gps", "Handheld GPS"),
+                ("smartphone", "Smartphone"),
+            ],
+        ),
+        (
+            "Low accuracy",
+            [
+                ("map_digitized", "Topographic map / digitized"),
+                ("estimated", "Estimated / literature"),
+            ],
+        ),
+    ]
+    positioning_method = models.CharField(
+        max_length=20,
+        choices=POSITIONING_METHOD_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Device or method used to determine the coordinates.",
+    )
     study_site = models.ForeignKey(
         Site,
         on_delete=models.RESTRICT,
