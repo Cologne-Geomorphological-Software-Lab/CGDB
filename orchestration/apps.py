@@ -9,3 +9,7 @@ class OrchestrationConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "orchestration"
     verbose_name = "Data Orchestration"
+
+    def ready(self) -> None:
+        """Connect signal handlers when the app is ready."""
+        import orchestration.signals  # noqa: F401

@@ -325,6 +325,31 @@ UNFOLD = {
                 ],
             },
             {
+                "title": _("Maintenance"),
+                "items": [
+                    {
+                        "title": _("Maintenance Runs"),
+                        "icon": "build",
+                        "link": reverse_lazy(
+                            "admin:orchestration_maintenancerun_changelist"
+                        ),
+                        "permission": lambda request: (
+                            request.user.is_superuser
+                        ),
+                    },
+                    {
+                        "title": _("DuckDB Table Config"),
+                        "icon": "storage",
+                        "link": reverse_lazy(
+                            "admin:orchestration_duckdbtableconfig_changelist"
+                        ),
+                        "permission": lambda request: (
+                            request.user.is_superuser
+                        ),
+                    },
+                ],
+            },
+            {
                 "title": _("Users & Groups"),
                 "items": [
                     {
