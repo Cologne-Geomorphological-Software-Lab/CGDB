@@ -55,12 +55,15 @@ class Command(BaseCommand):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            # Set DAGSTER_HOME before any Dagster import so DagsterInstance.get()
-            # picks up dagster.yaml from the correct directory.
+            # DAGSTER_HOME: where dagster.yaml lives (project source, read-only).
+            # DAGSTER_STORAGE_DIR: where Dagster writes SQLite run history (writable data dir).
             dagster_home = str(
                 settings.BASE_DIR / "orchestration" / "dagster_home"
             )
+            dagster_storage = str(Path(settings.MEDIA_ROOT) / "dagster")
             os.environ.setdefault("DAGSTER_HOME", dagster_home)
+            os.environ.setdefault("DAGSTER_STORAGE_DIR", dagster_storage)
+            Path(dagster_storage).mkdir(parents=True, exist_ok=True)
 
             from dagster import DagsterInstance
 
