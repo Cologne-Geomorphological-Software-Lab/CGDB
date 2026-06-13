@@ -122,13 +122,7 @@
     margin-bottom: 2px;
     color: #111827;
   }
-  .cgdb-legend-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    border: 1.5px solid rgba(0,0,0,0.25);
-  }
+  .cgdb-legend-row svg { flex-shrink: 0; }
 
   /* Coordinate display */
   .cgdb-coords {
@@ -198,7 +192,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     L.control.fullscreen({ position: 'topright' }).addTo(map);
 
-    var measureControl = L.control.measure({
+    /* ── Measurement plugin ── */
+    L.control.measure({
         position: 'topright',
         primaryLengthUnit: 'meters',
         secondaryLengthUnit: 'kilometers',
@@ -208,9 +203,22 @@ document.addEventListener('DOMContentLoaded', function () {
         completedColor: '#1d4ed8',
     }).addTo(map);
 
-    /* Disable double-click zoom while measuring to prevent view shifts */
-    map.on('measurestart', function () { map.doubleClickZoom.disable(); });
-    map.on('measurefinish', function () { map.doubleClickZoom.enable(); });
+    /* Freeze all view-moving methods while measuring */
+    var _frozen = {};
+    var _viewMethods = ['fitBounds', 'panTo', 'setView', 'flyTo', 'flyToBounds', 'panBy'];
+    map.on('measurestart', function () {
+        _viewMethods.forEach(function (m) {
+            _frozen[m] = map[m];
+            map[m] = function () { return map; };
+        });
+        map.doubleClickZoom.disable();
+        clusters.options.zoomToBoundsOnClick = false;
+    });
+    map.on('measurefinish', function () {
+        _viewMethods.forEach(function (m) { map[m] = _frozen[m]; });
+        map.doubleClickZoom.enable();
+        clusters.options.zoomToBoundsOnClick = true;
+    });
 
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
@@ -233,13 +241,13 @@ document.addEventListener('DOMContentLoaded', function () {
         var el = document.getElementById('cgdb-map');
         var top = el.getBoundingClientRect().top + window.scrollY;
         el.style.height = Math.max(500, window.innerHeight - top - 8) + 'px';
-        map.invalidateSize();
+        map.invalidateSize({ pan: false });
     }
     resizeMap();
     window.addEventListener('resize', resizeMap);
 
     /* ── Cluster groups ── */
-    var clusters = L.markerClusterGroup({ chunkedLoading: true, zoomToBoundsOnClick: false });
+    var clusters = L.markerClusterGroup({ chunkedLoading: true });
     map.addLayer(clusters);
 
     /* ── Colors by location_type ── */
@@ -255,6 +263,59 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     var LITERATURE_COLOR = { fill: '#9ca3af', stroke: '#6b7280' };
 
+    /* ── Shapes by location_type ── */
+    var TYPE_SHAPES = {
+        sampling_location: 'circle',
+        camp:              'square',
+        road_access:       'square',
+        infrastructure:    'square',
+        weather_station:   'diamond',
+        survey_point:      'cross',
+        observation:       'triangle',
+        other:             'diamond',
+    };
+
+    /* ── SVG shape builder (shared by markers and legend) ── */
+    function svgShape(shape, fill, stroke, size) {
+        var h = size / 2, m = 1.5;
+        if (shape === 'circle') {
+            return '<circle cx="' + h + '" cy="' + h + '" r="' + (h - m) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
+        } else if (shape === 'square') {
+            return '<rect x="' + m + '" y="' + m + '" width="' + (size - 2*m) + '" height="' + (size - 2*m) + '" rx="1" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
+        } else if (shape === 'diamond') {
+            return '<polygon points="' + h + ',' + m + ' ' + (size-m) + ',' + h + ' ' + h + ',' + (size-m) + ' ' + m + ',' + h + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
+        } else if (shape === 'triangle') {
+            return '<polygon points="' + h + ',' + m + ' ' + (size-m) + ',' + (size-m) + ' ' + m + ',' + (size-m) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
+        } else if (shape === 'cross') {
+            var t = size * 0.28, w = size - 2*t;
+            return '<rect x="' + t + '" y="' + m + '" width="' + w + '" height="' + (size-2*m) + '" rx="1" fill="' + fill + '" stroke="' + stroke + '" stroke-width="0.5"/>' +
+                   '<rect x="' + m + '" y="' + t + '" width="' + (size-2*m) + '" height="' + w + '" rx="1" fill="' + fill + '" stroke="' + stroke + '" stroke-width="0.5"/>';
+        }
+        return '';
+    }
+
+    /* ── Marker icon factory ── */
+    function makeMarkerIcon(type, dataSource) {
+        var c, shape;
+        if (dataSource === 'literature') {
+            c = LITERATURE_COLOR;
+            shape = 'circle';
+        } else {
+            c = TYPE_COLORS[type] || TYPE_COLORS['other'];
+            shape = TYPE_SHAPES[type] || 'circle';
+        }
+        var size = dataSource === 'literature' ? 12 : 16;
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '">' +
+                  svgShape(shape, c.fill, c.stroke, size) + '</svg>';
+        return L.divIcon({
+            html: svg,
+            className: '',
+            iconSize:    [size, size],
+            iconAnchor:  [size/2, size/2],
+            popupAnchor: [0, -size/2],
+        });
+    }
+
     /* ── Legend (static, location_type) ── */
     var LegendControl = L.Control.extend({
         options: { position: 'bottomright' },
@@ -262,18 +323,19 @@ document.addEventListener('DOMContentLoaded', function () {
             var c = L.DomUtil.create('div', 'cgdb-legend leaflet-control');
             L.DomEvent.disableClickPropagation(c);
             var entries = [
-                { label: 'Sampling Location',     fill: '#3b82f6', stroke: '#1d4ed8' },
-                { label: 'Camp / Infrastructure', fill: '#f59e0b', stroke: '#d97706' },
-                { label: 'Scientific',            fill: '#10b981', stroke: '#059669' },
-                { label: 'Other',                 fill: '#8b5cf6', stroke: '#7c3aed' },
-                { label: 'Literature',            fill: '#9ca3af', stroke: '#6b7280' },
+                { label: 'Sampling Location',     fill: '#3b82f6', stroke: '#1d4ed8', shape: 'circle'   },
+                { label: 'Camp / Infrastructure', fill: '#f59e0b', stroke: '#d97706', shape: 'square'   },
+                { label: 'Weather station',       fill: '#10b981', stroke: '#059669', shape: 'diamond'  },
+                { label: 'Survey point',          fill: '#10b981', stroke: '#059669', shape: 'cross'    },
+                { label: 'Observation',           fill: '#10b981', stroke: '#059669', shape: 'triangle' },
+                { label: 'Other',                 fill: '#8b5cf6', stroke: '#7c3aed', shape: 'diamond'  },
+                { label: 'Literature',            fill: '#9ca3af', stroke: '#6b7280', shape: 'circle'   },
             ];
             var html = '<div class="cgdb-legend-title">Location type</div>';
             entries.forEach(function (e) {
-                html += '<div class="cgdb-legend-row">' +
-                    '<span class="cgdb-legend-dot" style="background:' + e.fill + ';border-color:' + e.stroke + '"></span>' +
-                    esc(e.label) +
-                    '</div>';
+                var miniSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14">' +
+                              svgShape(e.shape, e.fill, e.stroke, 14) + '</svg>';
+                html += '<div class="cgdb-legend-row">' + miniSvg + esc(e.label) + '</div>';
             });
             c.innerHTML = html;
             return c;
@@ -314,15 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 pointToLayer: function (feature, latlng) {
                     var p = feature.properties;
-                    var c = p.data_source === 'literature'
-                        ? LITERATURE_COLOR
-                        : (TYPE_COLORS[p.location_type] || TYPE_COLORS['other']);
-                    return L.circleMarker(latlng, {
-                        radius: 7,
-                        fillColor: c.fill,
-                        color:     c.stroke,
-                        weight: 1.5, opacity: 1, fillOpacity: 0.8,
-                    });
+                    return L.marker(latlng, { icon: makeMarkerIcon(p.location_type, p.data_source) });
                 },
                 onEachFeature: function (feature, layer) {
                     layer.bindPopup(buildPopup(feature.properties));
