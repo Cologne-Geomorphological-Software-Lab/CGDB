@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     /* ── Map ── */
-    var map = L.map('cgdb-map', { center: [30, 10], zoom: 2, layers: [googleSat], fullscreenControl: false });
+    var map = L.map('cgdb-map', { center: [30, 10], zoom: 2, layers: [googleSat] });
 
     L.control.layers(
         { 'Light': lightTile, 'Dark': darkTile, 'Google Satellite': googleSat, 'Esri Satellite': esriSat, 'OpenTopoMap': topoMap },
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     L.control.fullscreen({ position: 'topright' }).addTo(map);
 
-    L.control.measure({
+    var measureControl = L.control.measure({
         position: 'topright',
         primaryLengthUnit: 'meters',
         secondaryLengthUnit: 'kilometers',
@@ -207,6 +207,10 @@ document.addEventListener('DOMContentLoaded', function () {
         activeColor: '#3b82f6',
         completedColor: '#1d4ed8',
     }).addTo(map);
+
+    /* Disable double-click zoom while measuring to prevent view shifts */
+    map.on('measurestart', function () { map.doubleClickZoom.disable(); });
+    map.on('measurefinish', function () { map.doubleClickZoom.enable(); });
 
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
@@ -235,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', resizeMap);
 
     /* ── Cluster groups ── */
-    var clusters = L.markerClusterGroup({ chunkedLoading: true });
+    var clusters = L.markerClusterGroup({ chunkedLoading: true, zoomToBoundsOnClick: false });
     map.addLayer(clusters);
 
     /* ── Colors by location_type ── */
