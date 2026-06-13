@@ -261,6 +261,7 @@ class LocationAdmin(
                 "fields": (
                     ("easting", "northing"),
                     ("altitude", "srid"),
+                    ("gps_accuracy", "positioning_method"),
                     "location",
                 ),
             },
