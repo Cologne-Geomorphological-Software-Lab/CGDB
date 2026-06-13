@@ -186,11 +186,11 @@ def stat_data(period_days: int = 30) -> dict:
         return round(count / total * 100, 2) if total > 0 else 0
 
     def _footer(count: int, total: int) -> str:  # nosec B703, B308 — only floats interpolated
-        pct = _pct(count, total)
-        if pct == 0:
+        if count == 0:
             return mark_safe(
                 '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
             )
+        pct = _pct(count, total)
         color = (
             "text-green-700 dark:text-green-400"
             if pct > 0
