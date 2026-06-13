@@ -68,22 +68,10 @@ _LOCATION_TYPE_LABELS = {
 }
 
 _PROJECT_STATUS_STYLES = {
-    "ACTIVE": {
-        "label": "Active",
-        "badge": "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-    },
-    "COMPLETED": {
-        "label": "Completed",
-        "badge": "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-    },
-    "PAUSED": {
-        "label": "Paused",
-        "badge": "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
-    },
-    "CANCELLED": {
-        "label": "Cancelled",
-        "badge": "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-    },
+    "ACTIVE": "Active",
+    "COMPLETED": "Completed",
+    "PAUSED": "Paused",
+    "CANCELLED": "Cancelled",
 }
 
 
@@ -261,12 +249,8 @@ def stat_data(period_days: int = 30) -> dict:
         Project.objects.values_list("status").annotate(n=Count("id"))
     )
     project_status = [
-        {
-            "label": meta["label"],
-            "count": status_counts.get(key, 0),
-            "badge": meta["badge"],
-        }
-        for key, meta in _PROJECT_STATUS_STYLES.items()
+        {"label": label, "count": status_counts.get(key, 0)}
+        for key, label in _PROJECT_STATUS_STYLES.items()
     ]
 
     # Location type breakdown
