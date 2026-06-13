@@ -44,6 +44,10 @@ ignore = [
 "orchestration/dagster_home/assets.py" = ["INP001", "BLE001", "TRY300", "TRY400"]
 "orchestration/dagster_home/jobs.py" = ["INP001"]
 "orchestration/dagster_home/repository.py" = ["INP001", "ERA001"]
+# maintenance_jobs: ANN001 — Dagster 1.12.8 errors if context param is type-annotated; TRY400 — context.log has no .exception()
+"orchestration/dagster_home/maintenance_jobs.py" = ["INP001", "ANN001", "TRY400"]
+# run_maintenance_job: ARG/ANN — Django management command signature (*args, **options) cannot be changed
+"orchestration/management/commands/run_maintenance_job.py" = ["ARG001", "ARG002", "ANN003", "BLE001"]
 # Sphinx docs dir: not a Python package; copyright variable is a Sphinx requirement; E402 because sys.path is set first
 "docs/source/conf.py" = ["INP001", "A001", "E402"]
 # make_aware(datetime(...)) is the correct Django DST-safe pattern; naive datetime is only intermediate
