@@ -205,8 +205,8 @@ def stat_data(period_days: int = 30) -> dict:
     # Projects
     project_total = Project.objects.count()
     project_period_count = Project.objects.filter(
-        start_date__gte=since,
-        start_date__lt=now,
+        created_at__gte=since,
+        created_at__lt=now,
     ).count()
     logger.debug("Project total: %s", project_total)
 
