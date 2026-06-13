@@ -198,7 +198,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     L.control.fullscreen({ position: 'topright' }).addTo(map);
 
-    var measureControl = L.control.measure({
+    /* ── Measurement plugin ── */
+    L.control.measure({
         position: 'topright',
         primaryLengthUnit: 'meters',
         secondaryLengthUnit: 'kilometers',
@@ -208,9 +209,22 @@ document.addEventListener('DOMContentLoaded', function () {
         completedColor: '#1d4ed8',
     }).addTo(map);
 
-    /* Disable double-click zoom while measuring to prevent view shifts */
-    map.on('measurestart', function () { map.doubleClickZoom.disable(); });
-    map.on('measurefinish', function () { map.doubleClickZoom.enable(); });
+    /* Freeze all view-moving methods while measuring */
+    var _frozen = {};
+    var _viewMethods = ['fitBounds', 'panTo', 'setView', 'flyTo', 'flyToBounds', 'panBy'];
+    map.on('measurestart', function () {
+        _viewMethods.forEach(function (m) {
+            _frozen[m] = map[m];
+            map[m] = function () { return map; };
+        });
+        map.doubleClickZoom.disable();
+        clusters.options.zoomToBoundsOnClick = false;
+    });
+    map.on('measurefinish', function () {
+        _viewMethods.forEach(function (m) { map[m] = _frozen[m]; });
+        map.doubleClickZoom.enable();
+        clusters.options.zoomToBoundsOnClick = true;
+    });
 
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
@@ -233,13 +247,13 @@ document.addEventListener('DOMContentLoaded', function () {
         var el = document.getElementById('cgdb-map');
         var top = el.getBoundingClientRect().top + window.scrollY;
         el.style.height = Math.max(500, window.innerHeight - top - 8) + 'px';
-        map.invalidateSize();
+        map.invalidateSize({ pan: false });
     }
     resizeMap();
     window.addEventListener('resize', resizeMap);
 
     /* ── Cluster groups ── */
-    var clusters = L.markerClusterGroup({ chunkedLoading: true, zoomToBoundsOnClick: false });
+    var clusters = L.markerClusterGroup({ chunkedLoading: true });
     map.addLayer(clusters);
 
     /* ── Colors by location_type ── */
