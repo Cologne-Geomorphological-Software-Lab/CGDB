@@ -67,13 +67,6 @@ _LOCATION_TYPE_LABELS = {
     "other": "Other",
 }
 
-_PROJECT_STATUS_STYLES = {
-    "ACTIVE": "Active",
-    "COMPLETED": "Completed",
-    "PAUSED": "Paused",
-    "CANCELLED": "Cancelled",
-}
-
 
 _DASHBOARD_NAV = [
     {"title": _("Overview"), "link": "/", "active_path": "/"},
@@ -244,15 +237,6 @@ def stat_data(period_days: int = 30) -> dict:
         for m in measurement_models
     )
 
-    # Project status breakdown
-    status_counts = dict(
-        Project.objects.values_list("status").annotate(n=Count("id"))
-    )
-    project_status = [
-        {"label": label, "count": status_counts.get(key, 0)}
-        for key, label in _PROJECT_STATUS_STYLES.items()
-    ]
-
     # Location type breakdown
     location_by_type_rows = list(
         Location.objects.values("location_type")
@@ -301,7 +285,6 @@ def stat_data(period_days: int = 30) -> dict:
                 ),
             },
         ],
-        "project_status": project_status,
         "location_breakdown": location_breakdown,
         "literature_count": literature_count,
         "internal_count": internal_count,

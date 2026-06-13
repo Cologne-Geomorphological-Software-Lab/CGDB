@@ -43,16 +43,6 @@
                 {% endfor %}
             </div>
 
-            {# Project status breakdown #}
-            <div class="flex flex-col gap-8 lg:flex-row">
-                {% for s in project_status %}
-                    {% component "unfold/components/card.html" with class="lg:w-1/4" label=s.label %}
-                        {% component "unfold/components/title.html" %}
-                            {{ s.count }}
-                        {% endcomponent %}
-                    {% endcomponent %}
-                {% endfor %}
-            </div>
         </div>
     {% endcomponent %}
 
