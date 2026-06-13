@@ -71,6 +71,34 @@ exclude_dirs = ["venv"]
 # B101: assert statements are legitimate in non-test production code here
 skips = ["B101", "B105", "B106"]
 
+[tool.coverage.run]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "venv/*",
+    "manage.py",
+    "*/settings*.py",
+    "*/local_settings*",
+    "conftest.py",
+    "docs/*",
+]
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
 [dependency-groups]
 dev = [
     # Linting / formatting

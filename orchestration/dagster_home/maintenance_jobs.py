@@ -13,9 +13,13 @@ import subprocess
 import traceback
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import django
 from dagster import job, op
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prototype.settings")
 django.setup()
@@ -149,23 +153,73 @@ def backup_job() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _get_queryset(model, cfg) -> QuerySet:
+    """Return a values() queryset filtered to the configured fields."""
+    if cfg.include_fields:
+        return model.objects.values(*cfg.include_fields)
+    if cfg.exclude_fields:
+        fields = [
+            f.name
+            for f in model._meta.get_fields()
+            if hasattr(f, "column") and f.name not in cfg.exclude_fields
+        ]
+        return model.objects.values(*fields)
+    return model.objects.values()
+
+
+def _coerce_df_columns(df) -> None:
+    """Coerce non-serialisable column values (e.g. geometry WKB) to strings in-place."""
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].apply(
+                lambda v: (
+                    str(v)
+                    if v is not None
+                    and not isinstance(v, (str, int, float, bool))
+                    else v
+                )
+            )
+
+
+def _export_model_table(conn, cfg, model, context) -> None:
+    """Export one model's queryset to a DuckDB table; log and swallow errors."""
+    import pandas as pd
+
+    try:
+        qs = _get_queryset(model, cfg)
+        df = pd.DataFrame.from_records(list(qs))
+        table_name = f"{cfg.app_label}__{cfg.model_name.lower()}"
+
+        if df.empty:
+            context.log.info("Table %s is empty, skipping", table_name)
+            return
+
+        _coerce_df_columns(df)
+        conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")  # noqa: S608
+        context.log.info("Exported %d rows to table %s", len(df), table_name)
+    except Exception:  # noqa: BLE001
+        context.log.error(
+            "Failed to export %s.%s:\n%s",
+            cfg.app_label,
+            cfg.model_name,
+            traceback.format_exc(),
+        )
+
+
 @op(config_schema=_BASE_CONFIG_SCHEMA)
 def export_to_duckdb(context) -> str:
     """Export configured Django model tables to a DuckDB file."""
     import duckdb
-    import pandas as pd
     from django.apps import apps
 
     from orchestration.models import DuckDBTableConfig
 
     output_dir: str = context.op_config["output_dir"]
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    filename = f"cgdb_{timestamp}.duckdb"
-    output_path = Path(output_dir) / filename
+    output_path = Path(output_dir) / f"cgdb_{timestamp}.duckdb"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = duckdb.connect(str(output_path))
-
     for cfg in DuckDBTableConfig.objects.exclude(role="exclude"):
         try:
             model = apps.get_model(cfg.app_label, cfg.model_name)
@@ -176,52 +230,7 @@ def export_to_duckdb(context) -> str:
                 cfg.model_name,
             )
             continue
-
-        try:
-            qs = model.objects.all()
-            if cfg.include_fields:
-                qs = qs.values(*cfg.include_fields)
-            elif cfg.exclude_fields:
-                fields = [
-                    f.name
-                    for f in model._meta.get_fields()
-                    if hasattr(f, "column")
-                    and f.name not in cfg.exclude_fields
-                ]
-                qs = qs.values(*fields)
-            else:
-                qs = qs.values()
-
-            df = pd.DataFrame.from_records(list(qs))
-            table_name = f"{cfg.app_label}__{cfg.model_name.lower()}"
-
-            if df.empty:
-                context.log.info("Table %s is empty, skipping", table_name)
-                continue
-
-            # Coerce non-serialisable types (e.g. geometry WKB) to strings
-            for col in df.columns:
-                if df[col].dtype == object:
-                    df[col] = df[col].apply(
-                        lambda v: (
-                            str(v)
-                            if v is not None
-                            and not isinstance(v, (str, int, float, bool))
-                            else v
-                        )
-                    )
-
-            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")  # noqa: S608
-            context.log.info(
-                "Exported %d rows to table %s", len(df), table_name
-            )
-        except Exception:  # noqa: BLE001
-            context.log.error(
-                "Failed to export %s.%s:\n%s",
-                cfg.app_label,
-                cfg.model_name,
-                traceback.format_exc(),
-            )
+        _export_model_table(conn, cfg, model, context)
 
     conn.close()
     context.log.info("DuckDB export written to %s", output_path)

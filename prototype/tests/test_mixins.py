@@ -466,3 +466,245 @@ class GuardianPermissionMixinTest(_MixinSetup):
         self.assertFalse(
             self.guardian_admin.has_view_permission(request, obj=self.project)
         )
+
+    def test_has_add_permission_regular_user_without_add_perm(self):
+        """Non-superuser without add_project on any object cannot add."""
+        request = _make_request(self.other_user)
+        self.assertFalse(self.guardian_admin.has_add_permission(request))
+
+    def test_has_add_permission_superuser(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(self.guardian_admin.has_add_permission(request))
+
+
+# ===========================================================================
+# ProjectBasedPermissionMixin — has_view_permission (uncovered branch)
+# ===========================================================================
+
+
+class ProjectBasedViewPermissionTest(_MixinSetup):
+    """has_view_permission is the only permission method not yet covered."""
+
+    def test_has_view_permission_no_obj_returns_true(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.project_admin.has_view_permission(request, obj=None)
+        )
+
+    def test_has_view_permission_with_permitted_project(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.project_admin.has_view_permission(request, obj=self.loc1)
+        )
+
+    def test_has_view_permission_denied_without_perm(self):
+        request = _make_request(self.other_user)
+        self.assertFalse(
+            self.project_admin.has_view_permission(request, obj=self.loc1)
+        )
+
+    def test_has_view_permission_superuser_always_true(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(
+            self.project_admin.has_view_permission(request, obj=self.loc1)
+        )
+
+    def test_has_change_permission_literature_location_denied(self):
+        """Literature locations cannot be changed even with project permission."""
+        from bibliography.models import Author, Reference
+
+        author = Author.objects.create(last_name="X", first_name="Y")
+        ref = Reference.objects.create(
+            title="Lit", lead_author=author, abstract="a", type="Paper"
+        )
+        lit_loc = Location.objects.create(
+            identifier="LIT_VIEW01", data_source="literature", reference=ref
+        )
+        request = _make_request(self.regular_user)
+        self.assertFalse(
+            self.project_admin.has_change_permission(request, obj=lit_loc)
+        )
+
+    def test_has_delete_permission_literature_location_denied(self):
+        """Literature locations cannot be deleted even with project permission."""
+        from bibliography.models import Author, Reference
+
+        author = Author.objects.create(last_name="A", first_name="B")
+        ref = Reference.objects.create(
+            title="Lit2", lead_author=author, abstract="b", type="Paper"
+        )
+        lit_loc = Location.objects.create(
+            identifier="LIT_DEL01", data_source="literature", reference=ref
+        )
+        request = _make_request(self.regular_user)
+        self.assertFalse(
+            self.project_admin.has_delete_permission(request, obj=lit_loc)
+        )
+
+    def test_has_change_permission_superuser_always_true(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(
+            self.project_admin.has_change_permission(request, obj=self.loc1)
+        )
+
+    def test_has_delete_permission_superuser_always_true(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(
+            self.project_admin.has_delete_permission(request, obj=self.loc1)
+        )
+
+
+# ===========================================================================
+# NestedProjectPermissionMixin — has_view / has_delete permission
+# ===========================================================================
+
+
+class NestedPermissionMethodsTest(_MixinSetup):
+
+    def setUp(self):
+        super().setUp()
+        self.loc_admin = _LocationAdmin(Location, self.site)
+        assign_perm("prototype.view_project", self.regular_user, self.project)
+        assign_perm("prototype.delete_project", self.regular_user, self.project)
+
+    def test_has_view_no_obj_returns_true(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(self.loc_admin.has_view_permission(request, obj=None))
+
+    def test_has_view_with_permitted_project(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.loc_admin.has_view_permission(request, obj=self.loc1)
+        )
+
+    def test_has_view_denied_without_perm(self):
+        request = _make_request(self.other_user)
+        self.assertFalse(
+            self.loc_admin.has_view_permission(request, obj=self.loc1)
+        )
+
+    def test_has_view_superuser_always_true(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(
+            self.loc_admin.has_view_permission(request, obj=self.loc1)
+        )
+
+    def test_has_delete_no_obj_returns_true(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(self.loc_admin.has_delete_permission(request, obj=None))
+
+    def test_has_delete_with_permitted_project(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.loc_admin.has_delete_permission(request, obj=self.loc1)
+        )
+
+    def test_has_delete_denied_without_perm(self):
+        request = _make_request(self.other_user)
+        self.assertFalse(
+            self.loc_admin.has_delete_permission(request, obj=self.loc1)
+        )
+
+    def test_has_change_no_obj_returns_true(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(self.loc_admin.has_change_permission(request, obj=None))
+
+    def test_has_change_superuser_always_true(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(
+            self.loc_admin.has_change_permission(request, obj=self.loc1)
+        )
+
+
+# ===========================================================================
+# HybridProjectPermissionMixin — view / delete + _get_project via location
+# ===========================================================================
+
+
+class HybridPermissionMethodsTest(_MixinSetup):
+
+    def setUp(self):
+        super().setUp()
+        self.internal_loc = Location.objects.create(
+            identifier="HYBA_LOC",
+            data_source="internal",
+            project=self.project,
+        )
+        self.sample_via_loc = Sample.objects.create(
+            identifier="HYBA_S_LOC",
+            location=self.internal_loc,
+        )
+        self.sample_no_proj = Sample.objects.create(
+            identifier="HYBA_S_NOPROJ",
+            project=self.project,
+        )
+        assign_perm("prototype.view_project", self.regular_user, self.project)
+        assign_perm("prototype.delete_project", self.regular_user, self.project)
+
+    def test_has_view_no_obj_returns_true(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.sample_admin.has_view_permission(request, obj=None)
+        )
+
+    def test_has_view_with_direct_project(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.sample_admin.has_view_permission(
+                request, obj=self.sample_no_proj
+            )
+        )
+
+    def test_has_view_via_location_project(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.sample_admin.has_view_permission(
+                request, obj=self.sample_via_loc
+            )
+        )
+
+    def test_has_view_denied_without_perm(self):
+        request = _make_request(self.other_user)
+        self.assertFalse(
+            self.sample_admin.has_view_permission(
+                request, obj=self.sample_no_proj
+            )
+        )
+
+    def test_has_view_superuser_always_true(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(
+            self.sample_admin.has_view_permission(
+                request, obj=self.sample_via_loc
+            )
+        )
+
+    def test_has_delete_with_direct_project(self):
+        request = _make_request(self.regular_user)
+        self.assertTrue(
+            self.sample_admin.has_delete_permission(
+                request, obj=self.sample_no_proj
+            )
+        )
+
+    def test_has_delete_denied_without_perm(self):
+        request = _make_request(self.other_user)
+        self.assertFalse(
+            self.sample_admin.has_delete_permission(
+                request, obj=self.sample_no_proj
+            )
+        )
+
+    def test_has_delete_superuser_always_true(self):
+        request = _make_request(self.superuser)
+        self.assertTrue(
+            self.sample_admin.has_delete_permission(
+                request, obj=self.sample_no_proj
+            )
+        )
+
+    def test_get_queryset_superuser_sees_all(self):
+        request = _make_request(self.superuser)
+        qs = self.sample_admin.get_queryset(request)
+        self.assertIn(self.sample_via_loc, qs)
+        self.assertIn(self.sample_no_proj, qs)
