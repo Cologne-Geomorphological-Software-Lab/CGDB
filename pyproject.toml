@@ -1,4 +1,9 @@
+[project]
+name = "cgdb"
+requires-python = ">=3.13"
+
 [tool.ruff]
+target-version = "py313"
 line-length = 79
 
 # Exclude-Files
@@ -67,4 +72,31 @@ exclude_dirs = ["venv"]
 skips = ["B101", "B105", "B106"]
 
 [dependency-groups]
-dev = ["radon", "vulture", "pylint", "bandit", "lizard", "pytest-cov", "mutmut", "wily", "xenon", "pyupgrade", "ruff", "mypy", "basedpyright", "pre-commit"]
+dev = [
+    # Linting / formatting
+    "ruff",
+    "pyupgrade",
+    "black",
+    "isort",
+    "docformatter",
+    "pre-commit",
+    # Type checking
+    "mypy",
+    "basedpyright",
+    "ty",
+    "django-stubs",
+    "django-stubs-ext",
+    # Testing
+    "pytest",
+    "pytest-django",
+    "pytest-cov",
+    # Static analysis / metrics
+    "radon",
+    "vulture",
+    "pylint",
+    "bandit",
+    "lizard",
+    "mutmut",
+    "wily",
+    "xenon",
+]
