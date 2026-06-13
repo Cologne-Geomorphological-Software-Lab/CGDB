@@ -1,0 +1,395 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.tests.test_grainsize &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.tests.test_grainsize</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.tests.test_grainsize</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tests for GrainSize._reclassify().</span>
+
+<span class="sd">These are pure unit tests — no DB access. A GrainSize instance is built</span>
+<span class="sd">in memory by setting .classes and .measured_data directly.</span>
+
+<span class="sd">Boundary thresholds (µm):</span>
+<span class="sd">  clay        &lt; 2</span>
+<span class="sd">  fine_silt   2 – &lt; 6.3</span>
+<span class="sd">  medium_silt 6.3 – &lt; 20</span>
+<span class="sd">  coarse_silt 20 – &lt; 63</span>
+<span class="sd">  fine_sand   63 – &lt; 200</span>
+<span class="sd">  medium_sand 200 – &lt; 630</span>
+<span class="sd">  coarse_sand 630 – &lt; 2000</span>
+<span class="sd">  (&gt;= 2000 is not assigned to any fraction)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="kn">from</span> <span class="nn">django.test</span> <span class="kn">import</span> <span class="n">SimpleTestCase</span>
+
+<span class="kn">from</span> <span class="nn">analysis.models</span> <span class="kn">import</span> <span class="n">GrainSize</span>
+
+
+<span class="k">def</span> <span class="nf">_make_grain_size</span><span class="p">(</span><span class="n">classes</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">measured_data</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return an unsaved GrainSize with the given classes and measured_data.&quot;&quot;&quot;</span>
+    <span class="n">gs</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">GrainSize</span><span class="p">)</span>
+    <span class="n">gs</span><span class="o">.</span><span class="n">classes</span> <span class="o">=</span> <span class="n">classes</span>
+    <span class="n">gs</span><span class="o">.</span><span class="n">measured_data</span> <span class="o">=</span> <span class="n">measured_data</span>
+    <span class="k">return</span> <span class="n">gs</span>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest">[docs]</a>
+<span class="k">class</span> <span class="nc">ReclassifyClassificationTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;_reclassify() routes each class value to the correct fraction.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_clay">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_clay">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_clay</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">30.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_silt</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">medium_silt</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">coarse_silt</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">medium_sand</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">coarse_sand</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_fine_silt">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_silt">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_fine_silt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">6.2</span><span class="p">],</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_silt</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_medium_silt">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_silt">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_medium_silt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">6.3</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">19.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">medium_silt</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_coarse_silt">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_silt">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_coarse_silt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">62.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">coarse_silt</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_fine_sand">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_sand">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_fine_sand</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">63.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">199.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">70.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_medium_sand">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_sand">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_medium_sand</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">200.0</span><span class="p">,</span> <span class="mf">400.0</span><span class="p">,</span> <span class="mf">629.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">20.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">medium_sand</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_coarse_sand">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_sand">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_coarse_sand</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">630.0</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">,</span> <span class="mf">1999.9</span><span class="p">],</span> <span class="p">[</span><span class="mf">30.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">coarse_sand</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_all_fractions_present_equal_weights">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fractions_present_equal_weights">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_fractions_present_equal_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;One representative class per fraction, equal weight → each ~14.29%.&quot;&quot;&quot;</span>
+        <span class="n">classes</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">]</span>
+        <span class="n">measured_data</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">(</span><span class="n">classes</span><span class="p">,</span> <span class="n">measured_data</span><span class="p">)</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">/</span> <span class="mf">7.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_silt</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">medium_silt</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">coarse_silt</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">medium_sand</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">coarse_sand</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_boundary_value_exactly_2_is_fine_silt_not_clay">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_2_is_fine_silt_not_clay">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_boundary_value_exactly_2_is_fine_silt_not_clay</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;class_value == 2.0 fails the &lt; 2 check and lands in fine_silt.&quot;&quot;&quot;</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">100.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_silt</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">63.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">100.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">coarse_silt</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyClassificationTest.test_values_at_or_above_2000_are_not_classified">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_values_at_or_above_2000_are_not_classified">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_values_at_or_above_2000_are_not_classified</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Classes &gt;= 2000 µm are included in total but not in any fraction.&quot;&quot;&quot;</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2000.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="n">total_fractions</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">gs</span><span class="o">.</span><span class="n">clay</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">fine_silt</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">medium_silt</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">coarse_silt</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">medium_sand</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">coarse_sand</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">total_fractions</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ReclassifyReturnValueTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyReturnValueTest">[docs]</a>
+<span class="k">class</span> <span class="nc">ReclassifyReturnValueTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;_reclassify() return tuple has the documented order.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ReclassifyReturnValueTest.test_return_tuple_order">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_return_tuple_order">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_return_tuple_order</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return order: (fine_silt, medium_silt, coarse_silt, fine_sand, medium_sand, coarse_sand, clay).&quot;&quot;&quot;</span>
+        <span class="n">classes</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">]</span>
+        <span class="n">measured_data</span> <span class="o">=</span> <span class="p">[</span><span class="mf">7.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">(</span><span class="n">classes</span><span class="p">,</span> <span class="n">measured_data</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">measured_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="mi">7</span><span class="p">)</span>
+        <span class="p">(</span>
+            <span class="n">fine_silt</span><span class="p">,</span>
+            <span class="n">medium_silt</span><span class="p">,</span>
+            <span class="n">coarse_silt</span><span class="p">,</span>
+            <span class="n">fine_sand</span><span class="p">,</span>
+            <span class="n">medium_sand</span><span class="p">,</span>
+            <span class="n">coarse_sand</span><span class="p">,</span>
+            <span class="n">clay</span><span class="p">,</span>
+        <span class="p">)</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">clay</span><span class="p">,</span> <span class="mf">7.0</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">fine_silt</span><span class="p">,</span> <span class="mf">6.0</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">medium_silt</span><span class="p">,</span> <span class="mf">5.0</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">coarse_silt</span><span class="p">,</span> <span class="mf">4.0</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">fine_sand</span><span class="p">,</span> <span class="mf">3.0</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">medium_sand</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">coarse_sand</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">total</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyReturnValueTest.test_fractions_sum_to_100_when_all_classes_under_2000">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_fractions_sum_to_100_when_all_classes_under_2000">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_fractions_sum_to_100_when_all_classes_under_2000</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">classes</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">]</span>
+        <span class="n">measured_data</span> <span class="o">=</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">,</span> <span class="mf">25.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">]</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">(</span><span class="n">classes</span><span class="p">,</span> <span class="n">measured_data</span><span class="p">)</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="n">total_fractions</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">gs</span><span class="o">.</span><span class="n">clay</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">fine_silt</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">medium_silt</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">coarse_silt</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">medium_sand</span>
+            <span class="o">+</span> <span class="n">gs</span><span class="o">.</span><span class="n">coarse_sand</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">total_fractions</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ReclassifyInputHandlingTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyInputHandlingTest">[docs]</a>
+<span class="k">class</span> <span class="nc">ReclassifyInputHandlingTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;_reclassify() handles different input types for measured_data.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ReclassifyInputHandlingTest.test_json_string_is_parsed_before_processing">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_parsed_before_processing">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_json_string_is_parsed_before_processing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">],</span> <span class="s2">&quot;[60.0, 40.0]&quot;</span><span class="p">)</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_silt</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyInputHandlingTest.test_json_string_is_converted_to_list">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_converted_to_list">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_json_string_is_converted_to_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="s2">&quot;[100.0]&quot;</span><span class="p">)</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">measured_data</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyInputHandlingTest.test_list_input_passes_through">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_list_input_passes_through">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_list_input_passes_through</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">100.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyInputHandlingTest.test_dict_input_raises_type_error">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_dict_input_raises_type_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_dict_input_raises_type_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">{</span><span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">})</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+            <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyInputHandlingTest.test_integer_input_raises_type_error">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_integer_input_raises_type_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_integer_input_raises_type_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="mi">42</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+            <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyInputHandlingTest.test_none_input_raises_type_error">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_none_input_raises_type_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_none_input_raises_type_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+            <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ReclassifyZeroTotalTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyZeroTotalTest">[docs]</a>
+<span class="k">class</span> <span class="nc">ReclassifyZeroTotalTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;_reclassify() raises ValueError when measured_data sums to zero.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ReclassifyZeroTotalTest.test_all_zeros_raises">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_all_zeros_raises">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_all_zeros_raises</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">cm</span><span class="p">:</span>
+            <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;zero&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">cm</span><span class="o">.</span><span class="n">exception</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyZeroTotalTest.test_single_zero_raises">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_single_zero_raises">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_single_zero_raises</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">])</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+            <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ReclassifyZeroTotalTest.test_nonzero_data_does_not_raise">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_nonzero_data_does_not_raise">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_nonzero_data_does_not_raise</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">_make_grain_size</span><span class="p">([</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">_reclassify</span><span class="p">()</span>  <span class="c1"># Must not raise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

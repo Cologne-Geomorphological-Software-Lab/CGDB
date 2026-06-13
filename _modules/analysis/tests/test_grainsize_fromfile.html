@@ -1,0 +1,485 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.tests.test_grainsize_fromfile &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.tests.test_grainsize_fromfile</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.tests.test_grainsize_fromfile</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tests for GrainSize.from_file() – the .$av file parser.</span>
+
+<span class="sd">Happy-path, error-handling and integration tests.</span>
+<span class="sd">Temporary files are created with tempfile and cleaned up via addCleanup.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span> <span class="nn">django.test</span> <span class="kn">import</span> <span class="n">SimpleTestCase</span><span class="p">,</span> <span class="n">TestCase</span>
+
+<span class="kn">from</span> <span class="nn">analysis.models</span> <span class="kn">import</span> <span class="n">GrainSize</span>
+<span class="kn">from</span> <span class="nn">field_data.models</span> <span class="kn">import</span> <span class="n">Location</span><span class="p">,</span> <span class="n">Sample</span>
+<span class="kn">from</span> <span class="nn">prototype.models</span> <span class="kn">import</span> <span class="n">Project</span>
+
+
+<span class="k">def</span> <span class="nf">_make_sample</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return an unsaved Sample instance usable as a FK target in memory.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Sample</span><span class="p">(</span><span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;TEMP&quot;</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Helper: write a temporary .$av-style file</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+
+<span class="k">def</span> <span class="nf">_make_av_file</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write content to a temporary file and return its Path.&quot;&quot;&quot;</span>
+    <span class="n">fd</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.av&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;latin-1&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+
+<span class="n">MINIMAL_AV</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2">[#Bindiam]</span>
+<span class="s2">10.0</span>
+<span class="s2">20.0</span>
+<span class="s2">[#Binheight]</span>
+<span class="s2">50.0</span>
+<span class="s2">50.0</span>
+<span class="s2">[Size0]</span>
+<span class="s2">Obs=150.5</span>
+<span class="s2">[SizeStats]</span>
+<span class="s2">Mean=15.0</span>
+<span class="s2">Mode=12.0</span>
+<span class="s2">Median=14.0</span>
+<span class="s2">SD=3.5</span>
+<span class="s2">Skew=0.2</span>
+<span class="s2">Kurtosis=2.8</span>
+<span class="s2">FWMean=15.1</span>
+<span class="s2">FWMedian=14.2</span>
+<span class="s2">FWSD=3.6</span>
+<span class="s2">FWSkew=0.3</span>
+<span class="s2">FWKurt=2.9</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># Happy-path tests – no DB needed</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest">[docs]</a>
+<span class="k">class</span> <span class="nc">GrainSizeFromFileHappyPathTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.setUp">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.setUp">[docs]</a>
+    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">_make_av_file</span><span class="p">(</span><span class="n">MINIMAL_AV</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">_make_sample</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;L&quot;</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">content</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">_make_av_file</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+        <span class="k">return</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_classes_parsed_correctly">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_classes_parsed_correctly">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_classes_parsed_correctly</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">classes</span><span class="p">,</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_measured_data_parsed_correctly">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_measured_data_parsed_correctly">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_measured_data_parsed_correctly</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">measured_data</span><span class="p">,</span> <span class="p">[</span><span class="mf">50.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_concentration_single_obs">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_single_obs">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_concentration_single_obs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">sample_concentration</span><span class="p">,</span> <span class="mf">150.5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_concentration_mean_of_multiple_obs">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_mean_of_multiple_obs">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_concentration_mean_of_multiple_obs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">100.0</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;[Size0]</span><span class="se">\n</span><span class="s2">Obs=100.0</span><span class="se">\n</span><span class="s2">[Size1]</span><span class="se">\n</span><span class="s2">Obs=200.0</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">sample_concentration</span><span class="p">,</span> <span class="mf">150.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_mean_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mean_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_mean_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_mode_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mode_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_mode_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">mode</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_median_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_median_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_median_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">median</span><span class="p">,</span> <span class="mf">14.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_sd_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_sd_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_sd_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">std</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_skew_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_skew_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_skew_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">skew</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_kurtosis_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_kurtosis_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_kurtosis_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">kurtosis</span><span class="p">,</span> <span class="mf">2.8</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_fwmean_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmean_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_fwmean_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fwmean</span><span class="p">,</span> <span class="mf">15.1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_fwmedian_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmedian_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_fwmedian_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fwmedian</span><span class="p">,</span> <span class="mf">14.2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_fwsd_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwsd_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_fwsd_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fwsd</span><span class="p">,</span> <span class="mf">3.6</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_fwskew_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwskew_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_fwskew_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fwskew</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_stats_fwkurt_parsed">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwkurt_parsed">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_stats_fwkurt_parsed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fwkurt</span><span class="p">,</span> <span class="mf">2.9</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_returns_grainsize_instance">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_returns_grainsize_instance">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_returns_grainsize_instance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">gs</span><span class="p">,</span> <span class="n">GrainSize</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_sample_and_method_assigned">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_sample_and_method_assigned">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_sample_and_method_assigned</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIs</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">method</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileHappyPathTest.test_unknown_block_is_ignored">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_unknown_block_is_ignored">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_unknown_block_is_ignored</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">MINIMAL_AV</span> <span class="o">+</span> <span class="s2">&quot;[UNKNOWN_BLOCK]</span><span class="se">\n</span><span class="s2">some_garbage_data</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="c1"># Must not raise; known fields still parsed correctly</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">classes</span><span class="p">,</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">])</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># Error-handling tests</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest">[docs]</a>
+<span class="k">class</span> <span class="nc">GrainSizeFromFileErrorHandlingTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">_make_av_file</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">_make_sample</span><span class="p">(),</span> <span class="s2">&quot;L&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest.test_missing_size_block_raises_value_error">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_size_block_raises_value_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_missing_size_block_raises_value_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">[SizeStats]</span><span class="se">\n</span><span class="s2">Mean=5.0</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">cm</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;concentration&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">cm</span><span class="o">.</span><span class="n">exception</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest.test_size_block_without_obs_raises_value_error">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_size_block_without_obs_raises_value_error">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_size_block_without_obs_raises_value_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">[Size0]</span><span class="se">\n</span><span class="s2">Something=42</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_bindiam_is_skipped">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_bindiam_is_skipped">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_invalid_float_in_bindiam_is_skipped</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">NaN_value</span><span class="se">\n</span><span class="s2">20.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">[Size0]</span><span class="se">\n</span><span class="s2">Obs=100</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">classes</span><span class="p">,</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_binheight_is_skipped">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_binheight_is_skipped">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_invalid_float_in_binheight_is_skipped</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">20.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">invalid</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">[Size0]</span><span class="se">\n</span><span class="s2">Obs=100</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">measured_data</span><span class="p">,</span> <span class="p">[</span><span class="mf">50.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_sizestats_is_skipped">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_sizestats_is_skipped">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_invalid_float_in_sizestats_is_skipped</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;[Size0]</span><span class="se">\n</span><span class="s2">Obs=100</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;[SizeStats]</span><span class="se">\n</span><span class="s2">Mean=not_a_float</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest.test_missing_stats_fields_remain_none">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_stats_fields_remain_none">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_missing_stats_fields_remain_none</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">[Size0]</span><span class="se">\n</span><span class="s2">Obs=100</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mode&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;median&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;std&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;skew&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;kurtosis&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fwmean&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fwmedian&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fwsd&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fwskew&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;fwkurt&quot;</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">gs</span><span class="p">,</span> <span class="n">attr</span><span class="p">),</span> <span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">attr</span><span class="si">}</span><span class="s2"> should be None&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileErrorHandlingTest.test_latin1_encoding_does_not_raise">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_latin1_encoding_does_not_raise">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_latin1_encoding_does_not_raise</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Write bytes that are valid latin-1 but not UTF-8</span>
+        <span class="n">fd</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.av&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                <span class="sa">b</span><span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">10.0</span><span class="se">\n</span><span class="s2">[#Binheight]</span><span class="se">\n</span><span class="s2">50.0</span><span class="se">\n</span><span class="s2">[Size0]</span><span class="se">\n</span><span class="s2">Obs=100</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="sa">b</span><span class="s2">&quot;# Ger</span><span class="se">\xe4</span><span class="s2">t: Mastersizer</span><span class="se">\n</span><span class="s2">&quot;</span>  <span class="c1"># &quot;Gerät&quot; in latin-1</span>
+            <span class="p">)</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">_make_sample</span><span class="p">(),</span> <span class="s2">&quot;L&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">classes</span><span class="p">,</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">])</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># Integration test – requires DB</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileIntegrationTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest">[docs]</a>
+<span class="k">class</span> <span class="nc">GrainSizeFromFileIntegrationTest</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+<div class="viewcode-block" id="GrainSizeFromFileIntegrationTest.setUpTestData">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.setUpTestData">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">setUpTestData</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">project</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;GS From File Project&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;GSFF01&quot;</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;ACTIVE&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">Location</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;GSFF_LOC&quot;</span><span class="p">,</span>
+            <span class="n">data_source</span><span class="o">=</span><span class="s2">&quot;internal&quot;</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">Sample</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;GSFF_S01&quot;</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileIntegrationTest.test_from_file_returns_unsaved_instance">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_returns_unsaved_instance">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_from_file_returns_unsaved_instance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">_make_av_file</span><span class="p">(</span><span class="n">MINIMAL_AV</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="s2">&quot;L&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">pk</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileIntegrationTest.test_from_file_can_be_saved">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_can_be_saved">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_from_file_can_be_saved</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">_make_av_file</span><span class="p">(</span><span class="n">MINIMAL_AV</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="s2">&quot;L&quot;</span><span class="p">)</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">GrainSize</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeFromFileIntegrationTest.test_save_triggers_reclassify">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_save_triggers_reclassify">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_save_triggers_reclassify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># classes: one clay (&lt;2µm) and one fine_sand (63-200µm) value</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;[#Bindiam]</span><span class="se">\n</span><span class="s2">1.0</span><span class="se">\n</span><span class="s2">100.0</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;[#Binheight]</span><span class="se">\n</span><span class="s2">40.0</span><span class="se">\n</span><span class="s2">60.0</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;[Size0]</span><span class="se">\n</span><span class="s2">Obs=10</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">_make_av_file</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addCleanup</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="s2">&quot;L&quot;</span><span class="p">)</span>
+        <span class="n">gs</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="n">saved</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pk</span><span class="o">=</span><span class="n">gs</span><span class="o">.</span><span class="n">pk</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">saved</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">saved</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
