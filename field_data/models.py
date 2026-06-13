@@ -521,6 +521,43 @@ class Location(BaseModel):
         help_text="Source of the location data",
     )
 
+    LOCATION_TYPE_CHOICES = [
+        (
+            "Sampling",
+            [
+                ("sampling_location", "Sampling Location"),
+            ],
+        ),
+        (
+            "Infrastructure / Logistics",
+            [
+                ("camp", "Camp / Base camp"),
+                ("road_access", "Road access point"),
+                ("infrastructure", "Infrastructure"),
+            ],
+        ),
+        (
+            "Scientific",
+            [
+                ("weather_station", "Weather station"),
+                ("survey_point", "Survey point"),
+                ("observation", "Observation point"),
+            ],
+        ),
+        (
+            "Other",
+            [
+                ("other", "Other"),
+            ],
+        ),
+    ]
+    location_type = models.CharField(
+        max_length=30,
+        choices=LOCATION_TYPE_CHOICES,
+        default="sampling_location",
+        help_text="Category of this location.",
+    )
+
     campaign = models.ForeignKey(
         Campaign,
         on_delete=models.RESTRICT,
@@ -539,7 +576,11 @@ class Location(BaseModel):
         db_index=True,
         blank=True,
         null=True,
-        help_text="Project for internal data",
+        help_text=(
+            "Required for all locations. For general-purpose locations "
+            "(e.g. weather stations) shared across projects, assign to a "
+            "dedicated 'Shared Resources' project."
+        ),
     )
 
     reference = models.ForeignKey(
@@ -729,7 +770,11 @@ class Location(BaseModel):
         """Validate the data_source logic for project/reference assignment."""
         if self.data_source == "internal":
             if not self.project:
-                msg = "Internal data source requires a project assignment."
+                msg = (
+                    "A project is required. For general-purpose locations "
+                    "shared across projects (e.g. weather stations), assign "
+                    "to a dedicated 'Shared Resources' project."
+                )
                 raise ValidationError(msg)
             if self.reference:
                 msg = (

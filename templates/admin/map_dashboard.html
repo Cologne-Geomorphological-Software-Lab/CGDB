@@ -92,6 +92,39 @@
     color: #111827;
     background: white;
   }
+
+  /* Legend */
+  .cgdb-legend {
+    background: white;
+    border-radius: 4px !important;
+    padding: 8px 10px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 200px;
+  }
+  .cgdb-legend-title {
+    font-weight: 700;
+    margin-bottom: 5px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
+  .cgdb-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+    color: #111827;
+  }
+  .cgdb-legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1.5px solid rgba(0,0,0,0.25);
+  }
 </style>
 {% endblock %}
 
@@ -156,9 +189,30 @@ document.addEventListener('DOMContentLoaded', function () {
     resizeMap();
     window.addEventListener('resize', resizeMap);
 
-    /* ── Cluster group ── */
+    /* ── Cluster groups ── */
     var clusters = L.markerClusterGroup({ chunkedLoading: true });
     map.addLayer(clusters);
+
+    /* ── Project color palette (cycles if more projects than colors) ── */
+    var PALETTE = [
+        { fill: '#3b82f6', stroke: '#1d4ed8' },  // blue
+        { fill: '#10b981', stroke: '#059669' },  // emerald
+        { fill: '#f59e0b', stroke: '#d97706' },  // amber
+        { fill: '#ef4444', stroke: '#b91c1c' },  // red
+        { fill: '#8b5cf6', stroke: '#7c3aed' },  // violet
+        { fill: '#06b6d4', stroke: '#0e7490' },  // cyan
+        { fill: '#f97316', stroke: '#c2410c' },  // orange
+        { fill: '#84cc16', stroke: '#4d7c0f' },  // lime
+        { fill: '#ec4899', stroke: '#be185d' },  // pink
+        { fill: '#14b8a6', stroke: '#0f766e' },  // teal
+    ];
+    var LITERATURE_COLOR = { fill: '#9ca3af', stroke: '#6b7280' };
+    var PROJECT_COLORS = {};  // populated after GeoJSON loads
+
+    function colorForProject(project) {
+        if (!project) return LITERATURE_COLOR;
+        return PROJECT_COLORS[project] || LITERATURE_COLOR;
+    }
 
     /* ── Popup builder ── */
     function buildPopup(p) {
@@ -166,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ? '<span class="badge badge-literature">Literature</span>'
             : '<span class="badge badge-internal">Internal</span>';
         var rows = '';
+        if (p.location_type_display) rows += '<div class="popup-row"><span class="popup-label">Category</span>' + esc(p.location_type_display) + '</div>';
         if (p.project)        rows += '<div class="popup-row"><span class="popup-label">Project</span>'  + esc(p.project) + '</div>';
         if (p.campaign)       rows += '<div class="popup-row"><span class="popup-label">Campaign</span>' + esc(p.campaign) + '</div>';
         if (p.date_of_record) rows += '<div class="popup-row"><span class="popup-label">Date</span>'     + esc(p.date_of_record) + '</div>';
@@ -185,41 +240,90 @@ document.addEventListener('DOMContentLoaded', function () {
             '</div>';
     }
 
+    /* ── Legend control (bottom-right, filled after GeoJSON loads) ── */
+    var legendEl = null;
+    var LegendControl = L.Control.extend({
+        options: { position: 'bottomright' },
+        onAdd: function () {
+            legendEl = L.DomUtil.create('div', 'cgdb-legend leaflet-control');
+            L.DomEvent.disableClickPropagation(legendEl);
+            legendEl.innerHTML = '<div class="cgdb-legend-title">Projects</div>';
+            return legendEl;
+        }
+    });
+    new LegendControl().addTo(map);
+
+    function updateLegend(projects) {
+        if (!legendEl) return;
+        var html = '<div class="cgdb-legend-title">Projects</div>';
+        projects.forEach(function (proj) {
+            var c = PROJECT_COLORS[proj];
+            html += '<div class="cgdb-legend-row">' +
+                '<span class="cgdb-legend-dot" style="background:' + c.fill + ';border-color:' + c.stroke + '"></span>' +
+                esc(proj) +
+                '</div>';
+        });
+        html += '<div class="cgdb-legend-row">' +
+            '<span class="cgdb-legend-dot" style="background:' + LITERATURE_COLOR.fill + ';border-color:' + LITERATURE_COLOR.stroke + '"></span>' +
+            'Literature' +
+            '</div>';
+        legendEl.innerHTML = html;
+    }
+
     /* ── GeoJSON layer factory (reused by filter) ── */
     function makeLayer(features) {
         return L.geoJSON(
             { type: 'FeatureCollection', features: features },
             {
                 pointToLayer: function (feature, latlng) {
-                    var isLit = feature.properties.data_source === 'literature';
+                    var p = feature.properties;
+                    var c = colorForProject(p.project);
                     return L.circleMarker(latlng, {
                         radius: 7,
-                        fillColor: isLit ? '#9ca3af' : '#3b82f6',
-                        color:     isLit ? '#6b7280' : '#1d4ed8',
+                        fillColor: c.fill,
+                        color:     c.stroke,
                         weight: 1.5, opacity: 1, fillOpacity: 0.8,
                     });
                 },
                 onEachFeature: function (feature, layer) {
                     layer.bindPopup(buildPopup(feature.properties));
+                    var p = feature.properties;
+                    var tip = p.identifier || '—';
+                    if (p.project) tip += '\n' + p.project;
+                    layer.bindTooltip(tip, { sticky: true, opacity: 0.9 });
                 },
             }
         );
     }
 
+    /* ── Location type labels ── */
+    var TYPE_LABELS = {
+        sampling_location: 'Sampling Location',
+        camp:              'Camp / Base camp',
+        road_access:       'Road access point',
+        infrastructure:    'Infrastructure',
+        weather_station:   'Weather station',
+        survey_point:      'Survey point',
+        observation:       'Observation point',
+        other:             'Other',
+    };
+
     /* ── Filter state ── */
     var allFeatures = [];
-    var cbInternal, cbLiterature, projectSelect;
+    var cbInternal, cbLiterature, projectSelect, typeSelect;
 
     function applyFilters() {
         clusters.clearLayers();
-        var showInt = cbInternal.checked;
-        var showLit = cbLiterature.checked;
-        var proj    = projectSelect.value;
+        var showInt  = cbInternal.checked;
+        var showLit  = cbLiterature.checked;
+        var proj     = projectSelect.value;
+        var locType  = typeSelect.value;
         var filtered = allFeatures.filter(function (f) {
             var p = f.properties;
             if (p.data_source === 'internal'   && !showInt) return false;
             if (p.data_source === 'literature' && !showLit) return false;
-            if (proj && p.project !== proj) return false;
+            if (proj    && p.project       !== proj)    return false;
+            if (locType && p.location_type !== locType) return false;
             return true;
         });
         clusters.addLayer(makeLayer(filtered));
@@ -236,7 +340,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<div class="cgdb-filter-title">Filter</div>' +
                 '<label><input type="checkbox" id="cb-internal"   checked> Internal</label>' +
                 '<label><input type="checkbox" id="cb-literature" checked> Literature</label>' +
-                '<select id="project-select"><option value="">All projects</option></select>';
+                '<select id="project-select"><option value="">All projects</option></select>' +
+                '<select id="type-select"><option value="">All types</option></select>';
             return c;
         }
     });
@@ -245,7 +350,8 @@ document.addEventListener('DOMContentLoaded', function () {
     cbInternal    = document.getElementById('cb-internal');
     cbLiterature  = document.getElementById('cb-literature');
     projectSelect = document.getElementById('project-select');
-    [cbInternal, cbLiterature, projectSelect].forEach(function (el) {
+    typeSelect    = document.getElementById('type-select');
+    [cbInternal, cbLiterature, projectSelect, typeSelect].forEach(function (el) {
         el.addEventListener('change', applyFilters);
     });
 
@@ -255,16 +361,32 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(function (data) {
             allFeatures = data.features || [];
 
-            /* Populate project dropdown */
+            /* Assign project colors and populate dropdown + legend */
             var projects = [];
             allFeatures.forEach(function (f) {
                 var p = f.properties.project;
                 if (p && projects.indexOf(p) === -1) projects.push(p);
             });
-            projects.sort().forEach(function (p) {
+            projects.sort();
+            projects.forEach(function (p, i) {
+                PROJECT_COLORS[p] = PALETTE[i % PALETTE.length];
                 var opt = document.createElement('option');
                 opt.value = p; opt.textContent = p;
                 projectSelect.appendChild(opt);
+            });
+            updateLegend(projects);
+
+            /* Populate location type dropdown */
+            var types = [];
+            allFeatures.forEach(function (f) {
+                var t = f.properties.location_type;
+                if (t && types.indexOf(t) === -1) types.push(t);
+            });
+            types.sort().forEach(function (t) {
+                var opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = TYPE_LABELS[t] || t;
+                typeSelect.appendChild(opt);
             });
 
             /* Initial render */

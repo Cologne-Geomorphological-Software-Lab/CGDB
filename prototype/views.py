@@ -131,6 +131,8 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
                 "date_of_record": loc.date_of_record.isoformat()
                 if loc.date_of_record
                 else None,
+                "location_type": loc.location_type,
+                "location_type_display": loc.get_location_type_display(),
                 "sample_count": loc.sample_count,
                 "luminescence_count": loc.luminescence_count,
                 "radiocarbon_count": loc.radiocarbon_count,

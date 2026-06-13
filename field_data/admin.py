@@ -170,6 +170,7 @@ class LocationAdmin(
     resource_classes = [LocationResource]
     readonly_fields = [
         "id",
+        "location",
         "created_at",
         "created_by",
         "modified_at",
@@ -178,6 +179,7 @@ class LocationAdmin(
     list_display = [
         "identifier",
         "colored_data_source",
+        "location_type",
         "project",
         "reference",
         "campaign",
@@ -190,6 +192,10 @@ class LocationAdmin(
     ]
     autocomplete_fields = ["tags"]
     list_filter = [
+        (
+            "location_type",
+            ChoicesDropdownFilter,
+        ),
         (
             "data_source",
             ChoicesDropdownFilter,
@@ -245,6 +251,7 @@ class LocationAdmin(
                 "fields": (
                     "id",
                     ("identifier", "data_source"),
+                    ("location_type",),
                     ("project", "reference"),
                     ("campaign", "date_of_record"),
                     "processor",
