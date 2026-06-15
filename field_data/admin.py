@@ -10,7 +10,7 @@ from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from django.urls import path
-from import_export.admin import ExportMixin
+from import_export.admin import ExportMixin, ImportExportMixin
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.contrib.filters.admin import (
     ChoicesDropdownFilter,
@@ -158,7 +158,7 @@ class TagFilterMixin:
 
 
 class LocationAdmin(
-    TagFilterMixin, ExportMixin, ModelAdmin, ProjectBasedPermissionMixin
+    TagFilterMixin, ImportExportMixin, ModelAdmin, ProjectBasedPermissionMixin
 ):
     """Admin interface for Location records with export and project-based permissions."""
 
