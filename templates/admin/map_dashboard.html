@@ -7,135 +7,217 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" crossorigin="anonymous" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="anonymous" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.css" crossorigin="anonymous" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@3.0.2/Control.FullScreen.css" crossorigin="anonymous" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/leaflet-measure@3.1.0/dist/leaflet-measure.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/leaflet.fullscreen@3.0.2/Control.FullScreen.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10/ol.css" />
+<script src="https://cdn.jsdelivr.net/npm/ol@10/dist/ol.js"></script>
 <style>
-  #cgdb-map {
-    min-height: 500px;
-    border-radius: 6px;
+  /* ── GIS shell layout ── */
+  #cgdb-gis-shell {
+    display: flex;
     overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    min-height: 400px;
   }
 
-  /* Popup */
-  .cgdb-popup strong { display: block; margin-bottom: 4px; }
-  .cgdb-popup a { color: #3b82f6; text-decoration: none; }
-  .cgdb-popup a:hover { text-decoration: underline; }
-  .cgdb-popup .badge {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-size: 0.75em;
-    font-weight: 600;
-    margin-top: 4px;
-  }
-  .cgdb-popup .badge-internal   { background: #dbeafe; color: #1e40af; }
-  .cgdb-popup .badge-literature { background: #f3f4f6; color: #374151; }
-  .cgdb-popup .popup-row {
+  /* ── Sidebar ── */
+  #cgdb-sidebar {
+    width: 260px;
+    flex-shrink: 0;
     display: flex;
-    gap: 6px;
-    font-size: 0.85em;
-    margin-top: 3px;
+    flex-direction: column;
+    border-right: 1px solid #e5e7eb;
+    background: #fff;
+    transition: width 0.18s ease;
+    overflow: hidden;
+    position: relative;
   }
-  .cgdb-popup .popup-label {
-    color: #6b7280;
-    min-width: 58px;
+  #cgdb-sidebar.collapsed { width: 0; }
+
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
     flex-shrink: 0;
   }
-  .cgdb-popup .popup-analyses {
-    margin-top: 5px;
-    padding-top: 5px;
-    border-top: 1px solid #e5e7eb;
-    font-size: 0.82em;
-    color: #374151;
-  }
-
-  /* Filter control */
-  .cgdb-filter {
-    background: white;
-    border-radius: 4px !important;
-    padding: 8px 10px;
-    min-width: 148px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.3);
-    font-size: 13px;
-    line-height: 1.4;
-    margin-top: 10px;
-  }
-  .cgdb-filter-title {
-    font-weight: 700;
-    margin-bottom: 6px;
+  .sidebar-tab {
+    flex: 1;
+    padding: 9px 4px;
     font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    color: #6b7280;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .sidebar-tab:hover { color: #374151; }
+  .sidebar-tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+
+  .sidebar-panel { display: none; padding: 10px 12px; overflow-y: auto; flex: 1; }
+  .sidebar-panel.active { display: block; }
+
+  .ls-section { margin-bottom: 14px; }
+  .ls-section-title {
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #6b7280;
+    color: #9ca3af;
+    margin-bottom: 5px;
   }
-  .cgdb-filter label {
+  .ls-item {
     display: flex;
     align-items: center;
     gap: 6px;
-    cursor: pointer;
-    margin-bottom: 3px;
     padding: 2px 0;
-    color: #111827;
-  }
-  .cgdb-filter select {
-    display: block;
-    width: 100%;
-    margin-top: 7px;
-    font-size: 12px;
-    padding: 3px 5px;
-    border: 1px solid #d1d5db;
-    border-radius: 3px;
+    font-size: 13px;
+    color: #1f2937;
     cursor: pointer;
-    color: #111827;
-    background: white;
+  }
+  .ls-item input[type="checkbox"],
+  .ls-item input[type="radio"] { cursor: pointer; flex-shrink: 0; }
+  .ls-sublabel { font-size: 11px; color: #9ca3af; padding-left: 20px; }
+  .ls-opacity {
+    display: block;
+    width: calc(100% - 20px);
+    margin: 2px 0 4px 20px;
+    accent-color: #3b82f6;
   }
 
-  /* Legend */
-  .cgdb-legend {
-    background: white;
-    border-radius: 4px !important;
-    padding: 8px 10px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  /* ── Filter selects ── */
+  .cgdb-select {
+    width: 100%;
+    margin-bottom: 4px;
     font-size: 12px;
-    line-height: 1.5;
-    max-width: 200px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 4px 6px;
+    background: #fff;
+    color: #1f2937;
   }
-  .cgdb-legend-title {
-    font-weight: 700;
-    margin-bottom: 5px;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #6b7280;
-  }
+
+  /* ── Legend ── */
   .cgdb-legend-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 2px;
-    color: #111827;
+    gap: 7px;
+    font-size: 12px;
+    color: #374151;
+    margin-bottom: 3px;
   }
   .cgdb-legend-row svg { flex-shrink: 0; }
 
-  /* Coordinate display */
-  .cgdb-coords {
-    background: rgba(255,255,255,0.85);
+  /* ── Sidebar toggle ── */
+  #cgdb-sidebar-toggle {
+    position: absolute;
+    right: -18px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1001;
+    width: 18px;
+    height: 44px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    font-size: 11px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.08);
+    padding: 0;
+  }
+  #cgdb-sidebar-toggle:hover { color: #1f2937; }
+
+  /* ── Map zone ── */
+  #cgdb-map-zone { flex: 1; position: relative; min-width: 0; }
+  #cgdb-map { width: 100%; height: 100%; }
+
+  /* ── Coordinates ── */
+  #cgdb-coords {
+    position: absolute;
+    bottom: 26px;
+    left: 8px;
+    z-index: 999;
+    background: rgba(255,255,255,0.88);
     border-radius: 3px;
-    padding: 2px 7px;
+    padding: 2px 8px;
     font-size: 11px;
     font-family: monospace;
     color: #374151;
-    min-width: 160px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    margin-bottom: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    pointer-events: none;
   }
+
+  /* ── Popup ── */
+  .ol-popup {
+    position: absolute;
+    background: #fff;
+    border-radius: 6px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.22);
+    font-size: 13px;
+    min-width: 200px;
+    max-width: 300px;
+    transform: translate(-50%, calc(-100% - 14px));
+    pointer-events: auto;
+  }
+  .ol-popup::after {
+    content: '';
+    position: absolute;
+    bottom: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 9px solid transparent;
+    border-bottom: none;
+    border-top-color: #fff;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.12));
+  }
+  .ol-popup-close {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #9ca3af;
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
+  }
+  .ol-popup-close:hover { color: #1f2937; }
+  .cgdb-popup strong { display: block; margin-bottom: 5px; font-size: 14px; }
+  .cgdb-popup a { color: #3b82f6; text-decoration: none; }
+  .cgdb-popup a:hover { text-decoration: underline; }
+  .popup-row { display: flex; gap: 6px; font-size: 12px; margin-top: 3px; }
+  .popup-label { color: #9ca3af; min-width: 64px; flex-shrink: 0; }
+  .popup-analyses {
+    margin-top: 6px; padding-top: 6px;
+    border-top: 1px solid #f3f4f6;
+    font-size: 11px; color: #6b7280;
+  }
+  .badge {
+    display: inline-block;
+    padding: 1px 6px; border-radius: 3px;
+    font-size: 10px; font-weight: 700; margin-top: 5px;
+  }
+  .badge-internal   { background: #dbeafe; color: #1e40af; }
+  .badge-literature { background: #f3f4f6; color: #374151; }
+  .cluster-list {
+    margin: 6px 0 0; padding-left: 16px;
+    font-size: 12px; max-height: 160px; overflow-y: auto;
+  }
+  .cluster-list li { margin-bottom: 2px; }
+  .wms-info-table { font-size: 12px; border-collapse: collapse; width: 100%; }
+  .wms-info-table td { padding: 2px 5px; border-bottom: 1px solid #f3f4f6; }
+  .wms-info-table td:first-child { color: #6b7280; font-weight: 600; min-width: 80px; }
+
+  /* ── Fullscreen ── */
+  #cgdb-gis-shell:fullscreen { width: 100vw; height: 100vh; border-radius: 0; }
+  #cgdb-gis-shell:-webkit-full-screen { width: 100vw; height: 100vh; border-radius: 0; }
 </style>
 {% endblock %}
 
@@ -149,349 +231,569 @@
 <div class="mb-3">
     {% component "unfold/components/navigation.html" with items=navigation %}{% endcomponent %}
 </div>
-<div id="cgdb-map"></div>
+
+<div id="cgdb-gis-shell">
+
+  <!-- ── Sidebar ── -->
+  <aside id="cgdb-sidebar">
+    <nav class="sidebar-tabs">
+      <button class="sidebar-tab active" data-tab="layers">Layers</button>
+      <button class="sidebar-tab" data-tab="filter">Filter</button>
+      <button class="sidebar-tab" data-tab="legend">Legend</button>
+    </nav>
+
+    <!-- Layers panel -->
+    <div id="tab-layers" class="sidebar-panel active">
+      <div class="ls-section">
+        <div class="ls-section-title">Basemap</div>
+        <label class="ls-item"><input type="radio" name="basemap" value="esri_sat" checked> ESRI Satellite</label>
+        <label class="ls-item"><input type="radio" name="basemap" value="carto_light"> CartoDB Light</label>
+        <label class="ls-item"><input type="radio" name="basemap" value="carto_dark"> CartoDB Dark</label>
+        <label class="ls-item"><input type="radio" name="basemap" value="topo"> OpenTopoMap</label>
+        <label class="ls-item"><input type="radio" name="basemap" value="google_sat"> Google Satellite</label>
+      </div>
+      <div class="ls-section">
+        <div class="ls-section-title">Own data</div>
+        <label class="ls-item"><input type="checkbox" data-layer="locations" checked> Locations</label>
+        <label class="ls-item"><input type="checkbox" data-layer="study_areas" checked> Study Areas</label>
+        <label class="ls-item"><input type="checkbox" data-layer="transects" checked> Transects</label>
+      </div>
+      <div class="ls-section">
+        <div class="ls-section-title">Geological overlays</div>
+        <label class="ls-item">
+          <input type="checkbox" data-layer="bgr_geo"> BGR Hydrogeologie 1:250k
+        </label>
+        <div class="ls-sublabel">Deutschland, WMS</div>
+        <input type="range" class="ls-opacity" data-opacity-for="bgr_geo" min="0" max="1" step="0.05" value="0.7">
+        <label class="ls-item" style="margin-top:6px;">
+          <input type="checkbox" data-layer="macrostrat"> Macrostrat (global)
+        </label>
+        <div class="ls-sublabel">Globale Geologiekarte, Tiles</div>
+        <input type="range" class="ls-opacity" data-opacity-for="macrostrat" min="0" max="1" step="0.05" value="0.8">
+      </div>
+    </div>
+
+    <!-- Filter panel -->
+    <div id="tab-filter" class="sidebar-panel">
+      <div class="ls-section">
+        <div class="ls-section-title">Data source</div>
+        <label class="ls-item"><input type="checkbox" id="cb-internal" checked> Internal</label>
+        <label class="ls-item"><input type="checkbox" id="cb-literature" checked> Literature</label>
+      </div>
+      <div class="ls-section">
+        <div class="ls-section-title">Project</div>
+        <select id="project-select" class="cgdb-select"><option value="">All projects</option></select>
+      </div>
+      <div class="ls-section">
+        <div class="ls-section-title">Campaign</div>
+        <select id="campaign-select" class="cgdb-select"><option value="">All campaigns</option></select>
+      </div>
+      <div class="ls-section">
+        <div class="ls-section-title">Location type</div>
+        <select id="type-select" class="cgdb-select"><option value="">All types</option></select>
+      </div>
+      <div id="cgdb-filter-count" style="font-size:11px; color:#9ca3af; margin-top:4px;"></div>
+    </div>
+
+    <!-- Legend panel -->
+    <div id="tab-legend" class="sidebar-panel">
+      <div class="ls-section">
+        <div class="ls-section-title">Location type</div>
+        <div class="cgdb-legend-row"><svg width="14" height="14"><circle cx="7" cy="7" r="5.5" fill="#3b82f6" stroke="#1d4ed8" stroke-width="1.5"/></svg> Sampling Location</div>
+        <div class="cgdb-legend-row"><svg width="14" height="14"><rect x="1.5" y="1.5" width="11" height="11" rx="1" fill="#f59e0b" stroke="#d97706" stroke-width="1.5"/></svg> Camp / Infrastructure</div>
+        <div class="cgdb-legend-row"><svg width="14" height="14"><polygon points="7,1.5 12.5,7 7,12.5 1.5,7" fill="#10b981" stroke="#059669" stroke-width="1.5"/></svg> Weather / Survey</div>
+        <div class="cgdb-legend-row"><svg width="14" height="14"><polygon points="7,1.5 12.5,12.5 1.5,12.5" fill="#10b981" stroke="#059669" stroke-width="1.5"/></svg> Observation</div>
+        <div class="cgdb-legend-row"><svg width="14" height="14"><polygon points="7,1.5 12.5,7 7,12.5 1.5,7" fill="#8b5cf6" stroke="#7c3aed" stroke-width="1.5"/></svg> Other</div>
+        <div class="cgdb-legend-row"><svg width="14" height="14"><circle cx="7" cy="7" r="5.5" fill="#9ca3af" stroke="#6b7280" stroke-width="1.5"/></svg> Literature</div>
+        <div class="cgdb-legend-row"><svg width="14" height="14"><circle cx="7" cy="7" r="7" fill="rgba(59,130,246,0.8)" stroke="#1d4ed8" stroke-width="1.5"/><text x="7" y="10.5" text-anchor="middle" font-size="7" fill="#fff" font-weight="700">n</text></svg> Cluster</div>
+      </div>
+      <div class="ls-section">
+        <div class="ls-section-title">Layers</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="rgba(16,185,129,0.2)" stroke="#059669" stroke-width="1.2"/></svg> Study Area</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#f97316" stroke-width="2" stroke-dasharray="5,3"/></svg> Transect</div>
+      </div>
+      <div id="legend-bgr" style="display:none;">
+        <div class="ls-section-title" style="margin-bottom:5px;">BGR Hydrogeologie</div>
+        <img src="https://services.bgr.de/wms/grundwasser/huek250/?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.3.0&LAYER=0&FORMAT=image/png&SLD_VERSION=1.1.0"
+             style="max-width:100%; display:block; border-radius:3px;" alt="BGR Legende">
+      </div>
+      <div id="legend-macrostrat" style="display:none;">
+        <div class="ls-section-title" style="margin-bottom:5px;">Macrostrat (global)</div>
+        <div style="font-size:11px; color:#6b7280;">Farben = geologische Einheiten<br>
+          <a href="https://macrostrat.org" target="_blank" style="color:#3b82f6;">macrostrat.org →</a></div>
+      </div>
+    </div>
+
+    <!-- Sidebar toggle button -->
+    <button id="cgdb-sidebar-toggle" title="Sidebar ein-/ausblenden">&#8249;</button>
+  </aside>
+
+  <!-- ── Map zone ── -->
+  <div id="cgdb-map-zone">
+
+    <!-- Map canvas -->
+    <div id="cgdb-map"></div>
+
+    <!-- Coordinate display -->
+    <div id="cgdb-coords"></div>
+
+    <!-- Popup -->
+    <div id="cgdb-popup" class="ol-popup" style="display:none;">
+      <button class="ol-popup-close" id="cgdb-popup-close">&#x2715;</button>
+      <div id="cgdb-popup-content" class="cgdb-popup"></div>
+    </div>
+  </div>
+</div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    function esc(str) {
-        var d = document.createElement('div');
-        d.appendChild(document.createTextNode(str == null ? '' : String(str)));
-        return d.innerHTML;
-    }
+(function () {
+'use strict';
 
-    /* ── Tile layers ── */
-    var lightTile = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
-    );
-    var darkTile = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
-    );
-    var googleSat = L.tileLayer(
-        'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-        { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'] }
-    );
-    var esriSat = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: 'Tiles &copy; Esri', maxZoom: 17 }
-    );
-    var topoMap = L.tileLayer(
-        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-        { maxZoom: 17, attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)' }
-    );
+/* ── Utility ── */
+function esc(v) {
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(v == null ? '' : String(v)));
+  return d.innerHTML;
+}
+/* ── Basemap sources ── */
+var BASEMAPS = {
+  esri_sat: new ol.source.XYZ({
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 17, attributions: 'Tiles &copy; Esri',
+  }),
+  google_sat: new ol.source.XYZ({
+    url: 'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+    maxZoom: 20, attributions: '&copy; Google',
+  }),
+  carto_light: new ol.source.XYZ({
+    url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    maxZoom: 19, attributions: '&copy; <a href="https://carto.com">CARTO</a>',
+  }),
+  carto_dark: new ol.source.XYZ({
+    url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    maxZoom: 19, attributions: '&copy; <a href="https://carto.com">CARTO</a>',
+  }),
+  topo: new ol.source.XYZ({
+    url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
+    maxZoom: 17, attributions: '&copy; OpenTopoMap contributors',
+  }),
+};
+var basemapLayer = new ol.layer.Tile({ source: BASEMAPS.esri_sat });
 
-    /* ── Map ── */
-    var map = L.map('cgdb-map', { center: [30, 10], zoom: 2, layers: [googleSat] });
+/* ── Geological overlay layers ── */
+var wmsLayers = {
+  bgr_geo: new ol.layer.Image({
+    visible: false, opacity: 0.7,
+    source: new ol.source.ImageWMS({
+      url: 'https://services.bgr.de/wms/grundwasser/huek250/',
+      params: { LAYERS: '0,1,2,3,4,5,6,7', FORMAT: 'image/png', TRANSPARENT: 'true' },
+      ratio: 1, crossOrigin: null, attributions: '&copy; BGR',
+    }),
+  }),
+  macrostrat: new ol.layer.Tile({
+    visible: false, opacity: 0.8,
+    source: new ol.source.XYZ({
+      url: 'https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png',
+      maxZoom: 16,
+      attributions: '&copy; <a href="https://macrostrat.org">Macrostrat</a>',
+    }),
+    zIndex: 3,
+  }),
+};
 
-    L.control.layers(
-        { 'Light': lightTile, 'Dark': darkTile, 'Google Satellite': googleSat, 'Esri Satellite': esriSat, 'OpenTopoMap': topoMap },
-        {},
-        { position: 'topright' }
-    ).addTo(map);
+/* ── Location styling ── */
+var TYPE_FILL   = {
+  sampling_location: '#3b82f6', camp: '#f59e0b', road_access: '#f59e0b',
+  infrastructure: '#f59e0b', weather_station: '#10b981', survey_point: '#10b981',
+  observation: '#10b981', other: '#8b5cf6',
+};
+var TYPE_STROKE = {
+  sampling_location: '#1d4ed8', camp: '#d97706', road_access: '#d97706',
+  infrastructure: '#d97706', weather_station: '#059669', survey_point: '#059669',
+  observation: '#059669', other: '#7c3aed',
+};
+var TYPE_SHAPE = {
+  sampling_location: 'circle', camp: 'square', road_access: 'square',
+  infrastructure: 'square', weather_station: 'diamond', survey_point: 'diamond',
+  observation: 'triangle', other: 'diamond',
+};
 
-    L.control.fullscreen({ position: 'topright' }).addTo(map);
+function makePointStyle(locType, dataSource) {
+  var isLit  = dataSource === 'literature';
+  var fill   = new ol.style.Fill({ color: isLit ? '#9ca3af' : (TYPE_FILL[locType]   || TYPE_FILL.other) });
+  var stroke = new ol.style.Stroke({ color: isLit ? '#6b7280' : (TYPE_STROKE[locType] || TYPE_STROKE.other), width: 1.5 });
+  var shape  = isLit ? 'circle' : (TYPE_SHAPE[locType] || 'circle');
+  var image;
+  if (shape === 'circle')   image = new ol.style.Circle({ radius: isLit ? 5 : 7, fill: fill, stroke: stroke });
+  else if (shape === 'square')   image = new ol.style.RegularShape({ points: 4, radius: 7, angle: Math.PI / 4, fill: fill, stroke: stroke });
+  else if (shape === 'diamond')  image = new ol.style.RegularShape({ points: 4, radius: 8, angle: 0, fill: fill, stroke: stroke });
+  else                           image = new ol.style.RegularShape({ points: 3, radius: 8, fill: fill, stroke: stroke });
+  return new ol.style.Style({ image: image });
+}
 
-    /* ── Measurement plugin ── */
-    L.control.measure({
-        position: 'topright',
-        primaryLengthUnit: 'meters',
-        secondaryLengthUnit: 'kilometers',
-        primaryAreaUnit: 'sqmeters',
-        secondaryAreaUnit: 'hectares',
-        activeColor: '#3b82f6',
-        completedColor: '#1d4ed8',
-    }).addTo(map);
+function clusterStyle(count) {
+  var r = Math.min(8 + Math.log(count + 1) * 3, 22);
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: r,
+      fill:   new ol.style.Fill({ color: 'rgba(59,130,246,0.85)' }),
+      stroke: new ol.style.Stroke({ color: '#1d4ed8', width: 1.5 }),
+    }),
+    text: new ol.style.Text({
+      text: String(count),
+      fill: new ol.style.Fill({ color: '#fff' }),
+      font: 'bold 11px sans-serif',
+    }),
+  });
+}
 
-    /* Freeze all view-moving methods while measuring */
-    var _frozen = {};
-    var _viewMethods = ['fitBounds', 'panTo', 'setView', 'flyTo', 'flyToBounds', 'panBy'];
-    map.on('measurestart', function () {
-        _viewMethods.forEach(function (m) {
-            _frozen[m] = map[m];
-            map[m] = function () { return map; };
-        });
-        map.doubleClickZoom.disable();
-        clusters.options.zoomToBoundsOnClick = false;
-    });
-    map.on('measurefinish', function () {
-        _viewMethods.forEach(function (m) { map[m] = _frozen[m]; });
-        map.doubleClickZoom.enable();
-        clusters.options.zoomToBoundsOnClick = true;
-    });
-
-    L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
-
-    /* ── Coordinate display ── */
-    var CoordControl = L.Control.extend({
-        options: { position: 'bottomleft' },
-        onAdd: function () {
-            var el = L.DomUtil.create('div', 'cgdb-coords leaflet-control');
-            map.on('mousemove', function (e) {
-                el.textContent = e.latlng.lat.toFixed(5) + ',  ' + e.latlng.lng.toFixed(5);
-            });
-            map.on('mouseout', function () { el.textContent = ''; });
-            return el;
-        }
-    });
-    new CoordControl().addTo(map);
-
-    /* ── Dynamic height: fill viewport below this element ── */
-    function resizeMap() {
-        var el = document.getElementById('cgdb-map');
-        var top = el.getBoundingClientRect().top + window.scrollY;
-        el.style.height = Math.max(500, window.innerHeight - top - 8) + 'px';
-        map.invalidateSize({ pan: false });
-    }
-    resizeMap();
-    window.addEventListener('resize', resizeMap);
-
-    /* ── Cluster groups ── */
-    var clusters = L.markerClusterGroup({ chunkedLoading: true });
-    map.addLayer(clusters);
-
-    /* ── Colors by location_type ── */
-    var TYPE_COLORS = {
-        sampling_location: { fill: '#3b82f6', stroke: '#1d4ed8' },
-        camp:              { fill: '#f59e0b', stroke: '#d97706' },
-        road_access:       { fill: '#f59e0b', stroke: '#d97706' },
-        infrastructure:    { fill: '#f59e0b', stroke: '#d97706' },
-        weather_station:   { fill: '#10b981', stroke: '#059669' },
-        survey_point:      { fill: '#10b981', stroke: '#059669' },
-        observation:       { fill: '#10b981', stroke: '#059669' },
-        other:             { fill: '#8b5cf6', stroke: '#7c3aed' },
-    };
-    var LITERATURE_COLOR = { fill: '#9ca3af', stroke: '#6b7280' };
-
-    /* ── Shapes by location_type ── */
-    var TYPE_SHAPES = {
-        sampling_location: 'circle',
-        camp:              'square',
-        road_access:       'square',
-        infrastructure:    'square',
-        weather_station:   'diamond',
-        survey_point:      'cross',
-        observation:       'triangle',
-        other:             'diamond',
-    };
-
-    /* ── SVG shape builder (shared by markers and legend) ── */
-    function svgShape(shape, fill, stroke, size) {
-        var h = size / 2, m = 1.5;
-        if (shape === 'circle') {
-            return '<circle cx="' + h + '" cy="' + h + '" r="' + (h - m) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
-        } else if (shape === 'square') {
-            return '<rect x="' + m + '" y="' + m + '" width="' + (size - 2*m) + '" height="' + (size - 2*m) + '" rx="1" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
-        } else if (shape === 'diamond') {
-            return '<polygon points="' + h + ',' + m + ' ' + (size-m) + ',' + h + ' ' + h + ',' + (size-m) + ' ' + m + ',' + h + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
-        } else if (shape === 'triangle') {
-            return '<polygon points="' + h + ',' + m + ' ' + (size-m) + ',' + (size-m) + ' ' + m + ',' + (size-m) + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>';
-        } else if (shape === 'cross') {
-            var t = size * 0.28, w = size - 2*t;
-            return '<rect x="' + t + '" y="' + m + '" width="' + w + '" height="' + (size-2*m) + '" rx="1" fill="' + fill + '" stroke="' + stroke + '" stroke-width="0.5"/>' +
-                   '<rect x="' + m + '" y="' + t + '" width="' + (size-2*m) + '" height="' + w + '" rx="1" fill="' + fill + '" stroke="' + stroke + '" stroke-width="0.5"/>';
-        }
-        return '';
-    }
-
-    /* ── Marker icon factory ── */
-    function makeMarkerIcon(type, dataSource) {
-        var c, shape;
-        if (dataSource === 'literature') {
-            c = LITERATURE_COLOR;
-            shape = 'circle';
-        } else {
-            c = TYPE_COLORS[type] || TYPE_COLORS['other'];
-            shape = TYPE_SHAPES[type] || 'circle';
-        }
-        var size = dataSource === 'literature' ? 12 : 16;
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '">' +
-                  svgShape(shape, c.fill, c.stroke, size) + '</svg>';
-        return L.divIcon({
-            html: svg,
-            className: '',
-            iconSize:    [size, size],
-            iconAnchor:  [size/2, size/2],
-            popupAnchor: [0, -size/2],
-        });
-    }
-
-    /* ── Legend (static, location_type) ── */
-    var LegendControl = L.Control.extend({
-        options: { position: 'bottomright' },
-        onAdd: function () {
-            var c = L.DomUtil.create('div', 'cgdb-legend leaflet-control');
-            L.DomEvent.disableClickPropagation(c);
-            var entries = [
-                { label: 'Sampling Location',     fill: '#3b82f6', stroke: '#1d4ed8', shape: 'circle'   },
-                { label: 'Camp / Infrastructure', fill: '#f59e0b', stroke: '#d97706', shape: 'square'   },
-                { label: 'Weather station',       fill: '#10b981', stroke: '#059669', shape: 'diamond'  },
-                { label: 'Survey point',          fill: '#10b981', stroke: '#059669', shape: 'cross'    },
-                { label: 'Observation',           fill: '#10b981', stroke: '#059669', shape: 'triangle' },
-                { label: 'Other',                 fill: '#8b5cf6', stroke: '#7c3aed', shape: 'diamond'  },
-                { label: 'Literature',            fill: '#9ca3af', stroke: '#6b7280', shape: 'circle'   },
-            ];
-            var html = '<div class="cgdb-legend-title">Location type</div>';
-            entries.forEach(function (e) {
-                var miniSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14">' +
-                              svgShape(e.shape, e.fill, e.stroke, 14) + '</svg>';
-                html += '<div class="cgdb-legend-row">' + miniSvg + esc(e.label) + '</div>';
-            });
-            c.innerHTML = html;
-            return c;
-        }
-    });
-    new LegendControl().addTo(map);
-
-    /* ── Popup builder ── */
-    function buildPopup(p) {
-        var badge = p.data_source === 'literature'
-            ? '<span class="badge badge-literature">Literature</span>'
-            : '<span class="badge badge-internal">Internal</span>';
-        var rows = '';
-        if (p.location_type_display) rows += '<div class="popup-row"><span class="popup-label">Category</span>' + esc(p.location_type_display) + '</div>';
-        if (p.project)        rows += '<div class="popup-row"><span class="popup-label">Project</span>'  + esc(p.project) + '</div>';
-        if (p.campaign)       rows += '<div class="popup-row"><span class="popup-label">Campaign</span>' + esc(p.campaign) + '</div>';
-        if (p.date_of_record) rows += '<div class="popup-row"><span class="popup-label">Date</span>'     + esc(p.date_of_record) + '</div>';
-        if (p.altitude != null) rows += '<div class="popup-row"><span class="popup-label">Altitude</span>' + esc(p.altitude) + ' m</div>';
-        if (p.exposure_type)  rows += '<div class="popup-row"><span class="popup-label">Type</span>'     + esc(p.exposure_type) + '</div>';
-        var analyses = '';
-        if (p.sample_count > 0) {
-            analyses = '<div class="popup-analyses">' + p.sample_count + ' sample(s)';
-            if (p.luminescence_count) analyses += ' \xb7 ' + p.luminescence_count + ' OSL/IRSL';
-            if (p.radiocarbon_count)  analyses += ' \xb7 ' + p.radiocarbon_count  + ' \xb9⁴C';
-            analyses += '</div>';
-        }
-        return '<div class="cgdb-popup">' +
-            '<strong>' + esc(p.identifier || '—') + '</strong>' +
-            rows + badge + analyses +
-            '<div style="margin-top:6px"><a href="' + esc(p.admin_url) + '">Open in admin →</a></div>' +
-            '</div>';
-    }
-
-    /* ── GeoJSON layer factory (reused by filter) ── */
-    function makeLayer(features) {
-        return L.geoJSON(
-            { type: 'FeatureCollection', features: features },
-            {
-                pointToLayer: function (feature, latlng) {
-                    var p = feature.properties;
-                    return L.marker(latlng, { icon: makeMarkerIcon(p.location_type, p.data_source) });
-                },
-                onEachFeature: function (feature, layer) {
-                    layer.bindPopup(buildPopup(feature.properties));
-                    var p = feature.properties;
-                    var tip = p.identifier || '—';
-                    if (p.project) tip += '\n' + p.project;
-                    layer.bindTooltip(tip, { sticky: true, opacity: 0.9 });
-                },
-            }
-        );
-    }
-
-    /* ── Location type labels ── */
-    var TYPE_LABELS = {
-        sampling_location: 'Sampling Location',
-        camp:              'Camp / Base camp',
-        road_access:       'Road access point',
-        infrastructure:    'Infrastructure',
-        weather_station:   'Weather station',
-        survey_point:      'Survey point',
-        observation:       'Observation point',
-        other:             'Other',
-    };
-
-    /* ── Filter state ── */
-    var allFeatures = [];
-    var cbInternal, cbLiterature, projectSelect, typeSelect;
-
-    function applyFilters() {
-        clusters.clearLayers();
-        var showInt  = cbInternal.checked;
-        var showLit  = cbLiterature.checked;
-        var proj     = projectSelect.value;
-        var locType  = typeSelect.value;
-        var filtered = allFeatures.filter(function (f) {
-            var p = f.properties;
-            if (p.data_source === 'internal'   && !showInt) return false;
-            if (p.data_source === 'literature' && !showLit) return false;
-            if (proj    && p.project       !== proj)    return false;
-            if (locType && p.location_type !== locType) return false;
-            return true;
-        });
-        clusters.addLayer(makeLayer(filtered));
-    }
-
-    /* ── Filter control ── */
-    var FilterControl = L.Control.extend({
-        options: { position: 'topleft' },
-        onAdd: function () {
-            var c = L.DomUtil.create('div', 'cgdb-filter leaflet-control');
-            L.DomEvent.disableClickPropagation(c);
-            L.DomEvent.disableScrollPropagation(c);
-            c.innerHTML =
-                '<div class="cgdb-filter-title">Filter</div>' +
-                '<label><input type="checkbox" id="cb-internal"   checked> Internal</label>' +
-                '<label><input type="checkbox" id="cb-literature" checked> Literature</label>' +
-                '<select id="project-select"><option value="">All projects</option></select>' +
-                '<select id="type-select"><option value="">All types</option></select>';
-            return c;
-        }
-    });
-    new FilterControl().addTo(map);
-
-    cbInternal    = document.getElementById('cb-internal');
-    cbLiterature  = document.getElementById('cb-literature');
-    projectSelect = document.getElementById('project-select');
-    typeSelect    = document.getElementById('type-select');
-    [cbInternal, cbLiterature, projectSelect, typeSelect].forEach(function (el) {
-        el.addEventListener('change', applyFilters);
-    });
-
-    /* ── Load GeoJSON ── */
-    fetch('/api/locations.geojson')
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            allFeatures = data.features || [];
-
-            /* Populate project dropdown */
-            var projects = [];
-            allFeatures.forEach(function (f) {
-                var p = f.properties.project;
-                if (p && projects.indexOf(p) === -1) projects.push(p);
-            });
-            projects.sort().forEach(function (p) {
-                var opt = document.createElement('option');
-                opt.value = p; opt.textContent = p;
-                projectSelect.appendChild(opt);
-            });
-
-            /* Populate location type dropdown */
-            var types = [];
-            allFeatures.forEach(function (f) {
-                var t = f.properties.location_type;
-                if (t && types.indexOf(t) === -1) types.push(t);
-            });
-            types.sort().forEach(function (t) {
-                var opt = document.createElement('option');
-                opt.value = t;
-                opt.textContent = TYPE_LABELS[t] || t;
-                typeSelect.appendChild(opt);
-            });
-
-            /* Initial render */
-            var layer = makeLayer(allFeatures);
-            clusters.addLayer(layer);
-
-            if (allFeatures.length > 0) {
-                var bounds = layer.getBounds();
-                if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
-            }
-        })
-        .catch(function (err) {
-            console.error('Failed to load locations:', err);
-        });
+/* ── Vector sources ── */
+var locationSource = new ol.source.Vector();
+var clusterSource  = new ol.source.Cluster({ source: locationSource, distance: 40 });
+var locationsLayer = new ol.layer.Vector({
+  source: clusterSource,
+  style: function (feat) {
+    var inner = feat.get('features');
+    if (!inner || !inner.length) return null;
+    if (inner.length > 1) return clusterStyle(inner.length);
+    return makePointStyle(inner[0].get('location_type'), inner[0].get('data_source'));
+  },
+  zIndex: 10,
 });
+
+var studyAreaSource = new ol.source.Vector();
+var studyAreasLayer = new ol.layer.Vector({
+  source: studyAreaSource,
+  style: new ol.style.Style({
+    fill:   new ol.style.Fill({ color: 'rgba(16,185,129,0.15)' }),
+    stroke: new ol.style.Stroke({ color: '#059669', width: 1.5 }),
+  }),
+  zIndex: 5,
+});
+
+var transectSource = new ol.source.Vector();
+var transectsLayer = new ol.layer.Vector({
+  source: transectSource,
+  style: new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: '#f97316', width: 2, lineDash: [6, 4] }),
+  }),
+  zIndex: 6,
+});
+
+/* ── Popup overlay ── */
+var popupEl = document.getElementById('cgdb-popup');
+var popup   = new ol.Overlay({
+  element: popupEl,
+  positioning: 'bottom-center',
+  offset: [0, -4],
+  stopEvent: true,
+});
+
+/* ── Map ── */
+var map = new ol.Map({
+  target: 'cgdb-map',
+  layers: [
+    basemapLayer,
+    wmsLayers.bgr_geo,
+    wmsLayers.macrostrat,
+    studyAreasLayer,
+    transectsLayer,
+    locationsLayer,
+  ],
+  view: new ol.View({ center: ol.proj.fromLonLat([10, 30]), zoom: 2 }),
+  controls: [
+    new ol.control.Zoom(),
+    new ol.control.ScaleLine(),
+    new ol.control.FullScreen({ source: document.getElementById('cgdb-gis-shell') }),
+  ],
+  overlays: [popup],
+});
+
+/* ── Shell height ── */
+function resizeShell() {
+  var shell = document.getElementById('cgdb-gis-shell');
+  var top   = shell.getBoundingClientRect().top + window.scrollY;
+  shell.style.height = Math.max(400, window.innerHeight - top - 16) + 'px';
+}
+window.addEventListener('resize', resizeShell);
+resizeShell();
+setTimeout(function () { map.updateSize(); }, 50);
+
+/* ── Coordinates on hover ── */
+map.on('pointermove', function (evt) {
+  if (evt.dragging) return;
+  var ll = ol.proj.toLonLat(evt.coordinate);
+  document.getElementById('cgdb-coords').textContent =
+    ll[1].toFixed(5) + '° N   ' + ll[0].toFixed(5) + '° E';
+});
+
+/* ── Data loading ── */
+var allLocationFeatures = [];
+
+function applyLocationFeatures(features) {
+  locationSource.clear();
+  locationSource.addFeatures(features);
+  document.getElementById('cgdb-filter-count').textContent =
+    features.length + ' location(s) shown';
+}
+
+function loadLocations() {
+  fetch('/api/locations.geojson')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var fmt = new ol.format.GeoJSON();
+      allLocationFeatures = fmt.readFeatures(data, { featureProjection: 'EPSG:3857' });
+      applyFilter();
+      populateFilterDropdowns(allLocationFeatures);
+    });
+}
+
+function loadStudyAreas() {
+  fetch('/api/study_areas.geojson')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      studyAreaSource.addFeatures(
+        new ol.format.GeoJSON().readFeatures(data, { featureProjection: 'EPSG:3857' })
+      );
+    });
+}
+
+function loadTransects() {
+  fetch('/api/transects.geojson')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      transectSource.addFeatures(
+        new ol.format.GeoJSON().readFeatures(data, { featureProjection: 'EPSG:3857' })
+      );
+    });
+}
+
+loadLocations();
+loadStudyAreas();
+loadTransects();
+
+/* ── Filter ── */
+function applyFilter() {
+  var showInternal   = document.getElementById('cb-internal').checked;
+  var showLiterature = document.getElementById('cb-literature').checked;
+  var project  = document.getElementById('project-select').value;
+  var campaign = document.getElementById('campaign-select').value;
+  var type     = document.getElementById('type-select').value;
+
+  var filtered = allLocationFeatures.filter(function (f) {
+    var p = f.getProperties();
+    if (p.data_source === 'internal'   && !showInternal)   return false;
+    if (p.data_source === 'literature' && !showLiterature)  return false;
+    if (project  && p.project       !== project)  return false;
+    if (campaign && p.campaign      !== campaign) return false;
+    if (type     && p.location_type !== type)     return false;
+    return true;
+  });
+  applyLocationFeatures(filtered);
+}
+
+function populateFilterDropdowns(features) {
+  var projects = [], campaigns = [], types = [], typeLabels = {};
+  features.forEach(function (f) {
+    var p = f.getProperties();
+    if (p.project  && projects.indexOf(p.project) === -1)           projects.push(p.project);
+    if (p.campaign && campaigns.indexOf(p.campaign) === -1)         campaigns.push(p.campaign);
+    if (p.location_type && types.indexOf(p.location_type) === -1)   types.push(p.location_type);
+    if (p.location_type) typeLabels[p.location_type] = p.location_type_display;
+  });
+  projects.sort(); campaigns.sort(); types.sort();
+
+  var pSel = document.getElementById('project-select');
+  projects.forEach(function (v) {
+    var o = document.createElement('option'); o.value = v; o.text = v; pSel.add(o);
+  });
+  var cSel = document.getElementById('campaign-select');
+  campaigns.forEach(function (v) {
+    var o = document.createElement('option'); o.value = v; o.text = v; cSel.add(o);
+  });
+  var tSel = document.getElementById('type-select');
+  types.forEach(function (v) {
+    var o = document.createElement('option'); o.value = v; o.text = typeLabels[v] || v; tSel.add(o);
+  });
+}
+
+['cb-internal', 'cb-literature', 'project-select', 'campaign-select', 'type-select'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', applyFilter);
+});
+
+/* ── Layer switcher ── */
+var LEGEND_IDS = { bgr_geo: 'legend-bgr', macrostrat: 'legend-macrostrat' };
+var layerMap = {
+  locations:   locationsLayer,
+  study_areas: studyAreasLayer,
+  transects:   transectsLayer,
+  bgr_geo:     wmsLayers.bgr_geo,
+  macrostrat:  wmsLayers.macrostrat,
+};
+
+document.querySelectorAll('[data-layer]').forEach(function (inp) {
+  inp.addEventListener('change', function () {
+    layerMap[inp.dataset.layer].setVisible(inp.checked);
+    var lid = LEGEND_IDS[inp.dataset.layer];
+    if (lid) document.getElementById(lid).style.display = inp.checked ? '' : 'none';
+  });
+});
+document.querySelectorAll('[name="basemap"]').forEach(function (radio) {
+  radio.addEventListener('change', function () {
+    if (radio.checked) basemapLayer.setSource(BASEMAPS[radio.value]);
+  });
+});
+document.querySelectorAll('.ls-opacity').forEach(function (slider) {
+  slider.addEventListener('input', function () {
+    layerMap[slider.dataset.opacityFor].setOpacity(+slider.value);
+  });
+});
+
+/* ── Sidebar tabs ── */
+document.querySelectorAll('.sidebar-tab').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.sidebar-tab').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.sidebar-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ── Sidebar toggle ── */
+var sidebarOpen = true;
+document.getElementById('cgdb-sidebar-toggle').addEventListener('click', function () {
+  sidebarOpen = !sidebarOpen;
+  var sidebar = document.getElementById('cgdb-sidebar');
+  var btn     = document.getElementById('cgdb-sidebar-toggle');
+  sidebar.classList.toggle('collapsed', !sidebarOpen);
+  btn.innerHTML = sidebarOpen ? '&#8249;' : '&#8250;';
+  setTimeout(function () { map.updateSize(); }, 200);
+});
+
+/* ── Popup helpers ── */
+function showPopup(coord, html) {
+  document.getElementById('cgdb-popup-content').innerHTML = html;
+  popupEl.style.display = 'block';
+  popup.setPosition(coord);
+}
+function hidePopup() {
+  popupEl.style.display = 'none';
+  popup.setPosition(undefined);
+}
+document.getElementById('cgdb-popup-close').addEventListener('click', hidePopup);
+
+/* ── Popup builders ── */
+function buildLocationPopup(p) {
+  var badge = p.data_source === 'literature'
+    ? '<span class="badge badge-literature">Literature</span>'
+    : '<span class="badge badge-internal">Internal</span>';
+  var rows = '';
+  if (p.location_type_display) rows += '<div class="popup-row"><span class="popup-label">Category</span>'  + esc(p.location_type_display) + '</div>';
+  if (p.project)               rows += '<div class="popup-row"><span class="popup-label">Project</span>'   + esc(p.project)               + '</div>';
+  if (p.campaign)              rows += '<div class="popup-row"><span class="popup-label">Campaign</span>'  + esc(p.campaign)              + '</div>';
+  if (p.date_of_record)        rows += '<div class="popup-row"><span class="popup-label">Date</span>'      + esc(p.date_of_record)        + '</div>';
+  if (p.altitude != null)      rows += '<div class="popup-row"><span class="popup-label">Altitude</span>'  + esc(p.altitude)              + ' m</div>';
+  if (p.exposure_type)         rows += '<div class="popup-row"><span class="popup-label">Exposure</span>'  + esc(p.exposure_type)         + '</div>';
+  var analyses = '';
+  if (p.sample_count > 0) {
+    analyses = '<div class="popup-analyses">' + p.sample_count + ' sample(s)';
+    if (p.luminescence_count) analyses += ' &middot; ' + p.luminescence_count + ' OSL/IRSL';
+    if (p.grain_size_count)   analyses += ' &middot; ' + p.grain_size_count   + ' grain size';
+    analyses += '</div>';
+  }
+  return '<strong>' + esc(p.identifier || '—') + '</strong>' + rows + badge + analyses +
+    '<div style="margin-top:7px"><a href="' + esc(p.admin_url) + '">Open in admin &rarr;</a></div>';
+}
+
+function buildStudyAreaPopup(p) {
+  var rows = '';
+  if (p.project)                 rows += '<div class="popup-row"><span class="popup-label">Project</span>' + esc(p.project) + '</div>';
+  if (p.climate_koeppen_display) rows += '<div class="popup-row"><span class="popup-label">Köppen</span>'  + esc(p.climate_koeppen_display) + '</div>';
+  if (p.ecozone_schultz_display) rows += '<div class="popup-row"><span class="popup-label">Ecozone</span>' + esc(p.ecozone_schultz_display) + '</div>';
+  return '<strong>' + esc(p.label || '—') + '</strong>' + rows +
+    '<div style="margin-top:7px"><a href="' + esc(p.admin_url) + '">Open in admin &rarr;</a></div>';
+}
+
+function buildTransectPopup(p) {
+  var rows = '';
+  if (p.study_area) rows += '<div class="popup-row"><span class="popup-label">Study Area</span>' + esc(p.study_area) + '</div>';
+  if (p.campaign)   rows += '<div class="popup-row"><span class="popup-label">Campaign</span>'   + esc(p.campaign)   + '</div>';
+  return '<strong>' + esc(p.identifier || '—') + '</strong>' + rows +
+    '<div style="margin-top:7px"><a href="' + esc(p.admin_url) + '">Open in admin &rarr;</a></div>';
+}
+
+function buildClusterPopup(features) {
+  var items = features.slice(0, 20).map(function (f) {
+    var p = f.getProperties();
+    return '<li><a href="' + esc(p.admin_url) + '">' + esc(p.identifier || '—') + '</a>' +
+      (p.project ? ' <span style="color:#9ca3af;font-size:10px;">(' + esc(p.project) + ')</span>' : '') + '</li>';
+  });
+  var extra = features.length > 20 ? '<li style="color:#9ca3af;">…and ' + (features.length - 20) + ' more</li>' : '';
+  return '<strong>' + features.length + ' locations</strong>' +
+    '<ul class="cluster-list">' + items.join('') + extra + '</ul>';
+}
+
+/* ── Click handler ── */
+map.on('click', function (evt) {
+  var hit = false;
+
+  map.forEachFeatureAtPixel(evt.pixel, function (feat, layer) {
+    if (hit) return;
+    if (layer === locationsLayer) {
+      var inner = feat.get('features');
+      if (!inner) return;
+      if (inner.length > 1) {
+        showPopup(evt.coordinate, buildClusterPopup(inner));
+      } else {
+        showPopup(evt.coordinate, buildLocationPopup(inner[0].getProperties()));
+      }
+      hit = true;
+    }
+    if (layer === studyAreasLayer) { showPopup(evt.coordinate, buildStudyAreaPopup(feat.getProperties())); hit = true; }
+    if (layer === transectsLayer)  { showPopup(evt.coordinate, buildTransectPopup(feat.getProperties()));  hit = true; }
+  }, { hitTolerance: 6 });
+
+  if (hit) return;
+
+  /* WMS GetFeatureInfo via server proxy */
+  var view       = map.getView();
+  var resolution = view.getResolution();
+  var projection = view.getProjection();
+  var wmsOrder   = ['bgr_geo'];  /* Macrostrat ist Tile-Layer, kein WMS */
+
+  function tryNextWms(idx) {
+    if (idx >= wmsOrder.length) { hidePopup(); return; }
+    var key   = wmsOrder[idx];
+    var layer = wmsLayers[key];
+    if (!layer.getVisible()) { tryNextWms(idx + 1); return; }
+    var url = layer.getSource().getFeatureInfoUrl(evt.coordinate, resolution, projection, {
+      INFO_FORMAT: 'application/vnd.ogc.gml', FEATURE_COUNT: 5,
+    });
+    if (!url) { tryNextWms(idx + 1); return; }
+    fetch('/api/wms-proxy?url=' + encodeURIComponent(url))
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var doc  = new DOMParser().parseFromString(text, 'text/xml');
+        var rows = '';
+        doc.querySelectorAll('*').forEach(function (el) {
+          if (el.children.length === 0 && el.textContent.trim() && el.localName.indexOf(':') === -1) {
+            rows += '<tr><td>' + esc(el.localName) + '</td><td>' + esc(el.textContent.trim()) + '</td></tr>';
+          }
+        });
+        if (rows) {
+          showPopup(evt.coordinate, '<table class="wms-info-table"><tbody>' + rows + '</tbody></table>');
+        } else {
+          tryNextWms(idx + 1);
+        }
+      })
+      .catch(function () { tryNextWms(idx + 1); });
+  }
+
+  tryNextWms(0);
+});
+
+
+})();
 </script>
 {% endcomponent %}
 {% endblock %}
