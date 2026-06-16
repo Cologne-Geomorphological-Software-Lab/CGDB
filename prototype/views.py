@@ -2,9 +2,12 @@
 
 import json
 import logging
+import urllib.error
+import urllib.request
 from calendar import monthrange
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
@@ -13,6 +16,7 @@ from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware, now
@@ -25,7 +29,7 @@ from analysis.models import (
     LuminescenceDating,
     RadiocarbonDating,
 )
-from field_data.models import Location, Sample
+from field_data.models import Location, Sample, StudyArea, Transect
 from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
@@ -116,9 +120,7 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
         luminescence_count=Count(
             "sample__luminescence_datings", distinct=True
         ),
-        radiocarbon_count=Count(
-            "sample__analysis_radiocarbon_datings", distinct=True
-        ),
+        grain_size_count=Count("sample__grain_sizes", distinct=True),
     )
 
     features = [
@@ -133,25 +135,113 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
                 "identifier": loc.identifier,
                 "project": str(loc.project) if loc.project else None,
                 "data_source": loc.data_source,
-                "admin_url": f"/field_data/location/{loc.id}/change/",
-                "altitude": loc.altitude,
-                "exposure_type": loc.exposure_type.name_en
-                if loc.exposure_type
-                else None,
+                "location_type": loc.location_type,
+                "location_type_display": loc.get_location_type_display(),
                 "campaign": loc.campaign.label if loc.campaign else None,
                 "date_of_record": loc.date_of_record.isoformat()
                 if loc.date_of_record
                 else None,
-                "location_type": loc.location_type,
-                "location_type_display": loc.get_location_type_display(),
+                "altitude": loc.altitude,
+                "exposure_type": loc.exposure_type.name_en
+                if loc.exposure_type
+                else None,
                 "sample_count": loc.sample_count,
                 "luminescence_count": loc.luminescence_count,
-                "radiocarbon_count": loc.radiocarbon_count,
+                "grain_size_count": loc.grain_size_count,
+                "admin_url": reverse(
+                    "admin:field_data_location_change", args=[loc.id]
+                ),
             },
         }
         for loc in qs
     ]
     return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@require_GET
+def study_areas_geojson(request: HttpRequest) -> HttpResponse:
+    """Return a GeoJSON FeatureCollection of all accessible study areas."""
+    if request.user.is_superuser:
+        qs = StudyArea.objects.exclude(geometry__isnull=True)
+    else:
+        project_ids = _accessible_projects(request.user).values_list(
+            "id", flat=True
+        )
+        qs = StudyArea.objects.filter(project_id__in=project_ids).exclude(
+            geometry__isnull=True
+        )
+
+    features = [
+        {
+            "type": "Feature",
+            "geometry": json.loads(sa.geometry.geojson),
+            "properties": {
+                "id": sa.id,
+                "label": sa.label,
+                "project": str(sa.project),
+                "climate_koeppen": sa.climate_koeppen,
+                "climate_koeppen_display": sa.get_climate_koeppen_display(),
+                "ecozone_schultz": sa.ecozone_schultz,
+                "ecozone_schultz_display": sa.get_ecozone_schultz_display(),
+                "admin_url": reverse(
+                    "admin:field_data_studyarea_change", args=[sa.id]
+                ),
+            },
+        }
+        for sa in qs.select_related("project")
+    ]
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@require_GET
+def transects_geojson(request: HttpRequest) -> HttpResponse:
+    """Return a GeoJSON FeatureCollection of all accessible transects."""
+    if request.user.is_superuser:
+        qs = Transect.objects.exclude(multiline__isnull=True)
+    else:
+        project_ids = _accessible_projects(request.user).values_list(
+            "id", flat=True
+        )
+        qs = Transect.objects.filter(
+            study_area__project_id__in=project_ids
+        ).exclude(multiline__isnull=True)
+
+    features = [
+        {
+            "type": "Feature",
+            "geometry": json.loads(t.multiline.geojson),
+            "properties": {
+                "id": t.id,
+                "identifier": t.identifier,
+                "study_area": str(t.study_area),
+                "campaign": t.campaign.label if t.campaign else None,
+                "admin_url": reverse(
+                    "admin:field_data_transect_change", args=[t.id]
+                ),
+            },
+        }
+        for t in qs.select_related("study_area", "campaign")
+    ]
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+_WMS_WHITELIST = ["services.bgr.de"]
+
+
+@require_GET
+def wms_proxy(request: HttpRequest) -> HttpResponse:
+    """Server-side proxy for WMS GetFeatureInfo to avoid browser CORS restrictions."""
+    url = request.GET.get("url", "")
+    host = urlparse(url).hostname or ""
+    if not any(host == w or host.endswith("." + w) for w in _WMS_WHITELIST):
+        return HttpResponse("Forbidden", status=403)
+    try:
+        with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
+            content = resp.read()
+            ct = resp.headers.get("Content-Type", "text/xml")
+    except (urllib.error.URLError, OSError):
+        return HttpResponse("", status=502)
+    return HttpResponse(content, content_type=ct)
 
 
 def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:

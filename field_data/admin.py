@@ -175,11 +175,19 @@ class LocationAdmin(
         "created_by",
         "modified_at",
         "updated_by",
+        "map_preview",
     ]
+
+    class Media:
+        """OL 10 assets for the satellite map preview widget."""
+
+        css = {"all": ["https://cdn.jsdelivr.net/npm/ol@10/ol.css"]}
+        js = ["https://cdn.jsdelivr.net/npm/ol@10/dist/ol.js"]
+
     list_display = [
         "identifier",
         "colored_data_source",
-        "location_type",
+        "colored_location_type",
         "project",
         "reference",
         "campaign",
@@ -235,6 +243,81 @@ class LocationAdmin(
         """Return the data source value for colour-coded display."""
         return obj.data_source
 
+    @display(
+        label={
+            "sampling_location": "info",
+            "camp": "warning",
+            "road_access": "warning",
+            "infrastructure": "warning",
+            "weather_station": "success",
+            "survey_point": "success",
+            "observation": "success",
+            "other": "danger",
+        },
+        description="Type",
+    )
+    def colored_location_type(self, obj: Location) -> str:
+        """Return the location type display value for colour-coded display."""
+        return obj.get_location_type_display() or "—"
+
+    def map_preview(self, obj: Location) -> str:
+        """Render a satellite preview map that reacts to easting/northing changes."""
+        from django.utils.safestring import mark_safe
+
+        if not obj.pk or obj.location is None:
+            return "Enter easting and northing, then save to see a satellite preview."
+        lon = obj.location.x
+        lat = obj.location.y
+        map_id = f"loc-map-{obj.pk}"
+        html = f"""
+<div id="{map_id}" style="width:100%;height:300px;border-radius:4px;margin-top:4px;"></div>
+<script>
+(function() {{
+  function initLocMap() {{
+    if (typeof ol === 'undefined') {{ setTimeout(initLocMap, 100); return; }}
+    var lon = {lon}, lat = {lat};
+    var markerSrc = new ol.source.Vector({{
+      features: [new ol.Feature({{ geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])) }})]
+    }});
+    var map = new ol.Map({{
+      target: '{map_id}',
+      layers: [
+        new ol.layer.Tile({{ source: new ol.source.XYZ({{
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}',
+          maxZoom: 17, attributions: 'Tiles &copy; Esri'
+        }}) }}),
+        new ol.layer.Vector({{
+          source: markerSrc,
+          style: new ol.style.Style({{ image: new ol.style.Circle({{
+            radius: 8, fill: new ol.style.Fill({{ color: '#3b82f6' }}),
+            stroke: new ol.style.Stroke({{ color: '#1d4ed8', width: 2 }})
+          }}) }})
+        }}),
+      ],
+      view: new ol.View({{ center: ol.proj.fromLonLat([lon, lat]), zoom: 14 }}),
+      controls: [new ol.control.ScaleLine()],
+    }});
+    function updateMarker() {{
+      var e = parseFloat(document.getElementById('id_easting')?.value);
+      var n = parseFloat(document.getElementById('id_northing')?.value);
+      if (!isNaN(e) && !isNaN(n)) {{
+        var coord = ol.proj.fromLonLat([e, n]);
+        markerSrc.getFeatures()[0].getGeometry().setCoordinates(coord);
+        map.getView().setCenter(coord);
+      }}
+    }}
+    ['id_easting', 'id_northing'].forEach(function(id) {{
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', updateMarker);
+    }});
+  }}
+  initLocMap();
+}})();
+</script>"""
+        return mark_safe(html)  # noqa: S308
+
+    map_preview.short_description = "Map preview (satellite)"
+
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         """Return queryset with related project, campaign, and reference pre-fetched."""
         return (
@@ -251,7 +334,7 @@ class LocationAdmin(
                 "fields": (
                     "id",
                     ("identifier", "data_source"),
-                    ("location_type",),
+                    ("location_type", "exposure_type"),
                     ("project", "reference"),
                     ("campaign", "date_of_record"),
                     "processor",
@@ -270,6 +353,7 @@ class LocationAdmin(
                     ("altitude", "srid"),
                     ("gps_accuracy", "positioning_method"),
                     "location",
+                    "map_preview",
                 ),
             },
         ),
@@ -279,7 +363,6 @@ class LocationAdmin(
                 "classes": ["tab"],
                 "fields": (
                     ("study_site", "transect"),
-                    "exposure_type",
                     ("liner", "sampling"),
                 ),
             },

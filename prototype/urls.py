@@ -21,7 +21,13 @@ from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 
-from prototype.views import locations_geojson, map_dashboard
+from prototype.views import (
+    locations_geojson,
+    map_dashboard,
+    study_areas_geojson,
+    transects_geojson,
+    wms_proxy,
+)
 
 urlpatterns = [
     path("map/", staff_member_required(map_dashboard), name="map_dashboard"),
@@ -29,6 +35,21 @@ urlpatterns = [
         "api/locations.geojson",
         staff_member_required(locations_geojson),
         name="locations_geojson",
+    ),
+    path(
+        "api/study_areas.geojson",
+        staff_member_required(study_areas_geojson),
+        name="study_areas_geojson",
+    ),
+    path(
+        "api/transects.geojson",
+        staff_member_required(transects_geojson),
+        name="transects_geojson",
+    ),
+    path(
+        "api/wms-proxy",
+        staff_member_required(wms_proxy),
+        name="wms_proxy",
     ),
     path("", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
