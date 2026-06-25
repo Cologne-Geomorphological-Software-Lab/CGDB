@@ -18,7 +18,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from django.utils.timezone import make_aware, now
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
@@ -30,6 +30,7 @@ from analysis.models import (
     RadiocarbonDating,
 )
 from field_data.models import Location, Sample, StudyArea, Transect
+from geodata.models import Geomorphon, Landform, WorldCover
 from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
@@ -96,6 +97,14 @@ def map_dashboard(request: HttpRequest) -> HttpResponse:
 
     context = _admin.site.each_context(request)
     context["navigation"] = _nav(request)
+    context["geojson_urls"] = {
+        "locations": reverse("locations_geojson"),
+        "study_areas": reverse("study_areas_geojson"),
+        "transects": reverse("transects_geojson"),
+        "geomorphons": reverse("geomorphons_geojson"),
+        "landforms": reverse("landforms_geojson"),
+        "worldcover": reverse("worldcover_geojson"),
+    }
     return render(request, "admin/map_dashboard.html", context)
 
 
@@ -225,6 +234,72 @@ def transects_geojson(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
+@require_GET
+def geomorphons_geojson(_request: HttpRequest) -> HttpResponse:
+    """Return a GeoJSON FeatureCollection of all geomorphon polygons."""
+    qs = Geomorphon.objects.exclude(geometry__isnull=True).select_related(
+        "study_area"
+    )
+    features = [
+        {
+            "type": "Feature",
+            "geometry": json.loads(g.geometry.geojson),
+            "properties": {
+                "id": g.id,
+                "geomorphon_class": g.geomorphon_class,
+                "geomorphon_class_display": g.get_geomorphon_class_display(),
+                "source": g.source,
+                "resolution_m": g.resolution_m,
+                "study_area": str(g.study_area) if g.study_area else None,
+            },
+        }
+        for g in qs
+    ]
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@require_GET
+def landforms_geojson(_request: HttpRequest) -> HttpResponse:
+    """Return a GeoJSON FeatureCollection of all landform polygons."""
+    qs = Landform.objects.exclude(geometry__isnull=True)
+    features = [
+        {
+            "type": "Feature",
+            "geometry": json.loads(lf.geometry.geojson),
+            "properties": {
+                "id": lf.id,
+                "murphy_code": lf.murphy_code,
+                "name_str": lf.name_str,
+                "division": lf.division,
+                "province": lf.province,
+                "continent": lf.continent,
+            },
+        }
+        for lf in qs
+    ]
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
+@require_GET
+def worldcover_geojson(_request: HttpRequest) -> HttpResponse:
+    """Return a GeoJSON FeatureCollection of all WorldCover polygons."""
+    qs = WorldCover.objects.exclude(geometry__isnull=True)
+    features = [
+        {
+            "type": "Feature",
+            "geometry": json.loads(wc.geometry.geojson),
+            "properties": {
+                "id": wc.id,
+                "landcover_class": wc.landcover_class,
+                "landcover_class_display": wc.get_landcover_class_display(),
+                "year": wc.year,
+            },
+        }
+        for wc in qs
+    ]
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
 _WMS_WHITELIST = ["services.bgr.de"]
 
 
@@ -236,7 +311,7 @@ def wms_proxy(request: HttpRequest) -> HttpResponse:
     if not any(host == w or host.endswith("." + w) for w in _WMS_WHITELIST):
         return HttpResponse("Forbidden", status=403)
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
+        with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310  # nosec B310 — hostname validated against _WMS_WHITELIST above
             content = resp.read()
             ct = resp.headers.get("Content-Type", "text/xml")
     except (urllib.error.URLError, OSError):
@@ -275,9 +350,9 @@ def stat_data(period_days: int = 30) -> dict:
     def _pct(count: int, total: int) -> float:
         return round(count / total * 100, 2) if total > 0 else 0
 
-    def _footer(count: int, total: int) -> str:  # nosec B703, B308 — only floats interpolated
+    def _footer(count: int, total: int) -> str:
         if count == 0:
-            return mark_safe(
+            return format_html(
                 '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
             )
         pct = _pct(count, total)
@@ -287,9 +362,12 @@ def stat_data(period_days: int = 30) -> dict:
             else "text-red-600 dark:text-red-400"
         )
         sign = "+" if pct > 0 else ""
-        return mark_safe(  # noqa: S308
-            f'<strong class="{color} font-semibold">{sign}{intcomma(pct)}%</strong>'
-            f"&nbsp; last {period_days} days",
+        return format_html(
+            '<strong class="{} font-semibold">{}{}</strong>&nbsp; last {} days',
+            color,
+            sign,
+            intcomma(pct),
+            period_days,
         )
 
     # Projects

@@ -195,7 +195,7 @@ def _export_model_table(conn, cfg, model, context) -> None:
             return
 
         _coerce_df_columns(df)
-        conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")  # noqa: S608
+        conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")  # noqa: S608  # nosec B608 — table_name derived from Django model metadata (app_label/model_name), not user input
         context.log.info("Exported %d rows to table %s", len(df), table_name)
     except Exception:  # noqa: BLE001
         context.log.error(

@@ -314,7 +314,7 @@ class LocationAdmin(
   initLocMap();
 }})();
 </script>"""
-        return mark_safe(html)  # noqa: S308
+        return mark_safe(html)  # noqa: S308  # nosec B703 B308 — interpolates only floats (lon/lat) and integer PK; no user-controlled strings
 
     map_preview.short_description = "Map preview (satellite)"
 

@@ -80,6 +80,11 @@ INSTALLED_APPS = [
     "django_filters",
     "crispy_forms",
     "docs",
+    # REST API
+    "rest_framework",
+    "rest_framework.authtoken",
+    "rest_framework_gis",
+    "drf_spectacular",
     # CGDB Apps
     "prototype",
     "field_data",
@@ -87,6 +92,7 @@ INSTALLED_APPS = [
     "bibliography",
     "laboratory",
     "orchestration",
+    "geodata",
 ]
 
 # ==============================================================================
@@ -247,6 +253,7 @@ LOGGING = {
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -258,6 +265,14 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "CGDB API",
+    "DESCRIPTION": "Cologne Geomorphological Database REST API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 # ==============================================================================
