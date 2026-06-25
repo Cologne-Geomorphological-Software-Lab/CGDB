@@ -19,6 +19,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware, now
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
@@ -352,7 +353,7 @@ def stat_data(period_days: int = 30) -> dict:
 
     def _footer(count: int, total: int) -> str:
         if count == 0:
-            return format_html(
+            return mark_safe(  # nosec B308 — pure static literal, no user input
                 '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
             )
         pct = _pct(count, total)
