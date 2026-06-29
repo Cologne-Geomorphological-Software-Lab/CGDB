@@ -46,6 +46,11 @@ from .models import (
     RawMeasurement,
     RawProcessing,
 )
+from .resources import (
+    GrainSizeResource,
+    LuminescenceDatingResource,
+    RadiocarbonDatingResource,
+)
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -334,6 +339,7 @@ class LuminescenceDatingAdmin(
 ):
     """Admin for LuminescenceDating with tabbed fieldsets and color-coded display columns."""
 
+    resource_classes = [LuminescenceDatingResource]
     project_path = "sample__location__project"
     save_on_top = True
     change_form_show_cancel_button = True
@@ -492,6 +498,7 @@ class RadiocarbonDatingAdmin(
 ):
     """Admin for the RadiocarbonDating model."""
 
+    resource_classes = [RadiocarbonDatingResource]
     change_form_show_cancel_button = True
     project_path = "sample__location__project"
     raw_id_fields = ["sample"]
@@ -758,12 +765,13 @@ _SAMPLE_CONC_MAX = 20
 
 class GrainSizeAdmin(
     SampleContextMixin,
-    ExportMixin,
+    ImportExportMixin,
     ModelAdmin,
     NestedProjectPermissionMixin,
 ):
     """Admin for GrainSize with file import, Wentworth fraction display, and a plot tab."""
 
+    resource_classes = [GrainSizeResource]
     change_form_show_cancel_button = True
     warn_unsaved_form = True
     compressed_fields = True

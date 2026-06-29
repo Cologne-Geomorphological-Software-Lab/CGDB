@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.contrib import admin
+from django.http import HttpResponse
+from import_export.admin import ExportMixin
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import (
     ChoicesDropdownFilter,
@@ -14,10 +16,22 @@ from unfold.contrib.filters.admin import (
 from unfold.decorators import display
 
 from .models import Author, Reference, ReferenceKeyword
+from .resources import AuthorResource, ReferenceResource
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
     from django.http import HttpRequest
+
+
+_BIBTEX_TYPE_MAP: dict[str, str] = {
+    "Paper": "article",
+    "Monography": "book",
+    "Chapter": "incollection",
+    "Collection": "book",
+    "PhD thesis": "phdthesis",
+    "Master's thesis": "mastersthesis",
+    "Bachelor's thesis": "mastersthesis",
+}
 
 
 class ReferenceKeywordAdmin(ModelAdmin):
@@ -30,9 +44,10 @@ class ReferenceKeywordAdmin(ModelAdmin):
     ordering = ["keyword"]
 
 
-class ReferenceAdmin(ModelAdmin):
+class ReferenceAdmin(ExportMixin, ModelAdmin):
     """Admin for the Reference model with tabbed fieldsets and custom list display."""
 
+    resource_classes = [ReferenceResource]
     change_form_show_cancel_button = True
     list_fullwidth = True
     fieldsets = [
@@ -122,6 +137,56 @@ class ReferenceAdmin(ModelAdmin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
+    actions = ["export_as_bibtex"]
+
+    def export_as_bibtex(
+        self, _request: HttpRequest, queryset: QuerySet
+    ) -> HttpResponse:
+        """Export the selected references as a BibTeX .bib file."""
+        qs = queryset.select_related("lead_author").prefetch_related(
+            "second_author"
+        )
+        entries: list[str] = []
+        for ref in qs:
+            entry_type = _BIBTEX_TYPE_MAP.get(ref.type, "misc")
+            cite_key = (
+                f"{ref.lead_author.last_name}{ref.year or 'unknown'}{ref.pk}"
+            )
+            author_names = [str(ref.lead_author)] + [
+                str(a) for a in ref.second_author.all()
+            ]
+            field_lines = [
+                f"  author = {{{' and '.join(author_names)}}}",
+                f"  title = {{{ref.title}}}",
+            ]
+            if ref.year:
+                field_lines.append(f"  year = {{{ref.year}}}")
+            if ref.journal:
+                field_lines.append(f"  journal = {{{ref.journal}}}")
+            if ref.volume:
+                field_lines.append(f"  volume = {{{ref.volume}}}")
+            if ref.number:
+                field_lines.append(f"  number = {{{ref.number}}}")
+            if ref.pages:
+                field_lines.append(f"  pages = {{{ref.pages}}}")
+            if ref.publisher:
+                field_lines.append(f"  publisher = {{{ref.publisher}}}")
+            if ref.doi:
+                field_lines.append(f"  doi = {{{ref.doi}}}")
+            entries.append(
+                f"@{entry_type}{{{cite_key},\n"
+                + ",\n".join(field_lines)
+                + "\n}"
+            )
+        response = HttpResponse(
+            "\n\n".join(entries), content_type="application/x-bibtex"
+        )
+        response["Content-Disposition"] = (
+            'attachment; filename="references.bib"'
+        )
+        return response
+
+    export_as_bibtex.short_description = "Export selected as BibTeX (.bib)"  # type: ignore[attr-defined]
 
     @display(
         label={
@@ -173,9 +238,10 @@ class LeadAuthorReferenceInline(TabularInline):
     show_change_link = True
 
 
-class AuthorAdmin(ModelAdmin):
+class AuthorAdmin(ExportMixin, ModelAdmin):
     """Admin for the Author model with an inline of their lead-author references."""
 
+    resource_classes = [AuthorResource]
     change_form_show_cancel_button = True
     list_fullwidth = True
     list_display = ["last_name", "first_name"]
