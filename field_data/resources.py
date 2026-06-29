@@ -157,14 +157,10 @@ class SampleResource(resources.ModelResource):
             "processor",
             "depth_top",
             "depth_bottom",
-            "depth_mid",
             "parent",
             "layer",
             "description",
             "material",
-            "label_a",
-            "label_b",
-            "label_c",
         )
 
 
