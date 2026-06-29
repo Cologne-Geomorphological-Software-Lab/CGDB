@@ -1,0 +1,449 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.tests.test_other_models &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.tests.test_other_models</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.tests.test_other_models</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tests for remaining analysis models.</span>
+
+<span class="sd">Covers: RadiocarbonDating, Counting, Pollen, PollenCount, GenericMeasurement,</span>
+<span class="sd">MicroXRFMeasurement, MicroXRFElementMap __str__ methods;</span>
+<span class="sd">RawMeasurement.filename(), RawProcessing.processed_filename();</span>
+<span class="sd">GrainSize.save() integration (reclassify triggered, no-data path).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">decimal</span> <span class="kn">import</span> <span class="n">Decimal</span>
+<span class="kn">from</span> <span class="nn">unittest.mock</span> <span class="kn">import</span> <span class="n">MagicMock</span>
+
+<span class="kn">from</span> <span class="nn">django.contrib.auth.models</span> <span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span> <span class="nn">django.core.files.uploadedfile</span> <span class="kn">import</span> <span class="n">SimpleUploadedFile</span>
+<span class="kn">from</span> <span class="nn">django.test</span> <span class="kn">import</span> <span class="n">SimpleTestCase</span><span class="p">,</span> <span class="n">TestCase</span>
+
+<span class="kn">from</span> <span class="nn">analysis.models</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Counting</span><span class="p">,</span>
+    <span class="n">GenericMeasurement</span><span class="p">,</span>
+    <span class="n">GrainSize</span><span class="p">,</span>
+    <span class="n">MicroXRFElementMap</span><span class="p">,</span>
+    <span class="n">MicroXRFMeasurement</span><span class="p">,</span>
+    <span class="n">Parameter</span><span class="p">,</span>
+    <span class="n">Pollen</span><span class="p">,</span>
+    <span class="n">PollenCount</span><span class="p">,</span>
+    <span class="n">RadiocarbonDating</span><span class="p">,</span>
+    <span class="n">RawMeasurement</span><span class="p">,</span>
+    <span class="n">RawProcessing</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">field_data.models</span> <span class="kn">import</span> <span class="n">Location</span><span class="p">,</span> <span class="n">Sample</span>
+<span class="kn">from</span> <span class="nn">laboratory.models</span> <span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">Method</span>
+<span class="kn">from</span> <span class="nn">prototype.models</span> <span class="kn">import</span> <span class="n">Project</span><span class="p">,</span> <span class="n">Researcher</span>
+
+
+<span class="k">class</span> <span class="nc">_AnalysisExtSetup</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">setUpTestData</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create_user</span><span class="p">(</span>
+            <span class="n">username</span><span class="o">=</span><span class="s2">&quot;aext_user&quot;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="s2">&quot;pw&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">researcher</span> <span class="o">=</span> <span class="n">Researcher</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">user</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">user</span><span class="p">,</span> <span class="n">academic_rank</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="n">position</span><span class="o">=</span><span class="s2">&quot;WiMa&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">project</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Other Analysis Project&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;OAP01&quot;</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;ACTIVE&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">Location</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;OAP_LOC&quot;</span><span class="p">,</span>
+            <span class="n">data_source</span><span class="o">=</span><span class="s2">&quot;internal&quot;</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">Sample</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;OAP_S01&quot;</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">Device</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;XRF Device&quot;</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">Method</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;XRF Analysis&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="s2">&quot;CHEM&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">parameter</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Iron&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;Fe&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;mg/kg&quot;</span>
+        <span class="p">)</span>
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># RadiocarbonDating.__str__</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="RadiocarbonDatingStrTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RadiocarbonDatingStrTest">[docs]</a>
+<span class="k">class</span> <span class="nc">RadiocarbonDatingStrTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="RadiocarbonDatingStrTest.test_str_format">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_format">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dating</span> <span class="o">=</span> <span class="n">RadiocarbonDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">lab</span><span class="o">=</span><span class="s2">&quot;Poznań&quot;</span><span class="p">,</span>
+            <span class="n">lab_id</span><span class="o">=</span><span class="s2">&quot;Poz-12345&quot;</span><span class="p">,</span>
+            <span class="n">age</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;12.500&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">dating</span><span class="p">),</span> <span class="s2">&quot;Poz-12345 (12.500 ka)&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RadiocarbonDatingStrTest.test_str_with_none_age">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_with_none_age">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_with_none_age</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dating</span> <span class="o">=</span> <span class="n">RadiocarbonDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">lab</span><span class="o">=</span><span class="s2">&quot;Poznań&quot;</span><span class="p">,</span>
+            <span class="n">lab_id</span><span class="o">=</span><span class="s2">&quot;Poz-99999&quot;</span><span class="p">,</span>
+            <span class="n">age</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">dating</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;Poz-99999&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;undated&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># Counting.__str__</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="CountingStrTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.CountingStrTest">[docs]</a>
+<span class="k">class</span> <span class="nc">CountingStrTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="CountingStrTest.test_str_returns_sample_str">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.CountingStrTest.test_str_returns_sample_str">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_returns_sample_str</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">counting</span> <span class="o">=</span> <span class="n">Counting</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Percent&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">counting</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">))</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># Pollen.__str__</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="PollenStrTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.PollenStrTest">[docs]</a>
+<span class="k">class</span> <span class="nc">PollenStrTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+
+<div class="viewcode-block" id="PollenStrTest.test_str_returns_latin_name">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.PollenStrTest.test_str_returns_latin_name">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_returns_latin_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">Pollen</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">Pollen</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;Quercus robur&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="s2">&quot;Quercus robur&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># PollenCount.__str__</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="PollenCountStrTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.PollenCountStrTest">[docs]</a>
+<span class="k">class</span> <span class="nc">PollenCountStrTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="PollenCountStrTest.test_str_format">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.PollenCountStrTest.test_str_format">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">counting</span> <span class="o">=</span> <span class="n">Counting</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;Absolute numbers&quot;</span>
+        <span class="p">)</span>
+        <span class="n">pollen</span> <span class="o">=</span> <span class="n">Pollen</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Betula&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;BET&quot;</span><span class="p">)</span>
+        <span class="n">pc</span> <span class="o">=</span> <span class="n">PollenCount</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">counting</span><span class="o">=</span><span class="n">counting</span><span class="p">,</span> <span class="n">pollen</span><span class="o">=</span><span class="n">pollen</span><span class="p">,</span> <span class="n">number</span><span class="o">=</span><span class="mi">42</span>
+        <span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">counting</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">pollen</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">pc</span><span class="p">),</span> <span class="n">expected</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># GenericMeasurement.__str__</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="GenericMeasurementStrTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.GenericMeasurementStrTest">[docs]</a>
+<span class="k">class</span> <span class="nc">GenericMeasurementStrTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="GenericMeasurementStrTest.test_str_format">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.GenericMeasurementStrTest.test_str_format">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gm</span> <span class="o">=</span> <span class="n">GenericMeasurement</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">parameter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="p">,</span>
+            <span class="n">value</span><span class="o">=</span><span class="mf">123.4</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">gm</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">),</span> <span class="n">result</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">),</span> <span class="n">result</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="p">),</span> <span class="n">result</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># MicroXRFMeasurement.__str__</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="MicroXRFMeasurementStrTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.MicroXRFMeasurementStrTest">[docs]</a>
+<span class="k">class</span> <span class="nc">MicroXRFMeasurementStrTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="MicroXRFMeasurementStrTest.test_str_format">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_format">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">MicroXRFMeasurement</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">measurement_date</span><span class="o">=</span><span class="s2">&quot;2024-05-10&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;MicroXRF&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">),</span> <span class="n">result</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;2024-05-10&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MicroXRFMeasurementStrTest.test_str_with_none_date">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_with_none_date">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_with_none_date</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">MicroXRFMeasurement</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">measurement_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;MicroXRF&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;None&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># MicroXRFElementMap.__str__</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="MicroXRFElementMapStrTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.MicroXRFElementMapStrTest">[docs]</a>
+<span class="k">class</span> <span class="nc">MicroXRFElementMapStrTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="MicroXRFElementMapStrTest.test_str_format">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.MicroXRFElementMapStrTest.test_str_format">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">measurement</span> <span class="o">=</span> <span class="n">MicroXRFMeasurement</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+        <span class="n">elem_map</span> <span class="o">=</span> <span class="n">MicroXRFElementMap</span><span class="p">(</span>
+            <span class="n">measurement</span><span class="o">=</span><span class="n">measurement</span><span class="p">,</span>
+            <span class="n">element</span><span class="o">=</span><span class="s2">&quot;Fe&quot;</span><span class="p">,</span>
+            <span class="n">raster_file</span><span class="o">=</span><span class="s2">&quot;microxrf_raster/test.tif&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">elem_map</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;Fe&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;map&quot;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># RawMeasurement.filename()</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="RawMeasurementFilenameTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RawMeasurementFilenameTest">[docs]</a>
+<span class="k">class</span> <span class="nc">RawMeasurementFilenameTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="RawMeasurementFilenameTest.test_filename_with_file">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_with_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_filename_with_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">uploaded</span> <span class="o">=</span> <span class="n">SimpleUploadedFile</span><span class="p">(</span>
+            <span class="s2">&quot;testdata.txt&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="s2">&quot;text/plain&quot;</span>
+        <span class="p">)</span>
+        <span class="n">rm</span> <span class="o">=</span> <span class="n">RawMeasurement</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">researcher</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">researcher</span><span class="p">,</span>
+            <span class="n">file</span><span class="o">=</span><span class="n">uploaded</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Django may append a suffix to avoid name collisions; check stem and extension</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">rm</span><span class="o">.</span><span class="n">filename</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;testdata&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.txt&quot;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="RawMeasurementFilenameTest.test_filename_without_file">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_without_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_filename_without_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">rm</span> <span class="o">=</span> <span class="n">RawMeasurement</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">RawMeasurement</span><span class="p">)</span>
+        <span class="n">rm</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">rm</span><span class="o">.</span><span class="n">filename</span><span class="p">())</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># RawProcessing.processed_filename()</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="RawProcessingFilenameTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RawProcessingFilenameTest">[docs]</a>
+<span class="k">class</span> <span class="nc">RawProcessingFilenameTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="RawProcessingFilenameTest.test_processed_filename_with_file">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_with_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_processed_filename_with_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">rp</span> <span class="o">=</span> <span class="n">RawProcessing</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">RawProcessing</span><span class="p">)</span>
+        <span class="n">mock_file</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+        <span class="n">mock_file</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;analysis/processed_data/result.csv&quot;</span>
+        <span class="n">rp</span><span class="o">.</span><span class="n">processed_file</span> <span class="o">=</span> <span class="n">mock_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">rp</span><span class="o">.</span><span class="n">processed_filename</span><span class="p">(),</span> <span class="s2">&quot;result.csv&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RawProcessingFilenameTest.test_processed_filename_without_file">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_without_file">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_processed_filename_without_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">rp</span> <span class="o">=</span> <span class="n">RawProcessing</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">RawProcessing</span><span class="p">)</span>
+        <span class="n">rp</span><span class="o">.</span><span class="n">processed_file</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">rp</span><span class="o">.</span><span class="n">processed_filename</span><span class="p">())</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># GrainSize.save() – integration</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="GrainSizeSaveIntegrationTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest">[docs]</a>
+<span class="k">class</span> <span class="nc">GrainSizeSaveIntegrationTest</span><span class="p">(</span><span class="n">_AnalysisExtSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="GrainSizeSaveIntegrationTest.test_save_triggers_reclassify">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_triggers_reclassify">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_save_triggers_reclassify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;L&quot;</span><span class="p">,</span>
+            <span class="n">classes</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">70.0</span><span class="p">],</span>
+            <span class="n">measured_data</span><span class="o">=</span><span class="p">[</span><span class="mf">40.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GrainSizeSaveIntegrationTest.test_save_without_measured_data_skips_reclassify">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_without_measured_data_skips_reclassify">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_save_without_measured_data_skips_reclassify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">gs</span> <span class="o">=</span> <span class="n">GrainSize</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="s2">&quot;L&quot;</span><span class="p">,</span>
+            <span class="n">classes</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">70.0</span><span class="p">],</span>
+            <span class="n">measured_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">clay</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">gs</span><span class="o">.</span><span class="n">fine_sand</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

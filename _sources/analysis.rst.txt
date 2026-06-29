@@ -1,0 +1,54 @@
+analysis package
+================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   analysis.migrations
+   analysis.tests
+
+Submodules
+----------
+
+analysis.admin module
+---------------------
+
+.. automodule:: analysis.admin
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.apps module
+--------------------
+
+.. automodule:: analysis.apps
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.forms module
+---------------------
+
+.. automodule:: analysis.forms
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.models module
+----------------------
+
+.. automodule:: analysis.models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: analysis
+   :members:
+   :show-inheritance:
+   :undoc-members:

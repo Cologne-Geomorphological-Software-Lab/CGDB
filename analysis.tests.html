@@ -1,0 +1,1152 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.tests package &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fc837d61"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">analysis.tests package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#analysis-tests-conftest-module">analysis.tests.conftest module</a></li>
+<li><a class="reference internal" href="#module-analysis.tests.test_admin">analysis.tests.test_admin module</a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_admin.AddViewRedirectTest"><code class="docutils literal notranslate"><span class="pre">AddViewRedirectTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_admin.AddViewRedirectTest.test_get_redirects_to_sample_scoped_add_url"><code class="docutils literal notranslate"><span class="pre">AddViewRedirectTest.test_get_redirects_to_sample_scoped_add_url()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.AddViewRedirectTest.test_get_via_changelist_filters_redirects"><code class="docutils literal notranslate"><span class="pre">AddViewRedirectTest.test_get_via_changelist_filters_redirects()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.AddViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url"><code class="docutils literal notranslate"><span class="pre">AddViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangeViewRedirectTest"><code class="docutils literal notranslate"><span class="pre">ChangeViewRedirectTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangeViewRedirectTest.setUpTestData"><code class="docutils literal notranslate"><span class="pre">ChangeViewRedirectTest.setUpTestData()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangeViewRedirectTest.test_get_redirects_to_sample_scoped_change_url"><code class="docutils literal notranslate"><span class="pre">ChangeViewRedirectTest.test_get_redirects_to_sample_scoped_change_url()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangeViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url"><code class="docutils literal notranslate"><span class="pre">ChangeViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangelistRedirectTest"><code class="docutils literal notranslate"><span class="pre">ChangelistRedirectTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_when_already_sample_scoped"><code class="docutils literal notranslate"><span class="pre">ChangelistRedirectTest.test_no_redirect_when_already_sample_scoped()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_without_sample_param"><code class="docutils literal notranslate"><span class="pre">ChangelistRedirectTest.test_no_redirect_without_sample_param()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.ChangelistRedirectTest.test_redirects_to_sample_scoped_url"><code class="docutils literal notranslate"><span class="pre">ChangelistRedirectTest.test_redirects_to_sample_scoped_url()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.InitialDataTest"><code class="docutils literal notranslate"><span class="pre">InitialDataTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_on_sample_scoped_add"><code class="docutils literal notranslate"><span class="pre">InitialDataTest.test_sample_pre_filled_on_sample_scoped_add()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_via_changelist_filters"><code class="docutils literal notranslate"><span class="pre">InitialDataTest.test_sample_pre_filled_via_changelist_filters()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis.tests.test_forms">analysis.tests.test_forms module</a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_forms.GrainSizeFormTest"><code class="docutils literal notranslate"><span class="pre">GrainSizeFormTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_forms.GrainSizeFormTest.test_form_instantiates"><code class="docutils literal notranslate"><span class="pre">GrainSizeFormTest.test_form_instantiates()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_forms.GrainSizeFormTest.test_required_fields_present"><code class="docutils literal notranslate"><span class="pre">GrainSizeFormTest.test_required_fields_present()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis.tests.test_grainsize">analysis.tests.test_grainsize module</a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_clay"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_clay()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_sand"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_coarse_sand()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_silt"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_coarse_silt()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_sand"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_fine_sand()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_silt"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_fine_silt()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fractions_present_equal_weights"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_fractions_present_equal_weights()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_sand"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_medium_sand()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_silt"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_all_medium_silt()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_2_is_fine_silt_not_clay"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_boundary_value_exactly_2_is_fine_silt_not_clay()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_values_at_or_above_2000_are_not_classified"><code class="docutils literal notranslate"><span class="pre">ReclassifyClassificationTest.test_values_at_or_above_2000_are_not_classified()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest"><code class="docutils literal notranslate"><span class="pre">ReclassifyInputHandlingTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_dict_input_raises_type_error"><code class="docutils literal notranslate"><span class="pre">ReclassifyInputHandlingTest.test_dict_input_raises_type_error()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_integer_input_raises_type_error"><code class="docutils literal notranslate"><span class="pre">ReclassifyInputHandlingTest.test_integer_input_raises_type_error()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_converted_to_list"><code class="docutils literal notranslate"><span class="pre">ReclassifyInputHandlingTest.test_json_string_is_converted_to_list()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_parsed_before_processing"><code class="docutils literal notranslate"><span class="pre">ReclassifyInputHandlingTest.test_json_string_is_parsed_before_processing()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_list_input_passes_through"><code class="docutils literal notranslate"><span class="pre">ReclassifyInputHandlingTest.test_list_input_passes_through()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_none_input_raises_type_error"><code class="docutils literal notranslate"><span class="pre">ReclassifyInputHandlingTest.test_none_input_raises_type_error()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyReturnValueTest"><code class="docutils literal notranslate"><span class="pre">ReclassifyReturnValueTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_fractions_sum_to_100_when_all_classes_under_2000"><code class="docutils literal notranslate"><span class="pre">ReclassifyReturnValueTest.test_fractions_sum_to_100_when_all_classes_under_2000()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_return_tuple_order"><code class="docutils literal notranslate"><span class="pre">ReclassifyReturnValueTest.test_return_tuple_order()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest"><code class="docutils literal notranslate"><span class="pre">ReclassifyZeroTotalTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_all_zeros_raises"><code class="docutils literal notranslate"><span class="pre">ReclassifyZeroTotalTest.test_all_zeros_raises()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_nonzero_data_does_not_raise"><code class="docutils literal notranslate"><span class="pre">ReclassifyZeroTotalTest.test_nonzero_data_does_not_raise()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_single_zero_raises"><code class="docutils literal notranslate"><span class="pre">ReclassifyZeroTotalTest.test_single_zero_raises()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis.tests.test_grainsize_fromfile">analysis.tests.test_grainsize_fromfile module</a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_bindiam_is_skipped"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_bindiam_is_skipped()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_binheight_is_skipped"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_binheight_is_skipped()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_sizestats_is_skipped"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_sizestats_is_skipped()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_latin1_encoding_does_not_raise"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest.test_latin1_encoding_does_not_raise()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_size_block_raises_value_error"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest.test_missing_size_block_raises_value_error()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_stats_fields_remain_none"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest.test_missing_stats_fields_remain_none()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_size_block_without_obs_raises_value_error"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileErrorHandlingTest.test_size_block_without_obs_raises_value_error()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.setUp"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.setUp()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_classes_parsed_correctly"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_classes_parsed_correctly()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_mean_of_multiple_obs"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_concentration_mean_of_multiple_obs()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_single_obs"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_concentration_single_obs()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_measured_data_parsed_correctly"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_measured_data_parsed_correctly()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_returns_grainsize_instance"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_returns_grainsize_instance()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_sample_and_method_assigned"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_sample_and_method_assigned()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwkurt_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_fwkurt_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmean_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_fwmean_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmedian_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_fwmedian_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwsd_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_fwsd_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwskew_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_fwskew_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_kurtosis_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_kurtosis_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mean_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_mean_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_median_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_median_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mode_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_mode_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_sd_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_sd_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_skew_parsed"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_stats_skew_parsed()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_unknown_block_is_ignored"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileHappyPathTest.test_unknown_block_is_ignored()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileIntegrationTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.setUpTestData"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileIntegrationTest.setUpTestData()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_can_be_saved"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileIntegrationTest.test_from_file_can_be_saved()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_returns_unsaved_instance"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileIntegrationTest.test_from_file_returns_unsaved_instance()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_save_triggers_reclassify"><code class="docutils literal notranslate"><span class="pre">GrainSizeFromFileIntegrationTest.test_save_triggers_reclassify()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis.tests.test_luminescence">analysis.tests.test_luminescence module</a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_dating_approach_choices_complete"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_dating_approach_choices_complete()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_decimal_fields_nullable"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_decimal_fields_nullable()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_fading_correction_is_false"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_default_fading_correction_is_false()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_published_is_false"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_default_published_is_false()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_thesis_is_none_string"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_default_thesis_is_none_string()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_mineral_choices_complete"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_mineral_choices_complete()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_only_sample_required"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_only_sample_required()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_sample_fk_restrict_on_delete"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingFieldsTest.test_sample_fk_restrict_on_delete()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrDBTest"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrDBTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrDBTest.test_str_with_saved_object"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrDBTest.test_str_with_saved_object()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrSimpleTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_lab_id_uses_pk"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrSimpleTest.test_str_empty_lab_id_uses_pk()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_mineral_shows_unknown"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrSimpleTest.test_str_empty_mineral_shows_unknown()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_no_lab_id"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrSimpleTest.test_str_unsaved_no_lab_id()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_with_lab_id"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrSimpleTest.test_str_unsaved_with_lab_id()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_with_lab_id_and_mineral"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingStrSimpleTest.test_str_with_lab_id_and_mineral()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingYearValidatorTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_1984_passes_validation"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingYearValidatorTest.test_year_1984_passes_validation()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_below_1984_fails_validation"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingYearValidatorTest.test_year_below_1984_fails_validation()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_current_year_passes_validation"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingYearValidatorTest.test_year_current_year_passes_validation()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_future_fails_validation"><code class="docutils literal notranslate"><span class="pre">LuminescenceDatingYearValidatorTest.test_year_future_fails_validation()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest"><code class="docutils literal notranslate"><span class="pre">MaxValueCurrentYearFunctionTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_current_year"><code class="docutils literal notranslate"><span class="pre">MaxValueCurrentYearFunctionTest.test_accepts_current_year()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_past_year"><code class="docutils literal notranslate"><span class="pre">MaxValueCurrentYearFunctionTest.test_accepts_past_year()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_matches_today"><code class="docutils literal notranslate"><span class="pre">MaxValueCurrentYearFunctionTest.test_current_year_matches_today()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_returns_int"><code class="docutils literal notranslate"><span class="pre">MaxValueCurrentYearFunctionTest.test_current_year_returns_int()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_rejects_future_year"><code class="docutils literal notranslate"><span class="pre">MaxValueCurrentYearFunctionTest.test_rejects_future_year()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis.tests.test_models">analysis.tests.test_models module</a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_models.AlgorithmTestCase"><code class="docutils literal notranslate"><span class="pre">AlgorithmTestCase</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_models.AlgorithmTestCase.setUp"><code class="docutils literal notranslate"><span class="pre">AlgorithmTestCase.setUp()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.AlgorithmTestCase.test_algorithm_fields"><code class="docutils literal notranslate"><span class="pre">AlgorithmTestCase.test_algorithm_fields()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.AlgorithmTestCase.test_algorithm_file_upload"><code class="docutils literal notranslate"><span class="pre">AlgorithmTestCase.test_algorithm_file_upload()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest.setUp"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest.setUp()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest.setUpTestData"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest.setUpTestData()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest.test_file_content"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest.test_file_content()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest.test_file_upload_path"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest.test_file_upload_path()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest.test_optional_fields"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest.test_optional_fields()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest.test_raw_measurement_creation"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest.test_raw_measurement_creation()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_models.RawMeasurementModelTest.test_sample_relation"><code class="docutils literal notranslate"><span class="pre">RawMeasurementModelTest.test_sample_relation()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis.tests.test_other_models">analysis.tests.test_other_models module</a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.CountingStrTest"><code class="docutils literal notranslate"><span class="pre">CountingStrTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.CountingStrTest.test_str_returns_sample_str"><code class="docutils literal notranslate"><span class="pre">CountingStrTest.test_str_returns_sample_str()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.GenericMeasurementStrTest"><code class="docutils literal notranslate"><span class="pre">GenericMeasurementStrTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.GenericMeasurementStrTest.test_str_format"><code class="docutils literal notranslate"><span class="pre">GenericMeasurementStrTest.test_str_format()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest"><code class="docutils literal notranslate"><span class="pre">GrainSizeSaveIntegrationTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_triggers_reclassify"><code class="docutils literal notranslate"><span class="pre">GrainSizeSaveIntegrationTest.test_save_triggers_reclassify()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_without_measured_data_skips_reclassify"><code class="docutils literal notranslate"><span class="pre">GrainSizeSaveIntegrationTest.test_save_without_measured_data_skips_reclassify()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.MicroXRFElementMapStrTest"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMapStrTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.MicroXRFElementMapStrTest.test_str_format"><code class="docutils literal notranslate"><span class="pre">MicroXRFElementMapStrTest.test_str_format()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.MicroXRFMeasurementStrTest"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurementStrTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_format"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurementStrTest.test_str_format()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_with_none_date"><code class="docutils literal notranslate"><span class="pre">MicroXRFMeasurementStrTest.test_str_with_none_date()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.PollenCountStrTest"><code class="docutils literal notranslate"><span class="pre">PollenCountStrTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.PollenCountStrTest.test_str_format"><code class="docutils literal notranslate"><span class="pre">PollenCountStrTest.test_str_format()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.PollenStrTest"><code class="docutils literal notranslate"><span class="pre">PollenStrTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.PollenStrTest.test_str_returns_latin_name"><code class="docutils literal notranslate"><span class="pre">PollenStrTest.test_str_returns_latin_name()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RadiocarbonDatingStrTest"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDatingStrTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_format"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDatingStrTest.test_str_format()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_with_none_age"><code class="docutils literal notranslate"><span class="pre">RadiocarbonDatingStrTest.test_str_with_none_age()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RawMeasurementFilenameTest"><code class="docutils literal notranslate"><span class="pre">RawMeasurementFilenameTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_with_file"><code class="docutils literal notranslate"><span class="pre">RawMeasurementFilenameTest.test_filename_with_file()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_without_file"><code class="docutils literal notranslate"><span class="pre">RawMeasurementFilenameTest.test_filename_without_file()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RawProcessingFilenameTest"><code class="docutils literal notranslate"><span class="pre">RawProcessingFilenameTest</span></code></a><ul>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_with_file"><code class="docutils literal notranslate"><span class="pre">RawProcessingFilenameTest.test_processed_filename_with_file()</span></code></a></li>
+<li><a class="reference internal" href="#analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_without_file"><code class="docutils literal notranslate"><span class="pre">RawProcessingFilenameTest.test_processed_filename_without_file()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-analysis.tests">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">analysis.tests package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/analysis.tests.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="analysis-tests-package">
+<h1>analysis.tests package<a class="headerlink" href="#analysis-tests-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="analysis-tests-conftest-module">
+<h2>analysis.tests.conftest module<a class="headerlink" href="#analysis-tests-conftest-module" title="Link to this heading"></a></h2>
+</section>
+<section id="module-analysis.tests.test_admin">
+<span id="analysis-tests-test-admin-module"></span><h2>analysis.tests.test_admin module<a class="headerlink" href="#module-analysis.tests.test_admin" title="Link to this heading"></a></h2>
+<p>Integration tests for SampleContextMixin in analysis/admin.py.</p>
+<p>Tests cover the redirect logic that keeps all measurement forms under the
+Sample URL hierarchy:
+- changelist_view: redirects when sample__id__exact is in GET (GET only)
+- add_view: redirects when sample is in GET (GET only, not POST)
+- change_view: redirects when obj has sample_id (GET only, not POST)
+- get_changeform_initial_data: pre-fills sample FK from preserved_filters</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.AddViewRedirectTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_admin.</span></span><span class="sig-name descname"><span class="pre">AddViewRedirectTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#AddViewRedirectTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.AddViewRedirectTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AdminSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.AddViewRedirectTest.test_get_redirects_to_sample_scoped_add_url">
+<span class="sig-name descname"><span class="pre">test_get_redirects_to_sample_scoped_add_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#AddViewRedirectTest.test_get_redirects_to_sample_scoped_add_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.AddViewRedirectTest.test_get_redirects_to_sample_scoped_add_url" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.AddViewRedirectTest.test_get_via_changelist_filters_redirects">
+<span class="sig-name descname"><span class="pre">test_get_via_changelist_filters_redirects</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#AddViewRedirectTest.test_get_via_changelist_filters_redirects"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.AddViewRedirectTest.test_get_via_changelist_filters_redirects" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.AddViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url">
+<span class="sig-name descname"><span class="pre">test_post_does_not_redirect_to_sample_scoped_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#AddViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.AddViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url" title="Link to this definition"></a></dt>
+<dd><p>POST with ?sample= must NOT redirect — form data would be discarded.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangeViewRedirectTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_admin.</span></span><span class="sig-name descname"><span class="pre">ChangeViewRedirectTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangeViewRedirectTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangeViewRedirectTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AdminSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangeViewRedirectTest.setUpTestData">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">setUpTestData</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangeViewRedirectTest.setUpTestData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangeViewRedirectTest.setUpTestData" title="Link to this definition"></a></dt>
+<dd><p>Load initial data for the TestCase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangeViewRedirectTest.test_get_redirects_to_sample_scoped_change_url">
+<span class="sig-name descname"><span class="pre">test_get_redirects_to_sample_scoped_change_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangeViewRedirectTest.test_get_redirects_to_sample_scoped_change_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangeViewRedirectTest.test_get_redirects_to_sample_scoped_change_url" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangeViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url">
+<span class="sig-name descname"><span class="pre">test_post_does_not_redirect_to_sample_scoped_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangeViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangeViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url" title="Link to this definition"></a></dt>
+<dd><p>POST must NOT redirect — form data would be silently discarded.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangelistRedirectTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_admin.</span></span><span class="sig-name descname"><span class="pre">ChangelistRedirectTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangelistRedirectTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangelistRedirectTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AdminSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_when_already_sample_scoped">
+<span class="sig-name descname"><span class="pre">test_no_redirect_when_already_sample_scoped</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangelistRedirectTest.test_no_redirect_when_already_sample_scoped"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_when_already_sample_scoped" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_without_sample_param">
+<span class="sig-name descname"><span class="pre">test_no_redirect_without_sample_param</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangelistRedirectTest.test_no_redirect_without_sample_param"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_without_sample_param" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.ChangelistRedirectTest.test_redirects_to_sample_scoped_url">
+<span class="sig-name descname"><span class="pre">test_redirects_to_sample_scoped_url</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#ChangelistRedirectTest.test_redirects_to_sample_scoped_url"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.ChangelistRedirectTest.test_redirects_to_sample_scoped_url" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.InitialDataTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_admin.</span></span><span class="sig-name descname"><span class="pre">InitialDataTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#InitialDataTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.InitialDataTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AdminSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_on_sample_scoped_add">
+<span class="sig-name descname"><span class="pre">test_sample_pre_filled_on_sample_scoped_add</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#InitialDataTest.test_sample_pre_filled_on_sample_scoped_add"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_on_sample_scoped_add" title="Link to this definition"></a></dt>
+<dd><p>Add form via sample-scoped URL must have sample FK pre-selected.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_via_changelist_filters">
+<span class="sig-name descname"><span class="pre">test_sample_pre_filled_via_changelist_filters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_admin.html#InitialDataTest.test_sample_pre_filled_via_changelist_filters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_via_changelist_filters" title="Link to this definition"></a></dt>
+<dd><p>Add form reached with _changelist_filters must pre-fill sample.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-analysis.tests.test_forms">
+<span id="analysis-tests-test-forms-module"></span><h2>analysis.tests.test_forms module<a class="headerlink" href="#module-analysis.tests.test_forms" title="Link to this heading"></a></h2>
+<p>Tests for analysis forms.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_forms.GrainSizeFormTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_forms.</span></span><span class="sig-name descname"><span class="pre">GrainSizeFormTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_forms.html#GrainSizeFormTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_forms.GrainSizeFormTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TestCase</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_forms.GrainSizeFormTest.test_form_instantiates">
+<span class="sig-name descname"><span class="pre">test_form_instantiates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_forms.html#GrainSizeFormTest.test_form_instantiates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_forms.GrainSizeFormTest.test_form_instantiates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_forms.GrainSizeFormTest.test_required_fields_present">
+<span class="sig-name descname"><span class="pre">test_required_fields_present</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_forms.html#GrainSizeFormTest.test_required_fields_present"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_forms.GrainSizeFormTest.test_required_fields_present" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-analysis.tests.test_grainsize">
+<span id="analysis-tests-test-grainsize-module"></span><h2>analysis.tests.test_grainsize module<a class="headerlink" href="#module-analysis.tests.test_grainsize" title="Link to this heading"></a></h2>
+<p>Tests for GrainSize._reclassify().</p>
+<p>These are pure unit tests — no DB access. A GrainSize instance is built
+in memory by setting .classes and .measured_data directly.</p>
+<dl class="simple">
+<dt>Boundary thresholds (µm):</dt><dd><p>clay        &lt; 2
+fine_silt   2 – &lt; 6.3
+medium_silt 6.3 – &lt; 20
+coarse_silt 20 – &lt; 63
+fine_sand   63 – &lt; 200
+medium_sand 200 – &lt; 630
+coarse_sand 630 – &lt; 2000
+(&gt;= 2000 is not assigned to any fraction)</p>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_grainsize.</span></span><span class="sig-name descname"><span class="pre">ReclassifyClassificationTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<p>_reclassify() routes each class value to the correct fraction.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_clay">
+<span class="sig-name descname"><span class="pre">test_all_clay</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_clay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_clay" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_sand">
+<span class="sig-name descname"><span class="pre">test_all_coarse_sand</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_coarse_sand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_sand" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_silt">
+<span class="sig-name descname"><span class="pre">test_all_coarse_silt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_coarse_silt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_coarse_silt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_sand">
+<span class="sig-name descname"><span class="pre">test_all_fine_sand</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_fine_sand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_sand" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_silt">
+<span class="sig-name descname"><span class="pre">test_all_fine_silt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_fine_silt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fine_silt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fractions_present_equal_weights">
+<span class="sig-name descname"><span class="pre">test_all_fractions_present_equal_weights</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_fractions_present_equal_weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_fractions_present_equal_weights" title="Link to this definition"></a></dt>
+<dd><p>One representative class per fraction, equal weight → each ~14.29%.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_sand">
+<span class="sig-name descname"><span class="pre">test_all_medium_sand</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_medium_sand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_sand" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_silt">
+<span class="sig-name descname"><span class="pre">test_all_medium_silt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_all_medium_silt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_all_medium_silt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_2_is_fine_silt_not_clay">
+<span class="sig-name descname"><span class="pre">test_boundary_value_exactly_2_is_fine_silt_not_clay</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_boundary_value_exactly_2_is_fine_silt_not_clay"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_2_is_fine_silt_not_clay" title="Link to this definition"></a></dt>
+<dd><p>class_value == 2.0 fails the &lt; 2 check and lands in fine_silt.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt">
+<span class="sig-name descname"><span class="pre">test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_boundary_value_exactly_63_is_fine_sand_not_coarse_silt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyClassificationTest.test_values_at_or_above_2000_are_not_classified">
+<span class="sig-name descname"><span class="pre">test_values_at_or_above_2000_are_not_classified</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyClassificationTest.test_values_at_or_above_2000_are_not_classified"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyClassificationTest.test_values_at_or_above_2000_are_not_classified" title="Link to this definition"></a></dt>
+<dd><p>Classes &gt;= 2000 µm are included in total but not in any fraction.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyInputHandlingTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_grainsize.</span></span><span class="sig-name descname"><span class="pre">ReclassifyInputHandlingTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyInputHandlingTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<p>_reclassify() handles different input types for measured_data.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_dict_input_raises_type_error">
+<span class="sig-name descname"><span class="pre">test_dict_input_raises_type_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyInputHandlingTest.test_dict_input_raises_type_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_dict_input_raises_type_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_integer_input_raises_type_error">
+<span class="sig-name descname"><span class="pre">test_integer_input_raises_type_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyInputHandlingTest.test_integer_input_raises_type_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_integer_input_raises_type_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_converted_to_list">
+<span class="sig-name descname"><span class="pre">test_json_string_is_converted_to_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyInputHandlingTest.test_json_string_is_converted_to_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_converted_to_list" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_parsed_before_processing">
+<span class="sig-name descname"><span class="pre">test_json_string_is_parsed_before_processing</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyInputHandlingTest.test_json_string_is_parsed_before_processing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_json_string_is_parsed_before_processing" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_list_input_passes_through">
+<span class="sig-name descname"><span class="pre">test_list_input_passes_through</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyInputHandlingTest.test_list_input_passes_through"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_list_input_passes_through" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_none_input_raises_type_error">
+<span class="sig-name descname"><span class="pre">test_none_input_raises_type_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyInputHandlingTest.test_none_input_raises_type_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyInputHandlingTest.test_none_input_raises_type_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyReturnValueTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_grainsize.</span></span><span class="sig-name descname"><span class="pre">ReclassifyReturnValueTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyReturnValueTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyReturnValueTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<p>_reclassify() return tuple has the documented order.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_fractions_sum_to_100_when_all_classes_under_2000">
+<span class="sig-name descname"><span class="pre">test_fractions_sum_to_100_when_all_classes_under_2000</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyReturnValueTest.test_fractions_sum_to_100_when_all_classes_under_2000"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_fractions_sum_to_100_when_all_classes_under_2000" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_return_tuple_order">
+<span class="sig-name descname"><span class="pre">test_return_tuple_order</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyReturnValueTest.test_return_tuple_order"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyReturnValueTest.test_return_tuple_order" title="Link to this definition"></a></dt>
+<dd><p>Return order: (fine_silt, medium_silt, coarse_silt, fine_sand, medium_sand, coarse_sand, clay).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyZeroTotalTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_grainsize.</span></span><span class="sig-name descname"><span class="pre">ReclassifyZeroTotalTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyZeroTotalTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<p>_reclassify() raises ValueError when measured_data sums to zero.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_all_zeros_raises">
+<span class="sig-name descname"><span class="pre">test_all_zeros_raises</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyZeroTotalTest.test_all_zeros_raises"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_all_zeros_raises" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_nonzero_data_does_not_raise">
+<span class="sig-name descname"><span class="pre">test_nonzero_data_does_not_raise</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyZeroTotalTest.test_nonzero_data_does_not_raise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_nonzero_data_does_not_raise" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_single_zero_raises">
+<span class="sig-name descname"><span class="pre">test_single_zero_raises</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize.html#ReclassifyZeroTotalTest.test_single_zero_raises"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize.ReclassifyZeroTotalTest.test_single_zero_raises" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-analysis.tests.test_grainsize_fromfile">
+<span id="analysis-tests-test-grainsize-fromfile-module"></span><h2>analysis.tests.test_grainsize_fromfile module<a class="headerlink" href="#module-analysis.tests.test_grainsize_fromfile" title="Link to this heading"></a></h2>
+<p>Tests for GrainSize.from_file() – the .$av file parser.</p>
+<p>Happy-path, error-handling and integration tests.
+Temporary files are created with tempfile and cleaned up via addCleanup.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_grainsize_fromfile.</span></span><span class="sig-name descname"><span class="pre">GrainSizeFromFileErrorHandlingTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_bindiam_is_skipped">
+<span class="sig-name descname"><span class="pre">test_invalid_float_in_bindiam_is_skipped</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_bindiam_is_skipped"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_bindiam_is_skipped" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_binheight_is_skipped">
+<span class="sig-name descname"><span class="pre">test_invalid_float_in_binheight_is_skipped</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_binheight_is_skipped"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_binheight_is_skipped" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_sizestats_is_skipped">
+<span class="sig-name descname"><span class="pre">test_invalid_float_in_sizestats_is_skipped</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_sizestats_is_skipped"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_invalid_float_in_sizestats_is_skipped" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_latin1_encoding_does_not_raise">
+<span class="sig-name descname"><span class="pre">test_latin1_encoding_does_not_raise</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest.test_latin1_encoding_does_not_raise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_latin1_encoding_does_not_raise" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_size_block_raises_value_error">
+<span class="sig-name descname"><span class="pre">test_missing_size_block_raises_value_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest.test_missing_size_block_raises_value_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_size_block_raises_value_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_stats_fields_remain_none">
+<span class="sig-name descname"><span class="pre">test_missing_stats_fields_remain_none</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest.test_missing_stats_fields_remain_none"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_missing_stats_fields_remain_none" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_size_block_without_obs_raises_value_error">
+<span class="sig-name descname"><span class="pre">test_size_block_without_obs_raises_value_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileErrorHandlingTest.test_size_block_without_obs_raises_value_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileErrorHandlingTest.test_size_block_without_obs_raises_value_error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_grainsize_fromfile.</span></span><span class="sig-name descname"><span class="pre">GrainSizeFromFileHappyPathTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.setUp">
+<span class="sig-name descname"><span class="pre">setUp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.setUp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.setUp" title="Link to this definition"></a></dt>
+<dd><p>Hook method for setting up the test fixture before exercising it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_classes_parsed_correctly">
+<span class="sig-name descname"><span class="pre">test_classes_parsed_correctly</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_classes_parsed_correctly"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_classes_parsed_correctly" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_mean_of_multiple_obs">
+<span class="sig-name descname"><span class="pre">test_concentration_mean_of_multiple_obs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_concentration_mean_of_multiple_obs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_mean_of_multiple_obs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_single_obs">
+<span class="sig-name descname"><span class="pre">test_concentration_single_obs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_concentration_single_obs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_concentration_single_obs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_measured_data_parsed_correctly">
+<span class="sig-name descname"><span class="pre">test_measured_data_parsed_correctly</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_measured_data_parsed_correctly"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_measured_data_parsed_correctly" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_returns_grainsize_instance">
+<span class="sig-name descname"><span class="pre">test_returns_grainsize_instance</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_returns_grainsize_instance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_returns_grainsize_instance" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_sample_and_method_assigned">
+<span class="sig-name descname"><span class="pre">test_sample_and_method_assigned</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_sample_and_method_assigned"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_sample_and_method_assigned" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwkurt_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_fwkurt_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_fwkurt_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwkurt_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmean_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_fwmean_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_fwmean_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmean_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmedian_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_fwmedian_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_fwmedian_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwmedian_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwsd_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_fwsd_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_fwsd_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwsd_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwskew_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_fwskew_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_fwskew_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_fwskew_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_kurtosis_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_kurtosis_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_kurtosis_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_kurtosis_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mean_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_mean_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_mean_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mean_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_median_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_median_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_median_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_median_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mode_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_mode_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_mode_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_mode_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_sd_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_sd_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_sd_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_sd_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_skew_parsed">
+<span class="sig-name descname"><span class="pre">test_stats_skew_parsed</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_stats_skew_parsed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_stats_skew_parsed" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_unknown_block_is_ignored">
+<span class="sig-name descname"><span class="pre">test_unknown_block_is_ignored</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileHappyPathTest.test_unknown_block_is_ignored"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileHappyPathTest.test_unknown_block_is_ignored" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_grainsize_fromfile.</span></span><span class="sig-name descname"><span class="pre">GrainSizeFromFileIntegrationTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileIntegrationTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TestCase</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.setUpTestData">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">setUpTestData</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileIntegrationTest.setUpTestData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.setUpTestData" title="Link to this definition"></a></dt>
+<dd><p>Load initial data for the TestCase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_can_be_saved">
+<span class="sig-name descname"><span class="pre">test_from_file_can_be_saved</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileIntegrationTest.test_from_file_can_be_saved"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_can_be_saved" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_returns_unsaved_instance">
+<span class="sig-name descname"><span class="pre">test_from_file_returns_unsaved_instance</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileIntegrationTest.test_from_file_returns_unsaved_instance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_from_file_returns_unsaved_instance" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_save_triggers_reclassify">
+<span class="sig-name descname"><span class="pre">test_save_triggers_reclassify</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_grainsize_fromfile.html#GrainSizeFromFileIntegrationTest.test_save_triggers_reclassify"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_grainsize_fromfile.GrainSizeFromFileIntegrationTest.test_save_triggers_reclassify" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-analysis.tests.test_luminescence">
+<span id="analysis-tests-test-luminescence-module"></span><h2>analysis.tests.test_luminescence module<a class="headerlink" href="#module-analysis.tests.test_luminescence" title="Link to this heading"></a></h2>
+<p>Tests for LuminescenceDating model.</p>
+<p>Covers: __str__ edge-cases, year_of_publication validators,
+required/optional fields, choices, defaults, FK protect-on-delete.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_luminescence.</span></span><span class="sig-name descname"><span class="pre">LuminescenceDatingFieldsTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_LuminescenceSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_dating_approach_choices_complete">
+<span class="sig-name descname"><span class="pre">test_dating_approach_choices_complete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_dating_approach_choices_complete"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_dating_approach_choices_complete" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_decimal_fields_nullable">
+<span class="sig-name descname"><span class="pre">test_decimal_fields_nullable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_decimal_fields_nullable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_decimal_fields_nullable" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_fading_correction_is_false">
+<span class="sig-name descname"><span class="pre">test_default_fading_correction_is_false</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_default_fading_correction_is_false"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_fading_correction_is_false" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_published_is_false">
+<span class="sig-name descname"><span class="pre">test_default_published_is_false</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_default_published_is_false"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_published_is_false" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_thesis_is_none_string">
+<span class="sig-name descname"><span class="pre">test_default_thesis_is_none_string</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_default_thesis_is_none_string"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_thesis_is_none_string" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_mineral_choices_complete">
+<span class="sig-name descname"><span class="pre">test_mineral_choices_complete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_mineral_choices_complete"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_mineral_choices_complete" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_only_sample_required">
+<span class="sig-name descname"><span class="pre">test_only_sample_required</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_only_sample_required"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_only_sample_required" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_sample_fk_restrict_on_delete">
+<span class="sig-name descname"><span class="pre">test_sample_fk_restrict_on_delete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingFieldsTest.test_sample_fk_restrict_on_delete"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_sample_fk_restrict_on_delete" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrDBTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_luminescence.</span></span><span class="sig-name descname"><span class="pre">LuminescenceDatingStrDBTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrDBTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrDBTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_LuminescenceSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrDBTest.test_str_with_saved_object">
+<span class="sig-name descname"><span class="pre">test_str_with_saved_object</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrDBTest.test_str_with_saved_object"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrDBTest.test_str_with_saved_object" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_luminescence.</span></span><span class="sig-name descname"><span class="pre">LuminescenceDatingStrSimpleTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrSimpleTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<p>Tests that do not need a DB – build instances via __new__.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_lab_id_uses_pk">
+<span class="sig-name descname"><span class="pre">test_str_empty_lab_id_uses_pk</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrSimpleTest.test_str_empty_lab_id_uses_pk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_lab_id_uses_pk" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_mineral_shows_unknown">
+<span class="sig-name descname"><span class="pre">test_str_empty_mineral_shows_unknown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrSimpleTest.test_str_empty_mineral_shows_unknown"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_mineral_shows_unknown" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_no_lab_id">
+<span class="sig-name descname"><span class="pre">test_str_unsaved_no_lab_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrSimpleTest.test_str_unsaved_no_lab_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_no_lab_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_with_lab_id">
+<span class="sig-name descname"><span class="pre">test_str_unsaved_with_lab_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrSimpleTest.test_str_unsaved_with_lab_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_with_lab_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_with_lab_id_and_mineral">
+<span class="sig-name descname"><span class="pre">test_str_with_lab_id_and_mineral</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingStrSimpleTest.test_str_with_lab_id_and_mineral"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_with_lab_id_and_mineral" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_luminescence.</span></span><span class="sig-name descname"><span class="pre">LuminescenceDatingYearValidatorTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingYearValidatorTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_LuminescenceSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_1984_passes_validation">
+<span class="sig-name descname"><span class="pre">test_year_1984_passes_validation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingYearValidatorTest.test_year_1984_passes_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_1984_passes_validation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_below_1984_fails_validation">
+<span class="sig-name descname"><span class="pre">test_year_below_1984_fails_validation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingYearValidatorTest.test_year_below_1984_fails_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_below_1984_fails_validation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_current_year_passes_validation">
+<span class="sig-name descname"><span class="pre">test_year_current_year_passes_validation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingYearValidatorTest.test_year_current_year_passes_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_current_year_passes_validation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_future_fails_validation">
+<span class="sig-name descname"><span class="pre">test_year_future_fails_validation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#LuminescenceDatingYearValidatorTest.test_year_future_fails_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_future_fails_validation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_luminescence.</span></span><span class="sig-name descname"><span class="pre">MaxValueCurrentYearFunctionTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#MaxValueCurrentYearFunctionTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<p>Tests for the standalone max_value_current_year validator function.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_current_year">
+<span class="sig-name descname"><span class="pre">test_accepts_current_year</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#MaxValueCurrentYearFunctionTest.test_accepts_current_year"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_current_year" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_past_year">
+<span class="sig-name descname"><span class="pre">test_accepts_past_year</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#MaxValueCurrentYearFunctionTest.test_accepts_past_year"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_past_year" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_matches_today">
+<span class="sig-name descname"><span class="pre">test_current_year_matches_today</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#MaxValueCurrentYearFunctionTest.test_current_year_matches_today"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_matches_today" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_returns_int">
+<span class="sig-name descname"><span class="pre">test_current_year_returns_int</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#MaxValueCurrentYearFunctionTest.test_current_year_returns_int"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_returns_int" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_rejects_future_year">
+<span class="sig-name descname"><span class="pre">test_rejects_future_year</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_luminescence.html#MaxValueCurrentYearFunctionTest.test_rejects_future_year"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_rejects_future_year" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-analysis.tests.test_models">
+<span id="analysis-tests-test-models-module"></span><h2>analysis.tests.test_models module<a class="headerlink" href="#module-analysis.tests.test_models" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_models.AlgorithmTestCase">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_models.</span></span><span class="sig-name descname"><span class="pre">AlgorithmTestCase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#AlgorithmTestCase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.AlgorithmTestCase" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TestCase</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.AlgorithmTestCase.setUp">
+<span class="sig-name descname"><span class="pre">setUp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#AlgorithmTestCase.setUp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.AlgorithmTestCase.setUp" title="Link to this definition"></a></dt>
+<dd><p>Hook method for setting up the test fixture before exercising it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.AlgorithmTestCase.test_algorithm_fields">
+<span class="sig-name descname"><span class="pre">test_algorithm_fields</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#AlgorithmTestCase.test_algorithm_fields"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.AlgorithmTestCase.test_algorithm_fields" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.AlgorithmTestCase.test_algorithm_file_upload">
+<span class="sig-name descname"><span class="pre">test_algorithm_file_upload</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#AlgorithmTestCase.test_algorithm_file_upload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.AlgorithmTestCase.test_algorithm_file_upload" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_models.</span></span><span class="sig-name descname"><span class="pre">RawMeasurementModelTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TestCase</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest.setUp">
+<span class="sig-name descname"><span class="pre">setUp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest.setUp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest.setUp" title="Link to this definition"></a></dt>
+<dd><p>Hook method for setting up the test fixture before exercising it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest.setUpTestData">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">setUpTestData</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest.setUpTestData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest.setUpTestData" title="Link to this definition"></a></dt>
+<dd><p>Load initial data for the TestCase.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest.test_file_content">
+<span class="sig-name descname"><span class="pre">test_file_content</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest.test_file_content"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest.test_file_content" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest.test_file_upload_path">
+<span class="sig-name descname"><span class="pre">test_file_upload_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest.test_file_upload_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest.test_file_upload_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest.test_optional_fields">
+<span class="sig-name descname"><span class="pre">test_optional_fields</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest.test_optional_fields"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest.test_optional_fields" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest.test_raw_measurement_creation">
+<span class="sig-name descname"><span class="pre">test_raw_measurement_creation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest.test_raw_measurement_creation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest.test_raw_measurement_creation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_models.RawMeasurementModelTest.test_sample_relation">
+<span class="sig-name descname"><span class="pre">test_sample_relation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_models.html#RawMeasurementModelTest.test_sample_relation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_models.RawMeasurementModelTest.test_sample_relation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-analysis.tests.test_other_models">
+<span id="analysis-tests-test-other-models-module"></span><h2>analysis.tests.test_other_models module<a class="headerlink" href="#module-analysis.tests.test_other_models" title="Link to this heading"></a></h2>
+<p>Tests for remaining analysis models.</p>
+<p>Covers: RadiocarbonDating, Counting, Pollen, PollenCount, GenericMeasurement,
+MicroXRFMeasurement, MicroXRFElementMap __str__ methods;
+RawMeasurement.filename(), RawProcessing.processed_filename();
+GrainSize.save() integration (reclassify triggered, no-data path).</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.CountingStrTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">CountingStrTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#CountingStrTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.CountingStrTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.CountingStrTest.test_str_returns_sample_str">
+<span class="sig-name descname"><span class="pre">test_str_returns_sample_str</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#CountingStrTest.test_str_returns_sample_str"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.CountingStrTest.test_str_returns_sample_str" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.GenericMeasurementStrTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">GenericMeasurementStrTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#GenericMeasurementStrTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.GenericMeasurementStrTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.GenericMeasurementStrTest.test_str_format">
+<span class="sig-name descname"><span class="pre">test_str_format</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#GenericMeasurementStrTest.test_str_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.GenericMeasurementStrTest.test_str_format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.GrainSizeSaveIntegrationTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">GrainSizeSaveIntegrationTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#GrainSizeSaveIntegrationTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_triggers_reclassify">
+<span class="sig-name descname"><span class="pre">test_save_triggers_reclassify</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#GrainSizeSaveIntegrationTest.test_save_triggers_reclassify"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_triggers_reclassify" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_without_measured_data_skips_reclassify">
+<span class="sig-name descname"><span class="pre">test_save_without_measured_data_skips_reclassify</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#GrainSizeSaveIntegrationTest.test_save_without_measured_data_skips_reclassify"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.GrainSizeSaveIntegrationTest.test_save_without_measured_data_skips_reclassify" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.MicroXRFElementMapStrTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">MicroXRFElementMapStrTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#MicroXRFElementMapStrTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.MicroXRFElementMapStrTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.MicroXRFElementMapStrTest.test_str_format">
+<span class="sig-name descname"><span class="pre">test_str_format</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#MicroXRFElementMapStrTest.test_str_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.MicroXRFElementMapStrTest.test_str_format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.MicroXRFMeasurementStrTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">MicroXRFMeasurementStrTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#MicroXRFMeasurementStrTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.MicroXRFMeasurementStrTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_format">
+<span class="sig-name descname"><span class="pre">test_str_format</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#MicroXRFMeasurementStrTest.test_str_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_with_none_date">
+<span class="sig-name descname"><span class="pre">test_str_with_none_date</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#MicroXRFMeasurementStrTest.test_str_with_none_date"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.MicroXRFMeasurementStrTest.test_str_with_none_date" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.PollenCountStrTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">PollenCountStrTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#PollenCountStrTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.PollenCountStrTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.PollenCountStrTest.test_str_format">
+<span class="sig-name descname"><span class="pre">test_str_format</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#PollenCountStrTest.test_str_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.PollenCountStrTest.test_str_format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.PollenStrTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">PollenStrTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#PollenStrTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.PollenStrTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleTestCase</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.PollenStrTest.test_str_returns_latin_name">
+<span class="sig-name descname"><span class="pre">test_str_returns_latin_name</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#PollenStrTest.test_str_returns_latin_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.PollenStrTest.test_str_returns_latin_name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RadiocarbonDatingStrTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">RadiocarbonDatingStrTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RadiocarbonDatingStrTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RadiocarbonDatingStrTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_format">
+<span class="sig-name descname"><span class="pre">test_str_format</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RadiocarbonDatingStrTest.test_str_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_with_none_age">
+<span class="sig-name descname"><span class="pre">test_str_with_none_age</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RadiocarbonDatingStrTest.test_str_with_none_age"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RadiocarbonDatingStrTest.test_str_with_none_age" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RawMeasurementFilenameTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">RawMeasurementFilenameTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RawMeasurementFilenameTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RawMeasurementFilenameTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_with_file">
+<span class="sig-name descname"><span class="pre">test_filename_with_file</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RawMeasurementFilenameTest.test_filename_with_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_with_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_without_file">
+<span class="sig-name descname"><span class="pre">test_filename_without_file</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RawMeasurementFilenameTest.test_filename_without_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RawMeasurementFilenameTest.test_filename_without_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RawProcessingFilenameTest">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis.tests.test_other_models.</span></span><span class="sig-name descname"><span class="pre">RawProcessingFilenameTest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">methodName</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'runTest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RawProcessingFilenameTest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RawProcessingFilenameTest" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_AnalysisExtSetup</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_with_file">
+<span class="sig-name descname"><span class="pre">test_processed_filename_with_file</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RawProcessingFilenameTest.test_processed_filename_with_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_with_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_without_file">
+<span class="sig-name descname"><span class="pre">test_processed_filename_without_file</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis/tests/test_other_models.html#RawProcessingFilenameTest.test_processed_filename_without_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis.tests.test_other_models.RawProcessingFilenameTest.test_processed_filename_without_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-analysis.tests">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-analysis.tests" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

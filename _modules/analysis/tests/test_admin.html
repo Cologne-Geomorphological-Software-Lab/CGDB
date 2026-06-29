@@ -1,0 +1,335 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.tests.test_admin &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.tests.test_admin</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.tests.test_admin</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Integration tests for SampleContextMixin in analysis/admin.py.</span>
+
+<span class="sd">Tests cover the redirect logic that keeps all measurement forms under the</span>
+<span class="sd">Sample URL hierarchy:</span>
+<span class="sd">- changelist_view: redirects when sample__id__exact is in GET (GET only)</span>
+<span class="sd">- add_view: redirects when sample is in GET (GET only, not POST)</span>
+<span class="sd">- change_view: redirects when obj has sample_id (GET only, not POST)</span>
+<span class="sd">- get_changeform_initial_data: pre-fills sample FK from preserved_filters</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">django.contrib.auth.models</span> <span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span> <span class="nn">django.test</span> <span class="kn">import</span> <span class="n">TestCase</span>
+<span class="kn">from</span> <span class="nn">django.urls</span> <span class="kn">import</span> <span class="n">reverse</span>
+
+<span class="kn">from</span> <span class="nn">analysis.models</span> <span class="kn">import</span> <span class="n">GenericMeasurement</span><span class="p">,</span> <span class="n">Parameter</span>
+<span class="kn">from</span> <span class="nn">field_data.models</span> <span class="kn">import</span> <span class="n">Location</span><span class="p">,</span> <span class="n">Sample</span>
+<span class="kn">from</span> <span class="nn">laboratory.models</span> <span class="kn">import</span> <span class="n">Method</span>
+<span class="kn">from</span> <span class="nn">prototype.models</span> <span class="kn">import</span> <span class="n">Project</span>
+
+
+<span class="k">class</span> <span class="nc">_AdminSetup</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">setUpTestData</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">superuser</span> <span class="o">=</span> <span class="n">User</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create_superuser</span><span class="p">(</span>
+            <span class="s2">&quot;scm_admin&quot;</span><span class="p">,</span> <span class="s2">&quot;scm@test.com&quot;</span><span class="p">,</span> <span class="s2">&quot;pw&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">project</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;SCM Test Project&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;SCM01&quot;</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;ACTIVE&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">Location</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;SCM_LOC&quot;</span><span class="p">,</span> <span class="n">data_source</span><span class="o">=</span><span class="s2">&quot;internal&quot;</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">Sample</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;SCM_S01&quot;</span><span class="p">,</span> <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">location</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">Method</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;SCM Method&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="s2">&quot;CHEM&quot;</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">parameter</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Silicon&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;Si&quot;</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;mg/kg&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">force_login</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">superuser</span><span class="p">)</span>
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># changelist_view redirect</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="ChangelistRedirectTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangelistRedirectTest">[docs]</a>
+<span class="k">class</span> <span class="nc">ChangelistRedirectTest</span><span class="p">(</span><span class="n">_AdminSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="ChangelistRedirectTest.test_redirects_to_sample_scoped_url">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangelistRedirectTest.test_redirects_to_sample_scoped_url">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_redirects_to_sample_scoped_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span><span class="s2">&quot;admin:analysis_genericmeasurement_changelist&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;sample__id__exact&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">})</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRedirects</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">fetch_redirect_response</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChangelistRedirectTest.test_no_redirect_without_sample_param">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_without_sample_param">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_no_redirect_without_sample_param</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span><span class="s2">&quot;admin:analysis_genericmeasurement_changelist&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChangelistRedirectTest.test_no_redirect_when_already_sample_scoped">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangelistRedirectTest.test_no_redirect_when_already_sample_scoped">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_no_redirect_when_already_sample_scoped</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement&quot;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># add_view redirect — GET only, not POST</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="AddViewRedirectTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.AddViewRedirectTest">[docs]</a>
+<span class="k">class</span> <span class="nc">AddViewRedirectTest</span><span class="p">(</span><span class="n">_AdminSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="AddViewRedirectTest.test_get_redirects_to_sample_scoped_add_url">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.AddViewRedirectTest.test_get_redirects_to_sample_scoped_add_url">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_redirects_to_sample_scoped_add_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span><span class="s2">&quot;admin:analysis_genericmeasurement_add&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;sample&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">})</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement_add&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRedirects</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">fetch_redirect_response</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AddViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.AddViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_post_does_not_redirect_to_sample_scoped_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;POST with ?sample= must NOT redirect — form data would be discarded.&quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span><span class="s2">&quot;admin:analysis_genericmeasurement_add&quot;</span><span class="p">)</span>
+        <span class="n">sample_scoped_add</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement_add&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">?sample=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertNotEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Location&quot;</span><span class="p">),</span> <span class="n">sample_scoped_add</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AddViewRedirectTest.test_get_via_changelist_filters_redirects">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.AddViewRedirectTest.test_get_via_changelist_filters_redirects">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_via_changelist_filters_redirects</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">urlencode</span>
+
+        <span class="n">cl_filters</span> <span class="o">=</span> <span class="n">urlencode</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;_changelist_filters&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;sample__id__exact=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span><span class="s2">&quot;admin:analysis_genericmeasurement_add&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">?</span><span class="si">{</span><span class="n">cl_filters</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement_add&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRedirects</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">fetch_redirect_response</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># change_view redirect — GET only, not POST</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="ChangeViewRedirectTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangeViewRedirectTest">[docs]</a>
+<span class="k">class</span> <span class="nc">ChangeViewRedirectTest</span><span class="p">(</span><span class="n">_AdminSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="ChangeViewRedirectTest.setUpTestData">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangeViewRedirectTest.setUpTestData">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">setUpTestData</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">setUpTestData</span><span class="p">()</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">measurement</span> <span class="o">=</span> <span class="n">GenericMeasurement</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">parameter</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">parameter</span><span class="p">,</span>
+            <span class="n">value</span><span class="o">=</span><span class="mf">42.0</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChangeViewRedirectTest.test_get_redirects_to_sample_scoped_change_url">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangeViewRedirectTest.test_get_redirects_to_sample_scoped_change_url">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_redirects_to_sample_scoped_change_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:analysis_genericmeasurement_change&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement_change&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertRedirects</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">fetch_redirect_response</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChangeViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.ChangeViewRedirectTest.test_post_does_not_redirect_to_sample_scoped_url">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_post_does_not_redirect_to_sample_scoped_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;POST must NOT redirect — form data would be silently discarded.&quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:analysis_genericmeasurement_change&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">sample_scoped_change</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement_change&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurement</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertNotEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Location&quot;</span><span class="p">),</span> <span class="n">sample_scoped_change</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># get_changeform_initial_data — sample pre-fill</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="InitialDataTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.InitialDataTest">[docs]</a>
+<span class="k">class</span> <span class="nc">InitialDataTest</span><span class="p">(</span><span class="n">_AdminSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="InitialDataTest.test_sample_pre_filled_on_sample_scoped_add">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_on_sample_scoped_add">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_sample_pre_filled_on_sample_scoped_add</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add form via sample-scoped URL must have sample FK pre-selected.&quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement_add&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+        <span class="n">form</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">context_data</span><span class="p">[</span><span class="s2">&quot;adminform&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">form</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">form</span><span class="o">.</span><span class="n">initial</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">)),</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="InitialDataTest.test_sample_pre_filled_via_changelist_filters">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_admin.InitialDataTest.test_sample_pre_filled_via_changelist_filters">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_sample_pre_filled_via_changelist_filters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add form reached with _changelist_filters must pre-fill sample.&quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">urlencode</span>
+
+        <span class="n">pf</span> <span class="o">=</span> <span class="n">urlencode</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;_changelist_filters&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;sample__id__exact=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span><span class="s2">&quot;admin:analysis_genericmeasurement_add&quot;</span><span class="p">)</span>
+        <span class="c1"># This GET would redirect, but we test the sample-scoped path directly</span>
+        <span class="c1"># with the _changelist_filters preserved_filters param:</span>
+        <span class="n">scoped_url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span>
+            <span class="s2">&quot;admin:field_data_sample_genericmeasurement_add&quot;</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">pk</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">scoped_url</span><span class="si">}</span><span class="s2">?</span><span class="si">{</span><span class="n">pf</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+        <span class="n">form</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">context_data</span><span class="p">[</span><span class="s2">&quot;adminform&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">form</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span> <span class="n">form</span><span class="o">.</span><span class="n">initial</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

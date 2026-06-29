@@ -1,0 +1,77 @@
+analysis.tests package
+======================
+
+Submodules
+----------
+
+analysis.tests.conftest module
+------------------------------
+
+.. automodule:: analysis.tests.conftest
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.tests.test\_admin module
+---------------------------------
+
+.. automodule:: analysis.tests.test_admin
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.tests.test\_forms module
+---------------------------------
+
+.. automodule:: analysis.tests.test_forms
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.tests.test\_grainsize module
+-------------------------------------
+
+.. automodule:: analysis.tests.test_grainsize
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.tests.test\_grainsize\_fromfile module
+-----------------------------------------------
+
+.. automodule:: analysis.tests.test_grainsize_fromfile
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.tests.test\_luminescence module
+----------------------------------------
+
+.. automodule:: analysis.tests.test_luminescence
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.tests.test\_models module
+----------------------------------
+
+.. automodule:: analysis.tests.test_models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+analysis.tests.test\_other\_models module
+-----------------------------------------
+
+.. automodule:: analysis.tests.test_other_models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: analysis.tests
+   :members:
+   :show-inheritance:
+   :undoc-members:

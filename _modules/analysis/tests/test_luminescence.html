@@ -1,0 +1,380 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.tests.test_luminescence &mdash; CGDB 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            CGDB
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">CGDB</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.tests.test_luminescence</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.tests.test_luminescence</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tests for LuminescenceDating model.</span>
+
+<span class="sd">Covers: __str__ edge-cases, year_of_publication validators,</span>
+<span class="sd">required/optional fields, choices, defaults, FK protect-on-delete.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">datetime</span>
+
+<span class="kn">from</span> <span class="nn">django.contrib.auth.models</span> <span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span> <span class="nn">django.core.exceptions</span> <span class="kn">import</span> <span class="n">ValidationError</span>
+<span class="kn">from</span> <span class="nn">django.db.models</span> <span class="kn">import</span> <span class="n">RestrictedError</span>
+<span class="kn">from</span> <span class="nn">django.test</span> <span class="kn">import</span> <span class="n">SimpleTestCase</span><span class="p">,</span> <span class="n">TestCase</span>
+
+<span class="kn">from</span> <span class="nn">analysis.models</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">LuminescenceDating</span><span class="p">,</span>
+    <span class="n">current_year</span><span class="p">,</span>
+    <span class="n">max_value_current_year</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">field_data.models</span> <span class="kn">import</span> <span class="n">Location</span><span class="p">,</span> <span class="n">Sample</span>
+<span class="kn">from</span> <span class="nn">prototype.models</span> <span class="kn">import</span> <span class="n">Project</span>
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># Shared fixture</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<span class="k">class</span> <span class="nc">_LuminescenceSetup</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">setUpTestData</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create_user</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="s2">&quot;lum_user&quot;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="s2">&quot;pw&quot;</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">project</span> <span class="o">=</span> <span class="n">Project</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Luminescence Project&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;LP01&quot;</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">&quot;ACTIVE&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">Location</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;LUM_LOC&quot;</span><span class="p">,</span>
+            <span class="n">data_source</span><span class="o">=</span><span class="s2">&quot;internal&quot;</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">Sample</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;LUM_S01&quot;</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">dating</span> <span class="o">=</span> <span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">sample</span><span class="o">=</span><span class="bp">cls</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+            <span class="n">laboratory_id</span><span class="o">=</span><span class="s2">&quot;CLL-2024-001&quot;</span><span class="p">,</span>
+            <span class="n">mineral</span><span class="o">=</span><span class="s2">&quot;Quartz&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># __str__ edge cases (some via SimpleTestCase + __new__)</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="LuminescenceDatingStrSimpleTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest">[docs]</a>
+<span class="k">class</span> <span class="nc">LuminescenceDatingStrSimpleTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tests that do not need a DB – build instances via __new__.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_make</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pk</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">lab_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">mineral</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">LuminescenceDating</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">LuminescenceDating</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">pk</span> <span class="o">=</span> <span class="n">pk</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">laboratory_id</span> <span class="o">=</span> <span class="n">lab_id</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">mineral</span> <span class="o">=</span> <span class="n">mineral</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+<div class="viewcode-block" id="LuminescenceDatingStrSimpleTest.test_str_with_lab_id_and_mineral">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_with_lab_id_and_mineral">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_with_lab_id_and_mineral</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;CLL-2024-001&quot;</span><span class="p">,</span> <span class="s2">&quot;Quartz&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">),</span> <span class="s2">&quot;CLL-2024-001 Quartz&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingStrSimpleTest.test_str_empty_lab_id_uses_pk">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_lab_id_uses_pk">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_empty_lab_id_uses_pk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;Feldspar&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">),</span> <span class="s2">&quot;ID-5 Feldspar&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingStrSimpleTest.test_str_empty_mineral_shows_unknown">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_empty_mineral_shows_unknown">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_empty_mineral_shows_unknown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;CLL-X&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">),</span> <span class="s2">&quot;CLL-X Unknown&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingStrSimpleTest.test_str_unsaved_no_lab_id">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_no_lab_id">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_unsaved_no_lab_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">),</span> <span class="s2">&quot;Unsaved Unknown&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingStrSimpleTest.test_str_unsaved_with_lab_id">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrSimpleTest.test_str_unsaved_with_lab_id">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_unsaved_with_lab_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;CLL-TEMP&quot;</span><span class="p">,</span> <span class="s2">&quot;Polymineral&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">),</span> <span class="s2">&quot;CLL-TEMP Polymineral&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="LuminescenceDatingStrDBTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrDBTest">[docs]</a>
+<span class="k">class</span> <span class="nc">LuminescenceDatingStrDBTest</span><span class="p">(</span><span class="n">_LuminescenceSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="LuminescenceDatingStrDBTest.test_str_with_saved_object">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingStrDBTest.test_str_with_saved_object">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_str_with_saved_object</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="p">),</span> <span class="s2">&quot;CLL-2024-001 Quartz&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># year_of_publication validators</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="MaxValueCurrentYearFunctionTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest">[docs]</a>
+<span class="k">class</span> <span class="nc">MaxValueCurrentYearFunctionTest</span><span class="p">(</span><span class="n">SimpleTestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tests for the standalone max_value_current_year validator function.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MaxValueCurrentYearFunctionTest.test_accepts_current_year">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_current_year">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_accepts_current_year</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">max_value_current_year</span><span class="p">(</span><span class="n">current_year</span><span class="p">())</span>  <span class="c1"># must not raise</span></div>
+
+
+<div class="viewcode-block" id="MaxValueCurrentYearFunctionTest.test_rejects_future_year">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_rejects_future_year">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_rejects_future_year</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">ValidationError</span><span class="p">):</span>
+            <span class="n">max_value_current_year</span><span class="p">(</span><span class="n">current_year</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MaxValueCurrentYearFunctionTest.test_accepts_past_year">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_accepts_past_year">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_accepts_past_year</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">max_value_current_year</span><span class="p">(</span><span class="mi">2000</span><span class="p">)</span>  <span class="c1"># must not raise</span></div>
+
+
+<div class="viewcode-block" id="MaxValueCurrentYearFunctionTest.test_current_year_returns_int">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_returns_int">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_current_year_returns_int</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">current_year</span><span class="p">(),</span> <span class="nb">int</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MaxValueCurrentYearFunctionTest.test_current_year_matches_today">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.MaxValueCurrentYearFunctionTest.test_current_year_matches_today">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_current_year_matches_today</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">current_year</span><span class="p">(),</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">year</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="LuminescenceDatingYearValidatorTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest">[docs]</a>
+<span class="k">class</span> <span class="nc">LuminescenceDatingYearValidatorTest</span><span class="p">(</span><span class="n">_LuminescenceSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="LuminescenceDatingYearValidatorTest.test_year_below_1984_fails_validation">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_below_1984_fails_validation">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_year_below_1984_fails_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">year_of_publication</span> <span class="o">=</span> <span class="mi">1983</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">ValidationError</span><span class="p">)</span> <span class="k">as</span> <span class="n">cm</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">full_clean</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;year_of_publication&quot;</span><span class="p">,</span> <span class="n">cm</span><span class="o">.</span><span class="n">exception</span><span class="o">.</span><span class="n">message_dict</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingYearValidatorTest.test_year_1984_passes_validation">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_1984_passes_validation">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_year_1984_passes_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">year_of_publication</span> <span class="o">=</span> <span class="mi">1984</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">full_clean</span><span class="p">()</span>  <span class="c1"># must not raise</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingYearValidatorTest.test_year_current_year_passes_validation">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_current_year_passes_validation">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_year_current_year_passes_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">year_of_publication</span> <span class="o">=</span> <span class="n">current_year</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">full_clean</span><span class="p">()</span>  <span class="c1"># must not raise</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingYearValidatorTest.test_year_future_fails_validation">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingYearValidatorTest.test_year_future_fails_validation">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_year_future_fails_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">year_of_publication</span> <span class="o">=</span> <span class="n">current_year</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">ValidationError</span><span class="p">)</span> <span class="k">as</span> <span class="n">cm</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dating</span><span class="o">.</span><span class="n">full_clean</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;year_of_publication&quot;</span><span class="p">,</span> <span class="n">cm</span><span class="o">.</span><span class="n">exception</span><span class="o">.</span><span class="n">message_dict</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ===========================================================================</span>
+<span class="c1"># Required / optional fields, defaults, choices</span>
+<span class="c1"># ===========================================================================</span>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest">[docs]</a>
+<span class="k">class</span> <span class="nc">LuminescenceDatingFieldsTest</span><span class="p">(</span><span class="n">_LuminescenceSetup</span><span class="p">):</span>
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_only_sample_required">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_only_sample_required">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_only_sample_required</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">pk</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_decimal_fields_nullable">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_decimal_fields_nullable">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_decimal_fields_nullable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">field_name</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="s2">&quot;luminescence_age&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;age_error&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dose_rate&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dose_rate_error&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;palaeodose_value&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;palaeodose_error&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;g_value&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;g_value_error&quot;</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span>
+                <span class="nb">getattr</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">field_name</span><span class="p">),</span> <span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">field_name</span><span class="si">}</span><span class="s2"> should be None&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_mineral_choices_complete">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_mineral_choices_complete">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_mineral_choices_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">choices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">CHOICES_MINERAL</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">expected</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;Quartz&quot;</span><span class="p">,</span> <span class="s2">&quot;Feldspar&quot;</span><span class="p">,</span> <span class="s2">&quot;Polymineral&quot;</span><span class="p">,</span> <span class="s2">&quot;Other&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">choices</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_dating_approach_choices_complete">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_dating_approach_choices_complete">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_dating_approach_choices_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">choices</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">CHOICES_DATING_APPROACH</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">expected</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;Burial dating&quot;</span><span class="p">,</span> <span class="s2">&quot;Exposure dating&quot;</span><span class="p">,</span> <span class="s2">&quot;Other&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">choices</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_default_published_is_false">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_published_is_false">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_default_published_is_false</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">published</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_default_fading_correction_is_false">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_fading_correction_is_false">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_default_fading_correction_is_false</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">fading_correction</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_default_thesis_is_none_string">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_default_thesis_is_none_string">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_default_thesis_is_none_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">thesis</span><span class="p">,</span> <span class="s2">&quot;None&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LuminescenceDatingFieldsTest.test_sample_fk_restrict_on_delete">
+<a class="viewcode-back" href="../../../analysis.tests.html#analysis.tests.test_luminescence.LuminescenceDatingFieldsTest.test_sample_fk_restrict_on_delete">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_sample_fk_restrict_on_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Sample</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;LUM_RESTRICT_S&quot;</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">LuminescenceDating</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">RestrictedError</span><span class="p">):</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dennis Handy, W. Marijn Van der Meij.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
