@@ -1049,6 +1049,20 @@ class Sample(BaseModel):
         save(*args, **kwargs): Automatically assigns project based on location if not set.
     """
 
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("reviewed", "Reviewed"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("archived", "Archived"),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="draft",
+        help_text="Review status of the sample.",
+    )
+
     identifier = models.CharField(max_length=40)
     igsn = models.CharField(
         max_length=100,
