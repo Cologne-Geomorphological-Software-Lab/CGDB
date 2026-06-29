@@ -76,7 +76,7 @@ class StudyAreaResource(resources.ModelResource):
         attribute="project",
         widget=ForeignKeyWidget(
             Project,
-            field="name",
+            field="label",
         ),
     )
 
@@ -105,7 +105,7 @@ class CampaignResource(resources.ModelResource):
         attribute="project",
         widget=ForeignKeyWidget(
             Project,
-            field="name",
+            field="label",
         ),
     )
 
