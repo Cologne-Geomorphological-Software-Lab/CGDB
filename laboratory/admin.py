@@ -34,6 +34,7 @@ class ManufacturerAdmin(ModelAdmin):
     """Admin interface for manufacturers."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["name", "website"]
     search_fields = ["name"]
     ordering = ["name"]
@@ -73,6 +74,7 @@ class DeviceAdmin(ModelAdmin):
     """Admin interface for devices."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["name", "manufacturer"]
     search_fields = ["name"]
     ordering = ["manufacturer__name", "name"]
@@ -94,6 +96,7 @@ class AccessoryAdmin(ModelAdmin):
     """Admin interface for accessories."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["device", "name"]
     search_fields = ["name", "device__name"]
     ordering = ["device__name", "name"]
@@ -107,6 +110,7 @@ class FirmwareAdmin(ModelAdmin):
     """Admin interface for firmware records."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["device", "version", "installation_date"]
     search_fields = ["device__name", "version"]
     ordering = ["device__name", "-installation_date"]
@@ -119,6 +123,7 @@ class CalibrationAdmin(ModelAdmin):
     """Admin interface for calibration records."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["device", "date", "researcher"]
     search_fields = ["device__name"]
     ordering = ["device__name", "-date"]
@@ -134,6 +139,7 @@ class MethodAdmin(ModelAdmin):
     """Admin interface for analytical methods."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["name", "colored_category", "device", "laboratory"]
     search_fields = ["name", "token"]
     ordering = ["name"]
