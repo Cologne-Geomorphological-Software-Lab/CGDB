@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 # vulture whitelist — false positives
 # pytest hook parameters (required by pytest API, cannot be renamed)
 config  # pytest_configure hook parameter
