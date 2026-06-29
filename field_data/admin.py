@@ -117,6 +117,10 @@ class LayerStackedInline(StackedInline):
         (
             "Munsell Color",
             {
+                "description": (
+                    "Munsell notation: e.g. 7.5YR 4/6 → hue_value=7.5, hue=YR, value=4, chroma=6. "
+                    "Step size for all numeric fields: 0.5."
+                ),
                 "fields": (
                     ("munsell_hue_value", "munsell_hue"),
                     ("munsell_value", "munsell_chroma"),
@@ -665,9 +669,34 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     )
 
 
+class LayerAdminForm(django_forms.ModelForm):  # type: ignore[type-arg]
+    """ModelForm for Layer with help text on Munsell colour fields."""
+
+    class Meta:
+        """Metadata for LayerAdminForm."""
+
+        model = Layer
+        fields = "__all__"  # noqa: DJ007 — admin form; fieldsets control visibility
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """Set Munsell field help texts."""
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        self.fields[
+            "munsell_hue_value"
+        ].help_text = "Numeric prefix of the hue page (0–10, step 0.5); e.g. 7.5 for 7.5YR."
+        self.fields["munsell_hue"].help_text = "Hue letter code; e.g. YR."
+        self.fields[
+            "munsell_value"
+        ].help_text = "Lightness value (0–10, step 0.5); e.g. 4."
+        self.fields[
+            "munsell_chroma"
+        ].help_text = "Chroma/saturation (0–12, step 0.5); e.g. 6."
+
+
 class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     """Admin interface for Layer records with nested project permissions."""
 
+    form = LayerAdminForm
     change_form_show_cancel_button = True
     list_fullwidth = True
     project_path = "location__project"  # type: ignore[assignment]
@@ -691,6 +720,37 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     list_filter_sheet = False
     list_filter_submit = True
     readonly_fields = AUDIT_READONLY_FIELDS
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "location",
+                    ("identifier", "token"),
+                    "description",
+                    ("depth_top", "depth_bottom"),
+                    ("structure", "fine_soil_field"),
+                    ("calcite", "secondary_calcite"),
+                    "tags",
+                    ("created_by", "created_at"),
+                    ("updated_by", "modified_at"),
+                ),
+            },
+        ),
+        (
+            "Munsell Color",
+            {
+                "description": (
+                    "Munsell notation: e.g. 7.5YR 4/6 → hue_value=7.5, hue=YR, value=4, chroma=6. "
+                    "Step size for all numeric fields: 0.5."
+                ),
+                "fields": (
+                    ("munsell_hue_value", "munsell_hue"),
+                    ("munsell_value", "munsell_chroma"),
+                ),
+            },
+        ),
+    )
 
 
 class SampleAdmin(
