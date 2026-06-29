@@ -169,6 +169,7 @@ class StudyArea(BaseModel):
         CHOICES_SCHULTZ: A list of tuples representing the Schultz ecozone classification system.
 
     Meta:
+        unique_together (tuple): Ensures label is unique within a project.
         verbose_name_plural (str): The plural name for the model.
 
     Methods:
@@ -296,6 +297,7 @@ class StudyArea(BaseModel):
     class Meta:
         """Meta options for StudyArea."""
 
+        unique_together = ("project", "label")
         verbose_name_plural = "Study areas"
 
     def __str__(self) -> str:
@@ -331,7 +333,7 @@ class Campaign(BaseModel):
     """Represents a Campaign model.
 
     Attributes:
-        label (CharField): The label of the campaign, with a maximum length of 20 characters and must be unique.
+        label (CharField): The label of the campaign, with a maximum length of 20 characters; unique within a project.
         project (ForeignKey): A foreign key to the Project model, with a restrict delete option.
         date_start (DateField): The starting date of the campaign (nullable).
         date_end (DateField): The ending date of the campaign (nullable).
@@ -345,7 +347,6 @@ class Campaign(BaseModel):
 
     label = models.CharField(
         max_length=20,
-        unique=True,
     )
     project = models.ForeignKey(
         Project,
@@ -400,6 +401,11 @@ class Campaign(BaseModel):
         blank=True,
         null=True,
     )
+
+    class Meta:
+        """Meta options for Campaign."""
+
+        unique_together = ("project", "label")
 
     def __str__(self) -> str:
         """Return the campaign label."""
@@ -873,7 +879,7 @@ class Layer(BaseModel):
 
     Attributes:
         location (ForeignKey): Reference to the Location model.
-        identifier (IntegerField): Unique identifier for the layer.
+        identifier (IntegerField): Identifier for the layer; unique within a location.
         token (CharField): Optional token with a maximum length of 7 characters.
         description (CharField): Optional description with a maximum length of 500 characters.
         depth_top (FloatField): Optional top depth of the layer.
@@ -888,6 +894,9 @@ class Layer(BaseModel):
         calcite (FloatField): Optional calcite content with validators for range and step.
         secondary_calcite (BooleanField): Optional boolean indicating the presence of secondary calcite.
         tags (ManyToManyField): Many-to-many relationship with the Tag model.
+
+    Meta:
+        unique_together (tuple): Ensures identifier is unique within a location.
 
     Methods:
         _thickness(): Calculates and returns the thickness of the layer.
@@ -1014,6 +1023,11 @@ class Layer(BaseModel):
     tags = models.ManyToManyField(
         Tag,
     )
+
+    class Meta:
+        """Meta options for Layer."""
+
+        unique_together = ("location", "identifier")
 
     def __str__(self) -> str:
         """Return the location identifier and layer identifier."""
