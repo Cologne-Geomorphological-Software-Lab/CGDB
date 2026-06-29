@@ -11,6 +11,7 @@ from django.core.validators import (
     MinValueValidator,
     StepValueValidator,
 )
+from django.db.models import Q
 
 from prototype.models import BaseModel, Project, Researcher
 
@@ -91,7 +92,6 @@ class Tag(BaseModel):
     word = models.CharField(max_length=255)
     slug = models.SlugField(
         max_length=255,
-        unique=True,
         blank=True,
         null=True,
     )
@@ -102,6 +102,17 @@ class Tag(BaseModel):
         blank=True,
         null=True,
     )
+
+    class Meta:
+        """Tag constraints."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["slug"],
+                condition=Q(slug__isnull=False),
+                name="unique_tag_slug_when_not_null",
+            ),
+        ]
 
     def __str__(self) -> str:
         """Return the tag word and its associated content type name."""
