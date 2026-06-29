@@ -1049,7 +1049,7 @@ class Sample(BaseModel):
         save(*args, **kwargs): Automatically assigns project based on location if not set.
     """
 
-    identifier = models.CharField(max_length=40, unique=True)
+    identifier = models.CharField(max_length=40)
     igsn = models.CharField(
         max_length=100,
         blank=True,
@@ -1140,6 +1140,16 @@ class Sample(BaseModel):
         Tag,
         blank=True,
     )
+
+    class Meta:
+        """Sample constraints."""
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "identifier"],
+                name="unique_sample_identifier_per_project",
+            ),
+        ]
 
     def clean(self) -> None:
         """Validate that the sample has a project or location and that they are consistent."""
