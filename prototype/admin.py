@@ -156,6 +156,7 @@ class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
     """Admin for ResearchGroup with object-level Guardian permissions."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["label", "head_of_group", "created_at"]
     search_fields = ["label"]
     list_filter = ["created_at"]
@@ -166,6 +167,7 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
     """Admin for Researcher with object-level Guardian permissions."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["user", "academic_rank", "display_researcher"]
     search_fields = [
         "user__username",
@@ -197,6 +199,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
     save_on_top = True
     change_form_show_cancel_button = True
+    list_fullwidth = True
     compressed_fields = True
     warn_unsaved_form = True
     list_display = [
@@ -322,6 +325,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
 class GroupAdmin(DjangoGroupAdmin, ModelAdmin):
     """Unfold-styled admin for Django's built-in Group model."""
 
+    list_fullwidth = True
     search_fields = ["name"]
     list_display = ["name"]
     filter_horizontal = ["permissions"]
@@ -332,6 +336,7 @@ class UserAdmin(DjangoUserAdmin, ModelAdmin):
 
     compressed_fields = True
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = [
         "username",
         "email",
@@ -408,6 +413,7 @@ admin.site.unregister(TokenProxy)
 class AuthTokenAdmin(ModelAdmin):
     """Unfold-styled admin for DRF auth tokens."""
 
+    list_fullwidth = True
     list_display = ("key", "user", "created")
     fields = ("user",)
     ordering = ("-created",)

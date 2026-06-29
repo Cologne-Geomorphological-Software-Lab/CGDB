@@ -214,6 +214,7 @@ class AlgorithmAdmin(ExportMixin, ModelAdmin):
     """Admin for the Algorithm model."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["name", "version", "programming_language"]
     search_fields = ["name", "version"]
     ordering = ["name", "version"]
@@ -227,6 +228,7 @@ class RawMeasurementAdmin(
     """Admin for the RawMeasurement model."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     warn_unsaved_form = True
     project_path = "sample__location__project"
     list_display = [
@@ -271,6 +273,7 @@ class RawProcessingAdmin(
     """Admin for the RawProcessing model."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     warn_unsaved_form = True
     project_path = "raw_measurement__project"
     list_display = [
@@ -311,6 +314,7 @@ class PollenAdmin(ExportMixin, ModelAdmin):
     """Admin for the Pollen model."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["name", "token", "name_en"]
     search_fields = ["name", "token", "name_en"]
     ordering = ["name"]
@@ -1064,6 +1068,7 @@ class ParameterAdmin(ExportMixin, ModelAdmin):
     """Admin for the Parameter model."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["token", "id", "unit"]
     search_fields = ["token"]
     ordering = ["token"]
@@ -1127,6 +1132,7 @@ class MeasurementSeriesAdmin(ModelAdmin):
     """Admin for the MeasurementSeries model."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["id", "datetime"]
     ordering = ["-datetime"]
     search_fields = ["id"]

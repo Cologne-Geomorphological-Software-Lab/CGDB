@@ -109,6 +109,7 @@ class IntegrityIssueInline(TabularInline):
 class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     """Admin for the MaintenanceRun model — superuser access only."""
 
+    list_fullwidth = True
     list_display = [
         "job_type_display",
         "dump_format_display",
@@ -283,6 +284,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
 class DuckDBTableConfigAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     """Admin for the DuckDBTableConfig model — superuser access only."""
 
+    list_fullwidth = True
     list_display = ["app_label", "model_name", "role"]
     list_filter = ["role", "app_label"]
     list_editable = ["role"]

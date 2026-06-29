@@ -24,6 +24,7 @@ class ReferenceKeywordAdmin(ModelAdmin):
     """Admin for the ReferenceKeyword model."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["keyword", "keyword_ger"]
     search_fields = ["keyword", "keyword_ger"]
     ordering = ["keyword"]
@@ -33,6 +34,7 @@ class ReferenceAdmin(ModelAdmin):
     """Admin for the Reference model with tabbed fieldsets and custom list display."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     fieldsets = [
         (
             "General Information",
@@ -175,6 +177,7 @@ class AuthorAdmin(ModelAdmin):
     """Admin for the Author model with an inline of their lead-author references."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["last_name", "first_name"]
     search_fields = ["last_name", "first_name"]
     ordering = ["last_name", "first_name"]

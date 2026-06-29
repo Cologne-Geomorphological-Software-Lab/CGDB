@@ -120,6 +120,7 @@ class ExposureTypeAdmin(ExportMixin, ModelAdmin):
     """Admin interface for ExposureType records."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = [
         "name_en",
         "name_ger",
@@ -225,6 +226,7 @@ class LocationAdmin(
 
     save_on_top = True
     change_form_show_cancel_button = True
+    list_fullwidth = True
     compressed_fields = True
     warn_unsaved_form = True
     list_per_page = 20
@@ -472,6 +474,7 @@ class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
     save_on_top = True
     change_form_show_cancel_button = True
+    list_fullwidth = True
     compressed_fields = True
     warn_unsaved_form = True
     readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
@@ -527,6 +530,7 @@ class SiteAdmin(
     """Admin interface for Site records with geo support and nested project permissions."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     project_path = "study_area__project"  # type: ignore[assignment]
     list_display = [
         "label",
@@ -556,6 +560,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
     save_on_top = True
     change_form_show_cancel_button = True
+    list_fullwidth = True
     compressed_fields = True
     warn_unsaved_form = True
     list_per_page = 20
@@ -625,6 +630,7 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     """Admin interface for Layer records with nested project permissions."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     project_path = "location__project"  # type: ignore[assignment]
     list_display = [
         "location",
@@ -655,6 +661,7 @@ class SampleAdmin(
 
     save_on_top = True
     change_form_show_cancel_button = True
+    list_fullwidth = True
     compressed_fields = True
     warn_unsaved_form = True
     show_full_result_count = False
@@ -882,6 +889,7 @@ class SampleTypeAdmin(ExportMixin, ModelAdmin):
     """Admin interface for SampleType records."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = [
         "word",
         "label",
@@ -897,6 +905,7 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     """Admin interface for Tag records with project-based permissions."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     list_display = ["word", "content_type", "project"]
     search_fields = ["word"]
     ordering = ["word"]
@@ -961,6 +970,7 @@ class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     """Admin interface for Transect records with nested project permissions."""
 
     change_form_show_cancel_button = True
+    list_fullwidth = True
     project_path = "study_area__project"  # type: ignore[assignment]
     list_display = ["identifier", "study_area", "campaign"]
     search_fields = ["identifier", "study_area__label"]
