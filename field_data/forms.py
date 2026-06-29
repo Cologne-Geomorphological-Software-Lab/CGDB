@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Column, Fieldset, Layout, Row, Submit
+from crispy_forms.layout import HTML, Column, Fieldset, Layout, Row, Submit
 from django.contrib.gis import forms
 
 from .models import Campaign, Layer, Location, Project, Sample, StudyArea, Tag
@@ -292,5 +292,64 @@ class LayerForm(forms.ModelForm):
     def __init__(self, *args: object, **kwargs: object) -> None:
         """Initialise the form and configure the crispy-forms helper."""
         super().__init__(*args, **kwargs)
+        self.fields[
+            "munsell_hue_value"
+        ].help_text = "Numeric prefix of the hue page (0–10, step 0.5); e.g. 7.5 for 7.5YR."
+        self.fields["munsell_hue"].help_text = "Hue letter code; e.g. YR."
+        self.fields[
+            "munsell_value"
+        ].help_text = "Lightness value (0–10, step 0.5); e.g. 4."
+        self.fields[
+            "munsell_chroma"
+        ].help_text = "Chroma/saturation (0–12, step 0.5); e.g. 6."
         self.helper = FormHelper()
-        self.helper.add_input(Submit("submit", "Submit"))
+        self.helper.layout = Layout(
+            "location",
+            Fieldset(
+                "Identification",
+                Row(
+                    Column("identifier", css_class="form-group col-md-6"),
+                    Column("token", css_class="form-group col-md-6"),
+                ),
+                "description",
+            ),
+            Fieldset(
+                "Depth",
+                Row(
+                    Column("depth_top", css_class="form-group col-md-6"),
+                    Column("depth_bottom", css_class="form-group col-md-6"),
+                ),
+            ),
+            Fieldset(
+                "Properties",
+                Row(
+                    Column("structure", css_class="form-group col-md-6"),
+                    Column("fine_soil_field", css_class="form-group col-md-6"),
+                ),
+                Row(
+                    Column("calcite", css_class="form-group col-md-6"),
+                    Column(
+                        "secondary_calcite", css_class="form-group col-md-6"
+                    ),
+                ),
+            ),
+            Fieldset(
+                "Munsell Color",
+                HTML(
+                    '<p class="text-muted small mb-3">'
+                    "Munsell notation: e.g. 7.5YR 4/6 → hue_value=7.5, hue=YR, value=4, chroma=6. "
+                    "Step size for all numeric fields: 0.5."
+                    "</p>"
+                ),
+                Row(
+                    Column(
+                        "munsell_hue_value", css_class="form-group col-md-3"
+                    ),
+                    Column("munsell_hue", css_class="form-group col-md-3"),
+                    Column("munsell_value", css_class="form-group col-md-3"),
+                    Column("munsell_chroma", css_class="form-group col-md-3"),
+                ),
+            ),
+            "tags",
+            Submit("submit", "Submit"),
+        )
