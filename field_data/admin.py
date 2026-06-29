@@ -6,6 +6,8 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from django import forms as django_forms
+from django.contrib import messages
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
@@ -178,6 +180,102 @@ class ExposureTypeAdmin(ImportExportMixin, ModelAdmin):
     list_filter_submit = True
 
 
+class BulkTagForm(django_forms.Form):
+    """Form used on the intermediate bulk-tag-action page."""
+
+    tags = django_forms.ModelMultipleChoiceField(
+        queryset=Tag.objects.none(),
+        widget=django_forms.CheckboxSelectMultiple,
+        required=False,
+        label="Tags",
+    )
+
+    def __init__(
+        self, tag_qs: object, *args: object, **kwargs: object
+    ) -> None:
+        """Bind the tag queryset to the tags field."""
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        self.fields["tags"].queryset = tag_qs  # type: ignore[attr-defined]
+
+
+class BulkTagActionMixin:
+    """Admin mixin that adds add/remove bulk tag actions."""
+
+    actions = ["add_tags_to_selected", "remove_tags_from_selected"]
+
+    def _bulk_tag_action(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Any],
+        action_name: str,
+        verb: str,
+    ) -> HttpResponse | None:
+        from django.template.response import TemplateResponse
+
+        ct = ContentType.objects.get_for_model(self.model)  # type: ignore[attr-defined]
+        project_ids = queryset.values_list("project", flat=True).distinct()
+        tag_qs = Tag.objects.filter(content_type=ct, project__in=project_ids)
+
+        if "_apply_tag_action" in request.POST:
+            form = BulkTagForm(tag_qs, request.POST)
+            if form.is_valid():
+                selected_tags = list(form.cleaned_data["tags"])
+                count = queryset.count()
+                if verb == "add":
+                    for obj in queryset:
+                        obj.tags.add(*selected_tags)
+                else:
+                    for obj in queryset:
+                        obj.tags.remove(*selected_tags)
+                past = "added to" if verb == "add" else "removed from"
+                self.message_user(  # type: ignore[attr-defined]
+                    request,
+                    f"Tags {past} {count} record(s).",
+                    messages.SUCCESS,
+                )
+                return None
+        else:
+            form = BulkTagForm(tag_qs)
+
+        return TemplateResponse(
+            request,
+            "admin/field_data/bulk_tag_action.html",
+            {
+                **self.admin_site.each_context(request),  # type: ignore[attr-defined]
+                "title": "Add tags" if verb == "add" else "Remove tags",
+                "queryset": queryset,
+                "action_name": action_name,
+                "verb": verb,
+                "form": form,
+                "action_checkbox_name": ACTION_CHECKBOX_NAME,
+                "opts": self.model._meta,  # type: ignore[attr-defined]
+                "media": self.media,  # type: ignore[attr-defined]
+            },
+        )
+
+    @admin.action(description="Add tags to selected")
+    def add_tags_to_selected(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Any],
+    ) -> HttpResponse | None:
+        """Open an intermediate page to add tags to all selected records."""
+        return self._bulk_tag_action(
+            request, queryset, "add_tags_to_selected", "add"
+        )
+
+    @admin.action(description="Remove tags from selected")
+    def remove_tags_from_selected(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Any],
+    ) -> HttpResponse | None:
+        """Open an intermediate page to remove tags from all selected records."""
+        return self._bulk_tag_action(
+            request, queryset, "remove_tags_from_selected", "remove"
+        )
+
+
 class TagFilterMixin:
     """Restrict the tags M2M dropdown to the current model's content type and project."""
 
@@ -260,7 +358,11 @@ class LocationAdminForm(django_forms.ModelForm):  # type: ignore[type-arg]
 
 
 class LocationAdmin(
-    TagFilterMixin, ImportExportMixin, ModelAdmin, ProjectBasedPermissionMixin
+    BulkTagActionMixin,
+    TagFilterMixin,
+    ImportExportMixin,
+    ModelAdmin,
+    ProjectBasedPermissionMixin,
 ):
     """Admin interface for Location records with export and project-based permissions."""
 
@@ -754,7 +856,11 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
 
 
 class SampleAdmin(
-    TagFilterMixin, ExportMixin, ModelAdmin, HybridProjectPermissionMixin
+    BulkTagActionMixin,
+    TagFilterMixin,
+    ExportMixin,
+    ModelAdmin,
+    HybridProjectPermissionMixin,
 ):
     """Admin interface for Sample records with analysis sub-views and hybrid project permissions."""
 
