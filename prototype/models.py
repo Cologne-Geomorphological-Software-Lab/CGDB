@@ -140,6 +140,8 @@ class Researcher(BaseModel):
 
     def __str__(self) -> str:
         """Returns a human-readable representation of the researcher."""
+        if self.user is None:
+            return "Researcher (no user)"
         return f"{self.user.last_name}, {self.user.first_name}"
 
 
