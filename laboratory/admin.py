@@ -26,7 +26,7 @@ class DeviceInline(TabularInline):
 
     model = Device
     extra = 0
-    fields = ["name", "available"]
+    fields = ["name"]
     show_change_link = True
 
 
