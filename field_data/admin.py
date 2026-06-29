@@ -33,9 +33,11 @@ from .models import (
     _UTM_N_SRID_MIN,
     _UTM_S_SRID_MIN,
     Campaign,
+    Country,
     ExposureType,
     Layer,
     Location,
+    Province,
     Sample,
     SampleType,
     Site,
@@ -44,7 +46,14 @@ from .models import (
     Transect,
     _validate_coord_bounds,
 )
-from .resources import LocationResource
+from .resources import (
+    CountryResource,
+    ExposureTypeResource,
+    LocationResource,
+    ProvinceResource,
+    SampleTypeResource,
+    SiteResource,
+)
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -117,11 +126,39 @@ class LayerStackedInline(StackedInline):
     )
 
 
-class ExposureTypeAdmin(ExportMixin, ModelAdmin):
+class CountryAdmin(ImportExportMixin, ModelAdmin):
+    """Admin interface for Country records."""
+
+    change_form_show_cancel_button = True
+    list_fullwidth = True
+    resource_classes = [CountryResource]
+    list_display = ["name", "iso_code"]
+    search_fields = ["name", "iso_code"]
+    ordering = ["name"]
+    list_filter_sheet = False
+    list_filter_submit = True
+
+
+class ProvinceAdmin(ImportExportMixin, ModelAdmin):
+    """Admin interface for Province records."""
+
+    change_form_show_cancel_button = True
+    list_fullwidth = True
+    resource_classes = [ProvinceResource]
+    list_display = ["name", "country"]
+    search_fields = ["name", "country__name"]
+    ordering = ["name"]
+    list_filter = [("country", RelatedDropdownFilter)]
+    list_filter_sheet = False
+    list_filter_submit = True
+
+
+class ExposureTypeAdmin(ImportExportMixin, ModelAdmin):
     """Admin interface for ExposureType records."""
 
     change_form_show_cancel_button = True
     list_fullwidth = True
+    resource_classes = [ExposureTypeResource]
     list_display = [
         "name_en",
         "name_ger",
@@ -523,7 +560,7 @@ class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 
 class SiteAdmin(
-    ExportMixin,
+    ImportExportMixin,
     ModelAdmin,
     admin.options.GeoModelAdminMixin,  # pyright: ignore[reportAttributeAccessIssue]
     NestedProjectPermissionMixin,
@@ -532,6 +569,7 @@ class SiteAdmin(
 
     change_form_show_cancel_button = True
     list_fullwidth = True
+    resource_classes = [SiteResource]
     project_path = "study_area__project"  # type: ignore[assignment]
     list_display = [
         "label",
@@ -921,11 +959,12 @@ class SampleAdmin(
         return response  # type: ignore[no-any-return]
 
 
-class SampleTypeAdmin(ExportMixin, ModelAdmin):
+class SampleTypeAdmin(ImportExportMixin, ModelAdmin):
     """Admin interface for SampleType records."""
 
     change_form_show_cancel_button = True
     list_fullwidth = True
+    resource_classes = [SampleTypeResource]
     list_display = [
         "word",
         "label",
@@ -1019,6 +1058,8 @@ class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     raw_id_fields = ["study_area", "campaign"]
 
 
+admin.site.register(Country, CountryAdmin)
+admin.site.register(Province, ProvinceAdmin)
 admin.site.register(ExposureType, ExposureTypeAdmin)
 admin.site.register(Campaign, CampaignAdmin)
 admin.site.register(StudyArea, StudyAreaAdmin)
