@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from django import forms as django_forms
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
@@ -27,6 +28,9 @@ from prototype.mixins import (
 )
 
 from .models import (
+    _SRID_WGS84,
+    _UTM_N_SRID_MIN,
+    _UTM_S_SRID_MIN,
     Campaign,
     ExposureType,
     Layer,
@@ -37,6 +41,7 @@ from .models import (
     StudyArea,
     Tag,
     Transect,
+    _validate_coord_bounds,
 )
 from .resources import LocationResource
 
@@ -140,28 +145,83 @@ class TagFilterMixin:
         **kwargs: object,
     ) -> Field | None:
         """Filter tag choices to the current model's content type and project."""
-        if db_field.name == "tags":
-            ct = ContentType.objects.get_for_model(self.model)
+        if db_field.name == "tags":  # type: ignore[attr-defined]
+            ct = ContentType.objects.get_for_model(self.model)  # type: ignore[attr-defined]
             qs = Tag.objects.filter(content_type=ct)
-            object_id = request.resolver_match.kwargs.get("object_id")
+            object_id = request.resolver_match.kwargs.get(  # type: ignore[union-attr]
+                "object_id"
+            )
             if object_id:
                 try:
-                    project = self.model.objects.values_list(
+                    project = self.model.objects.values_list(  # type: ignore[attr-defined]
                         "project",
                         flat=True,
                     ).get(pk=object_id)
                     if project:
                         qs = qs.filter(project=project)
-                except self.model.DoesNotExist:
+                except self.model.DoesNotExist:  # type: ignore[attr-defined]
                     pass
             kwargs["queryset"] = qs
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
+        return super().formfield_for_manytomany(db_field, request, **kwargs)  # type: ignore[no-any-return, misc]
+
+
+def _srid_choices() -> list[tuple[int, str]]:
+    _utm_n_base = _UTM_N_SRID_MIN - 1
+    _utm_s_base = _UTM_S_SRID_MIN - 1
+    return [
+        (_SRID_WGS84, f"EPSG:{_SRID_WGS84} — WGS-84 (decimal degrees)"),
+        *[
+            (_utm_n_base + z, f"EPSG:{_utm_n_base + z} — UTM Zone {z}N")
+            for z in range(1, 61)
+        ],
+        *[
+            (_utm_s_base + z, f"EPSG:{_utm_s_base + z} — UTM Zone {z}S")
+            for z in range(1, 61)
+        ],
+    ]
+
+
+class LocationAdminForm(django_forms.ModelForm):  # type: ignore[type-arg]
+    """ModelForm for Location with a SRID dropdown instead of a raw integer field."""
+
+    srid = django_forms.TypedChoiceField(
+        choices=_srid_choices(),
+        coerce=int,
+        initial=_SRID_WGS84,
+        label="CRS (SRID)",
+        help_text=(
+            "EPSG code — e.g. 4326 (WGS-84 decimal degrees), "
+            "32632 (UTM zone 32N), 32633 (UTM zone 33N)."
+        ),
+    )
+
+    class Meta:
+        """Metadata for LocationAdminForm."""
+
+        model = Location
+        fields = "__all__"  # noqa: DJ007 — admin form; fieldsets control visibility
+
+    def clean(self) -> dict[str, Any]:
+        """Validate coordinate ranges against the selected CRS."""
+        cleaned_data: dict[str, Any] = super().clean() or {}
+        easting: float | None = cleaned_data.get("easting")
+        northing: float | None = cleaned_data.get("northing")
+        srid: int = cleaned_data.get("srid", _SRID_WGS84)
+        if easting is None or northing is None:
+            return cleaned_data
+        errors: dict[str, str] = {}
+        _validate_coord_bounds(errors, easting, northing, srid)
+        if errors:
+            raise django_forms.ValidationError(errors)
+        return cleaned_data
 
 
 class LocationAdmin(
     TagFilterMixin, ImportExportMixin, ModelAdmin, ProjectBasedPermissionMixin
 ):
     """Admin interface for Location records with export and project-based permissions."""
+
+    form = LocationAdminForm
 
     save_on_top = True
     change_form_show_cancel_button = True
@@ -256,7 +316,7 @@ class LocationAdmin(
     )
     def colored_location_type(self, obj: Location) -> str:
         """Return the location type display value for colour-coded display."""
-        return obj.get_location_type_display() or "—"
+        return obj.get_location_type_display() or "—"  # pyright: ignore[reportAttributeAccessIssue]
 
     def map_preview(self, obj: Location) -> str:
         """Render a satellite preview map that reacts to easting/northing changes."""
@@ -269,10 +329,25 @@ class LocationAdmin(
         map_id = f"loc-map-{obj.pk}"
         html = f"""
 <div id="{map_id}" style="width:100%;height:300px;border-radius:4px;margin-top:4px;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
 <script>
 (function() {{
+  function utmProj4(srid) {{
+    if (srid >= 32601 && srid <= 32660)
+      return '+proj=utm +zone=' + (srid - 32600) + ' +datum=WGS84 +units=m +no_defs';
+    if (srid >= 32701 && srid <= 32760)
+      return '+proj=utm +zone=' + (srid - 32700) + ' +south +datum=WGS84 +units=m +no_defs';
+    return null;
+  }}
+  function toWGS84(e, n, srid) {{
+    if (srid === 4326) return [e, n];
+    var def = utmProj4(srid);
+    return def ? proj4(def, 'WGS84', [e, n]) : null;
+  }}
   function initLocMap() {{
-    if (typeof ol === 'undefined') {{ setTimeout(initLocMap, 100); return; }}
+    if (typeof ol === 'undefined' || typeof proj4 === 'undefined') {{
+      setTimeout(initLocMap, 100); return;
+    }}
     var lon = {lon}, lat = {lat};
     var markerSrc = new ol.source.Vector({{
       features: [new ol.Feature({{ geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])) }})]
@@ -298,13 +373,17 @@ class LocationAdmin(
     function updateMarker() {{
       var e = parseFloat(document.getElementById('id_easting')?.value);
       var n = parseFloat(document.getElementById('id_northing')?.value);
+      var srid = parseInt(document.getElementById('id_srid')?.value) || 4326;
       if (!isNaN(e) && !isNaN(n)) {{
-        var coord = ol.proj.fromLonLat([e, n]);
-        markerSrc.getFeatures()[0].getGeometry().setCoordinates(coord);
-        map.getView().setCenter(coord);
+        var wgs84 = toWGS84(e, n, srid);
+        if (wgs84) {{
+          var coord = ol.proj.fromLonLat(wgs84);
+          markerSrc.getFeatures()[0].getGeometry().setCoordinates(coord);
+          map.getView().setCenter(coord);
+        }}
       }}
     }}
-    ['id_easting', 'id_northing'].forEach(function(id) {{
+    ['id_easting', 'id_northing', 'id_srid'].forEach(function(id) {{
       var el = document.getElementById(id);
       if (el) el.addEventListener('change', updateMarker);
     }});
@@ -314,9 +393,9 @@ class LocationAdmin(
 </script>"""
         return mark_safe(html)  # noqa: S308  # nosec B703 B308 — interpolates only floats (lon/lat) and integer PK; no user-controlled strings
 
-    map_preview.short_description = "Map preview (satellite)"
+    map_preview.short_description = "Map preview (satellite)"  # type: ignore[attr-defined]
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Location]:
         """Return queryset with related project, campaign, and reference pre-fetched."""
         return (
             super()
@@ -442,13 +521,13 @@ class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 class SiteAdmin(
     ExportMixin,
     ModelAdmin,
-    admin.options.GeoModelAdminMixin,
+    admin.options.GeoModelAdminMixin,  # pyright: ignore[reportAttributeAccessIssue]
     NestedProjectPermissionMixin,
 ):
     """Admin interface for Site records with geo support and nested project permissions."""
 
     change_form_show_cancel_button = True
-    project_path = "study_area__project"
+    project_path = "study_area__project"  # type: ignore[assignment]
     list_display = [
         "label",
         "study_area",
@@ -515,7 +594,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     )
     def colored_season(self, obj: Campaign) -> str:
         """Return the season value for colour-coded display."""
-        return obj.season
+        return obj.season or ""
 
     fieldsets = (
         (
@@ -546,7 +625,7 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     """Admin interface for Layer records with nested project permissions."""
 
     change_form_show_cancel_button = True
-    project_path = "location__project"
+    project_path = "location__project"  # type: ignore[assignment]
     list_display = [
         "location",
         "identifier",
@@ -590,7 +669,7 @@ class SampleAdmin(
         "type",
     ]
     list_display = ["identifier", "project", "location", "depth_mid"]
-    inlines = []
+    inlines: list[Any] = []
     list_filter = [
         ("project", RelatedDropdownFilter),
         ("location__campaign", RelatedDropdownFilter),
@@ -647,20 +726,20 @@ class SampleAdmin(
         ("cosmogenicnuclidedating", "analysis.models.CosmogenicNuclideDating"),
     ]
 
-    def get_urls(self) -> list:
+    def get_urls(self) -> list[Any]:
         """Register custom analysis sub-view URLs for each registered analysis model."""
         from importlib import import_module
 
-        def _load(dotted: str) -> type:
+        def _load(dotted: str) -> type[Any]:
             mod, cls = dotted.rsplit(".", 1)
-            return getattr(import_module(mod), cls)
+            return getattr(import_module(mod), cls)  # type: ignore[no-any-return]
 
         custom_urls = []
         for slug, model_path in self._ANALYSIS_REGISTRY:
             model_class = _load(model_path)
             prefix = f"field_data_sample_{slug}"
 
-            def make_views(m: type) -> tuple:
+            def make_views(m: type[Any]) -> tuple[Any, ...]:
                 def _cl(request: HttpRequest, sample_pk: int) -> HttpResponse:
                     return self._analysis_changelist_view(
                         request,
@@ -703,7 +782,7 @@ class SampleAdmin(
                     name=f"{prefix}_change",
                 ),
             ]
-        return custom_urls + super().get_urls()
+        return custom_urls + super().get_urls()  # type: ignore[no-any-return]
 
     def _get_accessible_sample(
         self,
@@ -728,7 +807,7 @@ class SampleAdmin(
         # Inject the sample filter — changelist reads this from GET params
         mutable_get = request.GET.copy()
         mutable_get["sample__id__exact"] = str(sample_pk)
-        request.GET = mutable_get
+        request.GET = mutable_get  # type: ignore[assignment]
 
         response = analysis_admin.changelist_view(request)
 
@@ -741,12 +820,12 @@ class SampleAdmin(
             pf = urlencode(
                 {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
-            response.context_data["preserved_filters"] = pf
-            cl = response.context_data.get("cl")
+            response.context_data["preserved_filters"] = pf  # pyright: ignore[reportAttributeAccessIssue]
+            cl = response.context_data.get("cl")  # pyright: ignore[reportAttributeAccessIssue]
             if cl is not None:
                 cl.preserved_filters = pf
 
-        return response
+        return response  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Add-view helpers
@@ -762,15 +841,15 @@ class SampleAdmin(
         analysis_admin = self.admin_site.get_model_admin(model_class)
         mutable_get = request.GET.copy()
         mutable_get["sample"] = str(sample_pk)
-        request.GET = mutable_get
+        request.GET = mutable_get  # type: ignore[assignment]
         response = analysis_admin.add_view(request)
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
 
-            response.context_data["preserved_filters"] = urlencode(
+            response.context_data["preserved_filters"] = urlencode(  # pyright: ignore[reportAttributeAccessIssue]
                 {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
-        return response
+        return response  # type: ignore[no-any-return]
 
     # ------------------------------------------------------------------
     # Change-view helpers
@@ -793,10 +872,10 @@ class SampleAdmin(
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
 
-            response.context_data["preserved_filters"] = urlencode(
+            response.context_data["preserved_filters"] = urlencode(  # pyright: ignore[reportAttributeAccessIssue]
                 {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
-        return response
+        return response  # type: ignore[no-any-return]
 
 
 class SampleTypeAdmin(ExportMixin, ModelAdmin):
@@ -809,7 +888,7 @@ class SampleTypeAdmin(ExportMixin, ModelAdmin):
     ]
     search_fields = ["word", "label"]
     ordering = ["word"]
-    list_filter = []
+    list_filter: list[Any] = []
     list_filter_sheet = False
     list_filter_submit = True
 
@@ -831,9 +910,9 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     def get_search_results(
         self,
         request: HttpRequest,
-        queryset: QuerySet,
+        queryset: QuerySet[Any],
         search_term: str,
-    ) -> tuple:
+    ) -> tuple[QuerySet[Any], bool]:
         """Filter tag search results by content type and project when called from a related field."""
         queryset, may_have_duplicates = super().get_search_results(
             request,
@@ -863,7 +942,7 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
                 # crafted Referer header cannot expose data from inaccessible projects.
                 try:
                     model_admin = self.admin_site.get_model_admin(model_class)
-                except admin.sites.NotRegistered:
+                except admin.sites.NotRegistered:  # type: ignore[attr-defined]
                     model_admin = None
                 if model_admin:
                     accessible = model_admin.get_queryset(request).filter(
@@ -882,7 +961,7 @@ class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     """Admin interface for Transect records with nested project permissions."""
 
     change_form_show_cancel_button = True
-    project_path = "study_area__project"
+    project_path = "study_area__project"  # type: ignore[assignment]
     list_display = ["identifier", "study_area", "campaign"]
     search_fields = ["identifier", "study_area__label"]
     list_filter = [
