@@ -187,6 +187,20 @@ class SampleForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.add_input(Submit("submit", "Submit"))
 
+    def clean(self) -> dict:
+        """Validate that depth_bottom is not less than depth_top."""
+        cleaned_data: dict = super().clean() or {}
+        depth_top = cleaned_data.get("depth_top")
+        depth_bottom = cleaned_data.get("depth_bottom")
+        if (
+            depth_top is not None
+            and depth_bottom is not None
+            and depth_bottom < depth_top
+        ):
+            msg = "Bottom depth must be greater than or equal to top depth."
+            raise forms.ValidationError(msg)
+        return cleaned_data
+
 
 class TagForm(forms.ModelForm):
     """Form for creating and editing a Tag."""

@@ -666,7 +666,7 @@ class SampleAdmin(
     compressed_fields = True
     warn_unsaved_form = True
     show_full_result_count = False
-    readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
+    readonly_fields = ["id", "depth_mid", *AUDIT_READONLY_FIELDS]
     search_fields = ["identifier", "location__identifier"]
     autocomplete_fields = [
         "project",
@@ -708,7 +708,7 @@ class SampleAdmin(
                 "classes": ["tab"],
                 "fields": (
                     ("type", "material"),
-                    ("depth_top", "depth_bottom"),
+                    ("depth_top", "depth_bottom", "depth_mid"),
                     ("layer", "weight"),
                     "description",
                 ),
