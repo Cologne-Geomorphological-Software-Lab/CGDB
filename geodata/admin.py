@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.contrib.gis import admin
+from import_export.admin import ImportExportMixin
 from unfold.admin import ModelAdmin
 
 from prototype.mixins import (
@@ -11,6 +12,7 @@ from prototype.mixins import (
 )
 
 from .models import Landform
+from .resources import LandformResource
 
 
 class GeoDataModelAdmin(
@@ -22,8 +24,10 @@ class GeoDataModelAdmin(
 
 
 @admin.register(Landform)
-class LandformAdmin(GeoDataModelAdmin):
+class LandformAdmin(ImportExportMixin, GeoDataModelAdmin):
     """Admin for Murphy Landform region polygons."""
+
+    resource_classes = [LandformResource]
 
     list_display = (
         "name_str",
