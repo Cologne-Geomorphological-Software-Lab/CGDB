@@ -1,0 +1,71 @@
+{% extends "admin/base_site.html" %}
+{% load i18n l10n admin_urls static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {{ media }}
+    <script src="{% static 'admin/js/cancel.js' %}" async></script>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }}{% endblock %}
+
+{% block content %}
+<div class="border border-base-200 rounded-default shadow-xs dark:border-base-800">
+    <p class="font-semibold p-4 text-font-important-light dark:text-font-important-dark">
+        {% if verb == "add" %}
+            {% blocktranslate count count=queryset.count %}Add tags to {{ count }} selected record.{% plural %}Add tags to {{ count }} selected records.{% endblocktranslate %}
+        {% else %}
+            {% blocktranslate count count=queryset.count %}Remove tags from {{ count }} selected record.{% plural %}Remove tags from {{ count }} selected records.{% endblocktranslate %}
+        {% endif %}
+    </p>
+
+    <form method="post" class="border-t border-base-200 p-4 dark:border-base-800">
+        {% csrf_token %}
+
+        {% for obj in queryset %}
+            <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk|unlocalize }}">
+        {% endfor %}
+        <input type="hidden" name="action" value="{{ action_name }}">
+        <input type="hidden" name="_apply_tag_action" value="yes">
+
+        {% if form.tags.errors %}
+            <ul class="errorlist mb-4">
+                {% for error in form.tags.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <div class="mb-4">
+            <label for="{{ form.tags.id_for_label }}"
+                   class="block font-semibold mb-2 text-font-important-light dark:text-font-important-dark">
+                {% translate "Tags" %}
+            </label>
+
+            {% if form.tags.field.queryset.exists %}
+                <div class="grid grid-cols-2 gap-x-8 gap-y-1">
+                    {% for pk, label in form.tags.field.choices %}
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="tags" value="{{ pk }}"
+                                   class="rounded border-base-300 dark:border-base-600">
+                            <span>{{ label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {% translate "No tags are available for the selected records' projects." %}
+                </p>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+            <button type="submit"
+                    class="button">
+                {% if verb == "add" %}{% translate "Add tags" %}{% else %}{% translate "Remove tags" %}{% endif %}
+            </button>
+            <a href="#" class="button cancel-link">{% translate "Cancel" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
