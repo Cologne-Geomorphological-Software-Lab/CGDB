@@ -123,6 +123,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     readonly_fields = [
         "id",
         "status",
+        "triggered_by",
         "started_at",
         "finished_at",
         "log",
