@@ -14,6 +14,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from django.templatetags.static import static
 
 from .unfold_settings import UNFOLD as unfold_settings
@@ -315,33 +316,21 @@ UNFOLD["STYLES"] = [
 # LOCAL SETTINGS OVERRIDE
 # ==============================================================================
 
-try:
-    from .local_settings import (
-        ALLOWED_HOSTS,
-        CSRF_COOKIE_SECURE,
-        DATABASES,
-        DEBUG,
-        MEDIA_ROOT,
-        MEDIA_URL,
-        SECRET_KEY,
-        SECURE_HSTS_INCLUDE_SUBDOMAINS,
-        SECURE_HSTS_PRELOAD,
-        SECURE_HSTS_SECONDS,
-        SECURE_SSL_REDIRECT,
-        SESSION_COOKIE_SECURE,
-        STATIC_ROOT,
-        STATIC_URL,
-        STATICFILES_DIRS,
-    )
+DEBUG = False
+ALLOWED_HOSTS: list[str] = []
+DAGSTER_URL = None
 
-    try:
-        from .local_settings import DAGSTER_URL
-    except ImportError:
-        DAGSTER_URL = None
+try:
+    from .local_settings import *  # noqa: F401, F403
 except ImportError:
     import logging
 
-    logging.warning("local_settings.py not imported.")
+    logging.warning("local_settings.py not found; running with locked-down defaults.")
+
+if not globals().get("SECRET_KEY"):
+    raise ImproperlyConfigured(
+        "SECRET_KEY is not set. Add it to prototype/local_settings.py."
+    )
 
 DOCS_ROOT = os.path.join(BASE_DIR, "docs/_build/html")
 DOCS_ACCESS = "public"
