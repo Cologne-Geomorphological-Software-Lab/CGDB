@@ -39,7 +39,7 @@ class Country(models.Model):
 
     def __str__(self) -> str:
         """Return the country name or a fallback string."""
-        return self.name or f"Country {self.id}"
+        return self.name or f"Country {self.id}"  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class Province(models.Model):
@@ -66,7 +66,7 @@ class Province(models.Model):
 
     def __str__(self) -> str:
         """Return the province name or a fallback string."""
-        return self.name or f"Province {self.id}"
+        return self.name or f"Province {self.id}"  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class Tag(BaseModel):
@@ -467,6 +467,56 @@ class ExposureType(BaseModel):
         return f"{self.main_type}: {self.name_en} ({self.abbreviation})"
 
 
+# Coordinate-system constants shared with the admin form validation.
+_SRID_WGS84 = 4326
+_UTM_N_SRID_MIN = 32601  # WGS84 UTM Zone 1N
+_UTM_N_SRID_MAX = 32660  # WGS84 UTM Zone 60N
+_UTM_S_SRID_MIN = 32701  # WGS84 UTM Zone 1S
+_UTM_S_SRID_MAX = 32760  # WGS84 UTM Zone 60S
+_UTM_EASTING_MIN = 100_000
+_UTM_EASTING_MAX = 900_000
+_WGS84_LON_MIN = -180.0
+_WGS84_LON_MAX = 180.0
+_WGS84_LAT_MIN = -90.0
+_WGS84_LAT_MAX = 90.0
+_UTM_N_NORTHING_MAX = 9_400_000
+_UTM_S_NORTHING_MIN = 1_000_000
+_UTM_S_NORTHING_MAX = 10_000_000
+
+
+def _validate_coord_bounds(
+    errors: dict[str, str],
+    easting: float,
+    northing: float,
+    srid: int,
+) -> None:
+    """Populate *errors* with field-specific messages for out-of-range coordinates."""
+    if srid == _SRID_WGS84:
+        if not (_WGS84_LON_MIN <= easting <= _WGS84_LON_MAX):
+            errors["easting"] = "Longitude must be between −180 and 180."
+        if not (_WGS84_LAT_MIN <= northing <= _WGS84_LAT_MAX):
+            errors["northing"] = "Latitude must be between −90 and 90."
+    elif _UTM_N_SRID_MIN <= srid <= _UTM_N_SRID_MAX:
+        if not (_UTM_EASTING_MIN <= easting <= _UTM_EASTING_MAX):
+            errors["easting"] = (
+                "UTM easting must be between 100 000 and 900 000 m."
+            )
+        if not (0 <= northing <= _UTM_N_NORTHING_MAX):
+            errors["northing"] = (
+                "UTM northing (N hemisphere) must be between 0 and 9 400 000 m."
+            )
+    elif _UTM_S_SRID_MIN <= srid <= _UTM_S_SRID_MAX:
+        if not (_UTM_EASTING_MIN <= easting <= _UTM_EASTING_MAX):
+            errors["easting"] = (
+                "UTM easting must be between 100 000 and 900 000 m."
+            )
+        if not (_UTM_S_NORTHING_MIN <= northing <= _UTM_S_NORTHING_MAX):
+            errors["northing"] = (
+                "UTM northing (S hemisphere) must be between"
+                " 1 000 000 and 10 000 000 m."
+            )
+
+
 class Location(BaseModel):
     """Geographical location associated with either a project (internal) or a reference (literature).
 
@@ -599,16 +649,16 @@ class Location(BaseModel):
     easting = models.FloatField(
         blank=True,
         null=True,
-        help_text="in decimal degrees.",
+        help_text="X coordinate — longitude in decimal degrees (EPSG:4326) or easting in metres (UTM).",
     )
     northing = models.FloatField(
         blank=True,
         null=True,
-        help_text="in decimal degrees.",
+        help_text="Y coordinate — latitude in decimal degrees (EPSG:4326) or northing in metres (UTM).",
     )
     srid = models.IntegerField(
         default=4326,
-        help_text="EPSG code",
+        help_text="EPSG code — e.g. 4326 (WGS-84 decimal degrees), 32632 (UTM zone 32N), 32633 (UTM zone 33N).",
     )
     location = models.PointField(
         srid=4326,
@@ -767,7 +817,7 @@ class Location(BaseModel):
         return f"{self.identifier}"
 
     def clean(self) -> None:
-        """Validate the data_source logic for project/reference assignment."""
+        """Validate data_source logic and coordinate ranges."""
         if self.data_source == "internal":
             if not self.project:
                 msg = (
@@ -786,18 +836,25 @@ class Location(BaseModel):
                 msg = "Literature data source requires a reference assignment."
                 raise ValidationError(msg)
 
+        if self.easting is not None and self.northing is not None:
+            errors: dict[str, str] = {}
+            _validate_coord_bounds(
+                errors, self.easting, self.northing, self.srid
+            )
+            if errors:
+                raise ValidationError(errors)
+
     def save(self, *args: object, **kwargs: object) -> None:
         """Compute the location point from easting/northing before saving."""
         if self.easting is not None and self.northing is not None:
-            self.location = Point(
-                self.easting,
-                self.northing,
-                srid=self.srid,
-            )
+            pt = Point(self.easting, self.northing, srid=self.srid)
+            if self.srid != _SRID_WGS84:
+                pt.transform(_SRID_WGS84)
+            self.location = pt
         else:
             self.location = None
         self.clean()
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # type: ignore[arg-type]
 
 
 class Layer(BaseModel):
@@ -1059,7 +1116,7 @@ class Sample(BaseModel):
     def depth_mid(self) -> float | None:
         """Calculate the midpoint depth of the sample."""
         if self.depth_top is not None and self.depth_bottom is not None:
-            return (self.depth_top + self.depth_bottom) / 2
+            return float((self.depth_top + self.depth_bottom) / 2)
         return None
 
     type = models.ForeignKey(
@@ -1094,7 +1151,7 @@ class Sample(BaseModel):
             self.project = self.location.project
 
         self.clean()
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # type: ignore[arg-type]
 
     def __str__(self) -> str:
         """Return the sample identifier."""
