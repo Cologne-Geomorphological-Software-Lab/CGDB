@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Column, Layout, Row, Submit
+from crispy_forms.layout import Column, Fieldset, Layout, Row, Submit
 from django.contrib.gis import forms
 
 from .models import Campaign, Layer, Location, Project, Sample, StudyArea, Tag
@@ -110,7 +110,53 @@ class LocationForm(forms.ModelForm):
         self.fields["processor"].widget.attrs["readonly"] = True
         self.helper = FormHelper()
         self.helper.form_method = "post"
-        self.helper.add_input(Submit("submit", "Save Location"))
+        self.helper.layout = Layout(
+            "project",
+            Fieldset(
+                "Identification",
+                "identifier",
+                "campaign",
+                "processor",
+                "date_of_record",
+            ),
+            Fieldset(
+                "Coordinates",
+                Row(
+                    Column("easting", css_class="form-group col-md-4"),
+                    Column("northing", css_class="form-group col-md-4"),
+                    Column("srid", css_class="form-group col-md-2"),
+                    Column("altitude", css_class="form-group col-md-2"),
+                ),
+            ),
+            Fieldset(
+                "Field setting",
+                "study_site",
+                Row(
+                    Column("exposure_type", css_class="form-group col-md-4"),
+                    Column("liner", css_class="form-group col-md-4"),
+                    Column("sampling", css_class="form-group col-md-4"),
+                ),
+            ),
+            Fieldset(
+                "Environment",
+                Row(
+                    Column(
+                        "gradient_upslope", css_class="form-group col-md-3"
+                    ),
+                    Column(
+                        "gradient_downslope", css_class="form-group col-md-3"
+                    ),
+                    Column("slope_aspect", css_class="form-group col-md-3"),
+                    Column(
+                        "relief_description", css_class="form-group col-md-3"
+                    ),
+                ),
+                "current_weather_conditions",
+                "past_weather_conditions",
+            ),
+            "tags",
+            Submit("submit", "Save Location"),
+        )
 
 
 class StudyAreaForm(forms.ModelForm):
