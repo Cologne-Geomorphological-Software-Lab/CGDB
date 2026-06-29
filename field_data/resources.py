@@ -7,6 +7,7 @@ from prototype.models import Researcher
 
 from .models import (
     Campaign,
+    Country,
     ExposureType,
     Layer,
     Location,
@@ -112,7 +113,7 @@ class CampaignResource(resources.ModelResource):
         column_name="destination_country",
         attribute="destination_country",
         widget=ForeignKeyWidget(
-            Project,
+            Country,
             field="name",
         ),
     )
