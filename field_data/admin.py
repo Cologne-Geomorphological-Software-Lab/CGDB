@@ -25,6 +25,7 @@ from prototype.mixins import (
     HybridProjectPermissionMixin,
     NestedProjectPermissionMixin,
     ProjectBasedPermissionMixin,
+    _accessible_projects,
 )
 
 from .models import (
@@ -721,6 +722,19 @@ class SampleAdmin(
             },
         ),
     )
+
+    def formfield_for_foreignkey(
+        self,
+        db_field: object,
+        request: HttpRequest,
+        **kwargs: object,
+    ) -> Field | None:
+        """Restrict the location dropdown to locations in accessible projects."""
+        if db_field.name == "location":  # type: ignore[attr-defined]
+            kwargs["queryset"] = Location.objects.filter(
+                project__in=_accessible_projects(request.user)
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)  # type: ignore[no-any-return]
 
     # Registry: (url_slug, model_import_path) — drives get_urls() without 18 delegates.
     _ANALYSIS_REGISTRY = [
