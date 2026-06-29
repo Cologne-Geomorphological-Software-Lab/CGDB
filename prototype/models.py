@@ -13,6 +13,7 @@ Date: July 18, 2025 (consolidated from organisation app)
 """
 
 from django.contrib.auth.models import Group, User
+from django.core.exceptions import ValidationError
 from django.db import models
 from guardian.models import UserObjectPermissionBase
 
@@ -224,6 +225,18 @@ class Project(BaseModel):
     def __str__(self) -> str:
         """Returns a human-readable representation of the research project."""
         return str(self.label)
+
+    def clean(self) -> None:
+        """Validate that deadline is not before start_date."""
+        super().clean()
+        if (
+            self.start_date
+            and self.deadline
+            and self.start_date > self.deadline
+        ):
+            raise ValidationError(
+                {"deadline": "Deadline must be on or after the start date."}
+            )
 
 
 class ProjectUserObjectPermission(UserObjectPermissionBase):
