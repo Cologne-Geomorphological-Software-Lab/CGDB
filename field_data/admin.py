@@ -676,15 +676,36 @@ class SampleAdmin(
         "layer",
         "type",
     ]
-    list_display = ["identifier", "project", "location", "depth_mid"]
+    list_display = [
+        "identifier",
+        "project",
+        "location",
+        "depth_mid",
+        "colored_status",
+    ]
     inlines: list[Any] = []
     list_filter = [
         ("project", RelatedDropdownFilter),
         ("location__campaign", RelatedDropdownFilter),
         ("location", RelatedDropdownFilter),
+        ("status", ChoicesDropdownFilter),
     ]
     list_filter_sheet = False
     list_filter_submit = True
+
+    @display(
+        label={
+            "draft": "default",
+            "reviewed": "info",
+            "accepted": "success",
+            "rejected": "danger",
+            "archived": "warning",
+        },
+        description="Status",
+    )
+    def colored_status(self, obj: Sample) -> str:
+        """Return the status value for colour-coded display."""
+        return obj.status
 
     fieldsets = (
         (
@@ -694,6 +715,7 @@ class SampleAdmin(
                 "fields": (
                     "id",
                     ("identifier", "igsn"),
+                    "status",
                     ("project", "location"),
                     ("processor", "date"),
                     "parent",
