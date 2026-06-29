@@ -243,3 +243,11 @@ class ProjectUserObjectPermission(UserObjectPermissionBase):
     """User object permissions for Project model."""
 
     content_object = models.ForeignKey(Project, on_delete=models.CASCADE)
+    granted_at = models.DateTimeField(auto_now_add=True)
+    granted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="granted_project_permissions",
+    )
