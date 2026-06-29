@@ -1,10 +1,37 @@
 [project]
 name = "cgdb"
 requires-python = ">=3.13"
-
+version = "1"
+dependencies = [
+    "django[argon2]>=6.0.6",
+    "django-unfold>=0.75.0",
+    "psycopg>=3.3.2",
+    "python-decouple>=3.8",
+    "argon2-cffi>=25.1.0",
+    "django-crispy-forms>=2.5",
+    "django-filter>=25.2",
+    "django-guardian>=3.2.0",
+    "django-import-export>=4.3.14",
+    "djangorestframework>=3.17.1",
+    "djangorestframework-gis>=1.2.1",
+    "drf-spectacular>=0.28.0",
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.1",
+    "pillow>=12.1.1",
+    "dagster>=1.12.8",
+    "dagster-webserver>=1.12.8",
+    "dagster-postgres>=0.28.8",
+    "duckdb>=1.4.3",
+    "pandas>=2.0",
+    "honcho>=2.0.0",
+    "django-docs>=0.3.3",
+    "sphinx>=9.1.0",
+    "sphinx-rtd-theme>=3.1.0",
+]
 [tool.ruff]
 target-version = "py313"
 line-length = 79
+force-exclude = true  # honour exclude even when files are passed explicitly (e.g. pre-commit)
 
 # Exclude-Files
 exclude = [
@@ -12,6 +39,7 @@ exclude = [
     "**/tests/**",
     "**/settings.py",
     "**/local_settings*",
+    "vulture_whitelist.py",
 ]
 
 
@@ -52,8 +80,7 @@ ignore = [
 # maintenance_jobs: ANN001 — Dagster 1.12.8 errors if context param is type-annotated; TRY400 — context.log has no .exception()
 "orchestration/dagster_home/maintenance_jobs.py" = ["INP001", "ANN001", "TRY400"]
 # run_maintenance_job: ARG/ANN — Django management command signature (*args, **options) cannot be changed
-"orchestration/management/commands/run_maintenance_job.py" = ["ARG001", "ARG002", "ANN003", "BLE001"]
-# Sphinx docs dir: not a Python package; copyright variable is a Sphinx requirement; E402 because sys.path is set first
+"orchestration/management/commands/run_maintenance_job.py" = ["ARG001", "ARG002", "ANN003", "BLE001"]# Sphinx docs dir: not a Python package; copyright variable is a Sphinx requirement; E402 because sys.path is set first
 "docs/source/conf.py" = ["INP001", "A001", "E402"]
 # make_aware(datetime(...)) is the correct Django DST-safe pattern; naive datetime is only intermediate
 "prototype/views.py" = ["DTZ001"]
@@ -77,11 +104,15 @@ omit = [
     "*/migrations/*",
     "*/tests/*",
     "venv/*",
+    ".venv/*",
     "manage.py",
     "*/settings*.py",
     "*/local_settings*",
     "conftest.py",
     "docs/*",
+    "*/asgi.py",
+    "*/wsgi.py",
+    "vulture_whitelist.py",
 ]
 
 [tool.coverage.report]
@@ -98,6 +129,19 @@ exclude_lines = [
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main"]
+strict = true
+exclude = ["venv/", "\\.venv/", "migrations/", "manage\\.py", "docs/"]
+
+[[tool.mypy.overrides]]
+module = ["rest_framework.*", "rest_framework_gis.*", "dagster.*", "tablib.*", "unfold.*", "guardian.*"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "prototype.test_settings"
 
 [dependency-groups]
 dev = [

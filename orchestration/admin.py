@@ -14,7 +14,10 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 
-from prototype.mixins import CreatedUpdatedModelAdminMixin
+from prototype.mixins import (
+    AUDIT_READONLY_FIELDS,
+    CreatedUpdatedModelAdminMixin,
+)
 
 from .models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
 
@@ -124,10 +127,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
         "log",
         "result_file",
         "download_link",
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
+        *AUDIT_READONLY_FIELDS,
     ]
     list_filter = ["job_type", "status"]
     actions = ["trigger_maintenance_job"]
@@ -288,7 +288,7 @@ class DuckDBTableConfigAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     list_editable = ["role"]
     search_fields = ["app_label", "model_name"]
     ordering = ["app_label", "model_name"]
-    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
+    readonly_fields = AUDIT_READONLY_FIELDS
 
     # ------------------------------------------------------------------
     # Permission lockdown: superuser only

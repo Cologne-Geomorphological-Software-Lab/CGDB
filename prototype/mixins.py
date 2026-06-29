@@ -50,6 +50,14 @@ def _addable_projects(user: object) -> QuerySet:
     )
 
 
+AUDIT_READONLY_FIELDS = [
+    "created_at",
+    "created_by",
+    "modified_at",
+    "updated_by",
+]
+
+
 class CreatedUpdatedModelAdminMixin:
     """Sets created_by and updated_by on save. Use as a base for admin classes that manage BaseModel objects."""
 

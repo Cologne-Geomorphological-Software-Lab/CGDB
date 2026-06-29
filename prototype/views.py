@@ -31,7 +31,6 @@ from analysis.models import (
     RadiocarbonDating,
 )
 from field_data.models import Location, Sample, StudyArea, Transect
-from geodata.models import Geomorphon, Landform, WorldCover
 from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
@@ -102,9 +101,7 @@ def map_dashboard(request: HttpRequest) -> HttpResponse:
         "locations": reverse("locations_geojson"),
         "study_areas": reverse("study_areas_geojson"),
         "transects": reverse("transects_geojson"),
-        "geomorphons": reverse("geomorphons_geojson"),
         "landforms": reverse("landforms_geojson"),
-        "worldcover": reverse("worldcover_geojson"),
     }
     return render(request, "admin/map_dashboard.html", context)
 
@@ -235,69 +232,100 @@ def transects_geojson(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
+_LANDFORM_SIMPLIFY_THRESHOLD = (
+    1e-4  # degrees (~11 m); below this no simplification
+)
+
+
+def _parse_bbox(bbox_param: str) -> tuple[float, float, float, float] | None:
+    """Parse and clamp a 'minx,miny,maxx,maxy' string; return None on failure."""
+    try:
+        minx, miny, maxx, maxy = (float(v) for v in bbox_param.split(","))
+    except (ValueError, TypeError):
+        return None
+    minx = max(minx, -180.0)
+    maxx = min(maxx, 180.0)
+    miny = max(miny, -90.0)
+    maxy = min(maxy, 90.0)
+    if maxx <= minx or maxy <= miny:
+        return None
+    return minx, miny, maxx, maxy
+
+
 @require_GET
-def geomorphons_geojson(_request: HttpRequest) -> HttpResponse:
-    """Return a GeoJSON FeatureCollection of all geomorphon polygons."""
-    qs = Geomorphon.objects.exclude(geometry__isnull=True).select_related(
-        "study_area"
+def landforms_geojson(request: HttpRequest) -> HttpResponse:
+    """Return a viewport-filtered GeoJSON FeatureCollection of landform polygons.
+
+    Geometry is serialised entirely in SpatiaLite via AsGeoJSON() so Python
+    never deserialises GEOS objects.  At low zoom Simplify() reduces vertex
+    count proportionally to the viewport width.
+    """
+    from django.contrib.gis.geos import Polygon
+    from django.db.models.expressions import RawSQL
+
+    from geodata.models import Landform
+
+    bbox_param = request.GET.get("bbox", "")
+    bbox = _parse_bbox(bbox_param) if bbox_param else None
+    if bbox is None:
+        return JsonResponse({"type": "FeatureCollection", "features": []})
+
+    span = bbox[2] - bbox[0]
+    tolerance = span / 512.0
+
+    bbox_poly = Polygon.from_bbox(bbox)
+    bbox_poly.srid = 4326
+    qs = Landform.objects.exclude(geometry__isnull=True).filter(
+        geometry__intersects=bbox_poly,
     )
-    features = [
-        {
-            "type": "Feature",
-            "geometry": json.loads(g.geometry.geojson),
-            "properties": {
-                "id": g.id,
-                "geomorphon_class": g.geomorphon_class,
-                "geomorphon_class_display": g.get_geomorphon_class_display(),
-                "source": g.source,
-                "resolution_m": g.resolution_m,
-                "study_area": str(g.study_area) if g.study_area else None,
-            },
-        }
-        for g in qs
-    ]
-    return JsonResponse({"type": "FeatureCollection", "features": features})
 
+    if tolerance >= _LANDFORM_SIMPLIFY_THRESHOLD:
+        # SpatiaLite uses AsGeoJSON / Simplify (without ST_ prefix).
+        # COALESCE falls back to full geometry when Simplify returns NULL
+        # (degenerate polygon collapses to a line at the given tolerance).
+        geom_sql = RawSQL(
+            "COALESCE(AsGeoJSON(Simplify(geometry, %s)), AsGeoJSON(geometry))",
+            [tolerance],
+        )
+    else:
+        geom_sql = RawSQL("AsGeoJSON(geometry)", [])
 
-@require_GET
-def landforms_geojson(_request: HttpRequest) -> HttpResponse:
-    """Return a GeoJSON FeatureCollection of all landform polygons."""
-    qs = Landform.objects.exclude(geometry__isnull=True)
-    features = [
-        {
-            "type": "Feature",
-            "geometry": json.loads(lf.geometry.geojson),
-            "properties": {
-                "id": lf.id,
-                "murphy_code": lf.murphy_code,
-                "name_str": lf.name_str,
-                "division": lf.division,
-                "province": lf.province,
-                "continent": lf.continent,
-            },
-        }
-        for lf in qs
-    ]
-    return JsonResponse({"type": "FeatureCollection", "features": features})
+    rows = qs.values_list(
+        "id",
+        "murphy_code",
+        "name_str",
+        "division",
+        "province",
+        "continent",
+        geom_sql,
+    )
 
-
-@require_GET
-def worldcover_geojson(_request: HttpRequest) -> HttpResponse:
-    """Return a GeoJSON FeatureCollection of all WorldCover polygons."""
-    qs = WorldCover.objects.exclude(geometry__isnull=True)
-    features = [
-        {
-            "type": "Feature",
-            "geometry": json.loads(wc.geometry.geojson),
-            "properties": {
-                "id": wc.id,
-                "landcover_class": wc.landcover_class,
-                "landcover_class_display": wc.get_landcover_class_display(),
-                "year": wc.year,
-            },
-        }
-        for wc in qs
-    ]
+    features = []
+    for (
+        pk,
+        murphy_code,
+        name_str,
+        division,
+        province,
+        continent,
+        geom_json,
+    ) in rows:
+        if not geom_json:
+            continue
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": json.loads(geom_json),
+                "properties": {
+                    "id": pk,
+                    "murphy_code": murphy_code,
+                    "name_str": name_str,
+                    "division": division,
+                    "province": province,
+                    "continent": continent,
+                },
+            }
+        )
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 

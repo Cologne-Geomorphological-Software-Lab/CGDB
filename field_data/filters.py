@@ -40,6 +40,5 @@ class SampleFilter(filters.FilterSet):
             "processor",
             "type",
             "tags",
-            "depth_mid",
             "layer",
         ]

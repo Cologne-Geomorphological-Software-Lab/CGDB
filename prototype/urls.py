@@ -25,14 +25,12 @@ from rest_framework.authtoken.views import obtain_auth_token
 
 from prototype.api_router import router
 from prototype.views import (
-    geomorphons_geojson,
     landforms_geojson,
     locations_geojson,
     map_dashboard,
     study_areas_geojson,
     transects_geojson,
     wms_proxy,
-    worldcover_geojson,
 )
 
 urlpatterns = [
@@ -60,19 +58,9 @@ urlpatterns = [
     ),
     # Geodata layer GeoJSON endpoints
     path(
-        "api/geomorphons.geojson",
-        staff_member_required(geomorphons_geojson),
-        name="geomorphons_geojson",
-    ),
-    path(
         "api/landforms.geojson",
         staff_member_required(landforms_geojson),
         name="landforms_geojson",
-    ),
-    path(
-        "api/worldcover.geojson",
-        staff_member_required(worldcover_geojson),
-        name="worldcover_geojson",
     ),
     # REST API v1
     path("api/v1/", include((router.urls, "api_v1"))),

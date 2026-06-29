@@ -12,18 +12,12 @@ from field_data.api_views import (
     StudyAreaViewSet,
     TransectViewSet,
 )
-from geodata.api_views import (
-    GeomorphonViewSet,
-    LandformViewSet,
-    WorldCoverViewSet,
-)
+from geodata.api_views import LandformViewSet
 
 router = DefaultRouter()
 
 # Geodata layers
-router.register(r"geomorphons", GeomorphonViewSet, basename="geomorphon")
 router.register(r"landforms", LandformViewSet, basename="landform")
-router.register(r"worldcover", WorldCoverViewSet, basename="worldcover")
 
 # field_data
 router.register(r"locations", LocationViewSet, basename="location")

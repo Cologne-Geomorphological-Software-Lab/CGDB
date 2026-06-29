@@ -1,37 +1,38 @@
-# Runtime dependencies — install with: uv pip install -r requirements.txt
-# Dev/quality tools live in [dependency-groups] in pyproject.toml — install with: uv pip install --group dev
+# Runtime dependencies — managed via pyproject.toml / uv.lock
+# This file mirrors pyproject.toml[project.dependencies] for Dependabot tracking.
+# To install: uv sync
+# To upgrade: uv sync --upgrade
 
 # Core Django & Database
-django
-django[Argon2]>=4.2
-psycopg==3.3.2
-python-decouple==3.8
+django[argon2]>=6.0.6
+psycopg>=3.3.4
+python-decouple>=3.8
 
 # Django Extensions & Security
-argon2-cffi==25.1.0
-django-crispy-forms==2.5
-django-filter==25.2
-django-guardian==3.2.0
-django-import-export==4.3.14
-django-unfold==0.75.0
-djangorestframework==3.17.1
-djangorestframework-gis==1.2.1
-drf-spectacular==0.28.0
+argon2-cffi>=25.1.0
+django-crispy-forms>=2.6
+django-filter>=25.2
+django-guardian>=3.3.2
+django-import-export>=4.4.1
+django-unfold>=0.99.0
+djangorestframework>=3.17.1
+djangorestframework-gis>=1.2.1
+drf-spectacular>=0.29.0
 
 # Data Processing & Visualization
-matplotlib==3.10.8
-numpy==2.4.0
-pillow==12.1.1
+matplotlib>=3.11.0
+numpy>=2.5.0
+pillow>=12.2.0
 
 # Data Orchestration
-dagster==1.12.8
-dagster-webserver==1.12.8
-dagster-postgres==0.28.8
-duckdb==1.4.3
+dagster>=1.13.11
+dagster-webserver>=1.13.11
+dagster-postgres>=0.29.11
+duckdb>=1.5.4
 pandas>=2.0
-honcho==2.0.0
+honcho>=2.0.0
 
 # Documentation
-django-docs
-sphinx
-sphinx-rtd-theme
+django-docs>=0.3.3
+sphinx>=9.1.0
+sphinx-rtd-theme>=3.1.0

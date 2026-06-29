@@ -16,7 +16,7 @@ from unfold.contrib.filters.admin import (
 )
 from unfold.decorators import display
 
-from .mixins import GuardianPermissionMixin
+from .mixins import AUDIT_READONLY_FIELDS, GuardianPermissionMixin
 from .models import (
     Project,
     ProjectUserObjectPermission,
@@ -159,12 +159,7 @@ class ResearchGroupAdmin(PermissionBasedModelAdmin, ModelAdmin):
     list_display = ["label", "head_of_group", "created_at"]
     search_fields = ["label"]
     list_filter = ["created_at"]
-    readonly_fields = [
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
-    ]
+    readonly_fields = AUDIT_READONLY_FIELDS
 
 
 class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
@@ -178,12 +173,7 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
         "user__last_name",
     ]
     list_filter = ["academic_rank"]
-    readonly_fields = [
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
-    ]
+    readonly_fields = AUDIT_READONLY_FIELDS
 
     @display(header=True, description="Researcher")
     def display_researcher(self, obj: Researcher) -> list:
@@ -217,13 +207,7 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
         "public",
     ]
     search_fields = ["title", "label", "description"]
-    readonly_fields = [
-        "id",
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
-    ]
+    readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
     autocomplete_fields = [
         "principal_investigator",
         "associated_investigator",
@@ -407,6 +391,27 @@ admin.site.unregister(User)
 admin.site.unregister(Group)
 admin.site.register(User, UserAdmin)
 admin.site.register(Group, GroupAdmin)
+
+# ---------------------------------------------------------------------------
+# API Token admin (unfold design)
+# ---------------------------------------------------------------------------
+
+from rest_framework.authtoken.admin import TokenAdmin  # noqa: E402
+from rest_framework.authtoken.models import TokenProxy  # noqa: E402
+
+TokenAdmin.raw_id_fields = ("user",)
+
+admin.site.unregister(TokenProxy)
+
+
+@admin.register(TokenProxy)
+class AuthTokenAdmin(ModelAdmin):
+    """Unfold-styled admin for DRF auth tokens."""
+
+    list_display = ("key", "user", "created")
+    fields = ("user",)
+    ordering = ("-created",)
+
 
 # ---------------------------------------------------------------------------
 # CGDB models

@@ -1,11 +1,5 @@
-import os
-from decimal import Decimal
-from pathlib import Path
-
 from django.contrib.auth.models import Group, User
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.gis.geos import MultiLineString, Point, Polygon
-from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
@@ -33,13 +27,15 @@ class AlgorithmTestCase(TestCase):
         test_file = SimpleUploadedFile(
             "test_files/test.txt", b"file_content", content_type="text/plain"
         )
-        Algorithm.objects.create(
-            name="Dijkstra",
-            version="1.0",
-            description="The Dijkstra algorithm calculates the shortest paths in an edge-weighted graph.",
-            file=test_file,
-            programming_language="Python",
-        ),
+        (
+            Algorithm.objects.create(
+                name="Dijkstra",
+                version="1.0",
+                description="The Dijkstra algorithm calculates the shortest paths in an edge-weighted graph.",
+                file=test_file,
+                programming_language="Python",
+            ),
+        )
 
     def test_algorithm_file_upload(self):
         dijkstra = Algorithm.objects.get(name="Dijkstra")

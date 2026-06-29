@@ -20,6 +20,7 @@ from unfold.contrib.filters.admin import (
 from unfold.decorators import display
 
 from prototype.mixins import (
+    AUDIT_READONLY_FIELDS,
     HybridProjectPermissionMixin,
     NestedProjectPermissionMixin,
     ProjectBasedPermissionMixin,
@@ -171,10 +172,7 @@ class LocationAdmin(
     readonly_fields = [
         "id",
         "location",
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
+        *AUDIT_READONLY_FIELDS,
         "map_preview",
     ]
 
@@ -397,13 +395,7 @@ class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     change_form_show_cancel_button = True
     compressed_fields = True
     warn_unsaved_form = True
-    readonly_fields = [
-        "id",
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
-    ]
+    readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
     list_display = [
         "label",
         "project",
@@ -488,13 +480,7 @@ class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
     compressed_fields = True
     warn_unsaved_form = True
     list_per_page = 20
-    readonly_fields = [
-        "id",
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
-    ]
+    readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
     list_display = [
         "label",
         "project",
@@ -580,7 +566,7 @@ class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
-    readonly_fields = ["created_at", "created_by", "modified_at", "updated_by"]
+    readonly_fields = AUDIT_READONLY_FIELDS
 
 
 class SampleAdmin(
@@ -593,13 +579,7 @@ class SampleAdmin(
     compressed_fields = True
     warn_unsaved_form = True
     show_full_result_count = False
-    readonly_fields = [
-        "id",
-        "created_at",
-        "created_by",
-        "modified_at",
-        "updated_by",
-    ]
+    readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
     search_fields = ["identifier", "location__identifier"]
     autocomplete_fields = [
         "project",

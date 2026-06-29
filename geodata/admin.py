@@ -1,13 +1,16 @@
-"""Django admin for geodata models (Geomorphon, Landform, WorldCover)."""
+"""Django admin for geodata models (Landform)."""
 
 from __future__ import annotations
 
 from django.contrib.gis import admin
 from unfold.admin import ModelAdmin
 
-from prototype.mixins import CreatedUpdatedModelAdminMixin
+from prototype.mixins import (
+    AUDIT_READONLY_FIELDS,
+    CreatedUpdatedModelAdminMixin,
+)
 
-from .models import Geomorphon, Landform, WorldCover
+from .models import Landform
 
 
 class GeoDataModelAdmin(
@@ -15,23 +18,7 @@ class GeoDataModelAdmin(
 ):
     """Base admin for geodata models: Unfold styling + GIS map widget + audit fields."""
 
-    readonly_fields = ("created_at", "modified_at", "created_by", "updated_by")
-
-
-@admin.register(Geomorphon)
-class GeomorphonAdmin(GeoDataModelAdmin):
-    """Admin for Geomorphon terrain form polygons."""
-
-    list_display = (
-        "geomorphon_class",
-        "source",
-        "resolution_m",
-        "study_area",
-        "created_at",
-    )
-    list_filter = ("geomorphon_class", "study_area")
-    search_fields = ("source",)
-    autocomplete_fields = ("study_area",)
+    readonly_fields = AUDIT_READONLY_FIELDS
 
 
 @admin.register(Landform)
@@ -133,12 +120,3 @@ class LandformAdmin(GeoDataModelAdmin):
             },
         ),
     )
-
-
-@admin.register(WorldCover)
-class WorldCoverAdmin(GeoDataModelAdmin):
-    """Admin for ESA WorldCover land cover polygons."""
-
-    list_display = ("landcover_class", "year", "source", "created_at")
-    list_filter = ("landcover_class", "year")
-    search_fields = ("source",)

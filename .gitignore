@@ -1,4 +1,5 @@
 credentials.py
+.claude/
 
 # Dagster metadata directories
 history/

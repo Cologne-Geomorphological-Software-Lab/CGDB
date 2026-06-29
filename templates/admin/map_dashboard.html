@@ -259,6 +259,12 @@
         <label class="ls-item"><input type="checkbox" data-layer="transects" checked> Transects</label>
       </div>
       <div class="ls-section">
+        <div class="ls-section-title">Geodata</div>
+        <label class="ls-item"><input type="checkbox" data-layer="landforms"> Murphy Landforms</label>
+        <div class="ls-sublabel">Global regions, outline</div>
+        <input type="range" class="ls-opacity" data-opacity-for="landforms" min="0" max="1" step="0.05" value="0.7">
+      </div>
+      <div class="ls-section">
         <div class="ls-section-title">Geological overlays</div>
         <label class="ls-item">
           <input type="checkbox" data-layer="bgr_geo"> BGR Hydrogeologie 1:250k
@@ -312,6 +318,17 @@
         <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="rgba(16,185,129,0.2)" stroke="#059669" stroke-width="1.2"/></svg> Study Area</div>
         <div class="cgdb-legend-row"><svg width="24" height="14"><line x1="0" y1="7" x2="24" y2="7" stroke="#f97316" stroke-width="2" stroke-dasharray="5,3"/></svg> Transect</div>
       </div>
+      <!-- Murphy Landforms legend -->
+      <div id="legend-landforms" style="display:none;">
+        <div class="ls-section-title" style="margin-bottom:5px;">Murphy Landforms</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="none" stroke="#e63946" stroke-width="1.5"/></svg> North America</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="none" stroke="#f4a261" stroke-width="1.5"/></svg> South America</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="none" stroke="#2a9d8f" stroke-width="1.5"/></svg> Europe</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="none" stroke="#e9c46a" stroke-width="1.5"/></svg> Africa</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="none" stroke="#457b9d" stroke-width="1.5"/></svg> Asia</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="none" stroke="#6a4c93" stroke-width="1.5"/></svg> Oceania</div>
+        <div class="cgdb-legend-row"><svg width="24" height="14"><rect x="0" y="4" width="24" height="6" fill="none" stroke="#adb5bd" stroke-width="1.5"/></svg> Antarctica / Other</div>
+      </div>
       <div id="legend-bgr" style="display:none;">
         <div class="ls-section-title" style="margin-bottom:5px;">BGR Hydrogeologie</div>
         <img src="https://services.bgr.de/wms/grundwasser/huek250/?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.3.0&LAYER=0&FORMAT=image/png&SLD_VERSION=1.1.0"
@@ -349,12 +366,26 @@
 (function () {
 'use strict';
 
+/* ── GeoJSON endpoint URLs (injected by Django) ── */
+var GEOJSON_URLS = {
+  locations:   '{{ geojson_urls.locations }}',
+  study_areas: '{{ geojson_urls.study_areas }}',
+  transects:   '{{ geojson_urls.transects }}',
+  landforms:   '{{ geojson_urls.landforms }}',
+};
+
 /* ── Utility ── */
+function debounce(fn, ms) {
+  var t;
+  return function () { clearTimeout(t); t = setTimeout(fn, ms); };
+}
+
 function esc(v) {
   var d = document.createElement('div');
   d.appendChild(document.createTextNode(v == null ? '' : String(v)));
   return d.innerHTML;
 }
+
 /* ── Basemap sources ── */
 var BASEMAPS = {
   esri_sat: new ol.source.XYZ({
@@ -447,7 +478,30 @@ function clusterStyle(count) {
   });
 }
 
-/* ── Vector sources ── */
+/* ── Landform styling (by continent) ── */
+var LANDFORM_CONTINENT_STROKE = {
+  'North America':  '#e63946',
+  'South America':  '#f4a261',
+  'Europe':         '#2a9d8f',
+  'Africa':         '#e9c46a',
+  'Asia':           '#457b9d',
+  'Oceania':        '#6a4c93',
+  'Antarctica':     '#adb5bd',
+};
+
+function landformStyle(feat) {
+  var continent = feat.get('continent') || '';
+  var stroke = '#adb5bd';
+  for (var key in LANDFORM_CONTINENT_STROKE) {
+    if (continent.indexOf(key) !== -1) { stroke = LANDFORM_CONTINENT_STROKE[key]; break; }
+  }
+  return new ol.style.Style({
+    fill:   new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
+    stroke: new ol.style.Stroke({ color: stroke, width: 1.2 }),
+  });
+}
+
+/* ── Own-data vector sources ── */
 var locationSource = new ol.source.Vector();
 var clusterSource  = new ol.source.Cluster({ source: locationSource, distance: 40 });
 var locationsLayer = new ol.layer.Vector({
@@ -480,6 +534,16 @@ var transectsLayer = new ol.layer.Vector({
   zIndex: 6,
 });
 
+/* ── Geodata vector sources (lazy-loaded) ── */
+var landformSource = new ol.source.Vector();
+var landformsLayer = new ol.layer.Vector({
+  source: landformSource,
+  style: landformStyle,
+  visible: false,
+  opacity: 0.7,
+  zIndex: 1,
+});
+
 /* ── Popup overlay ── */
 var popupEl = document.getElementById('cgdb-popup');
 var popup   = new ol.Overlay({
@@ -496,6 +560,7 @@ var map = new ol.Map({
     basemapLayer,
     wmsLayers.bgr_geo,
     wmsLayers.macrostrat,
+    landformsLayer,
     studyAreasLayer,
     transectsLayer,
     locationsLayer,
@@ -538,7 +603,7 @@ function applyLocationFeatures(features) {
 }
 
 function loadLocations() {
-  fetch('/api/locations.geojson')
+  fetch(GEOJSON_URLS.locations)
     .then(function (r) { return r.json(); })
     .then(function (data) {
       var fmt = new ol.format.GeoJSON();
@@ -549,7 +614,7 @@ function loadLocations() {
 }
 
 function loadStudyAreas() {
-  fetch('/api/study_areas.geojson')
+  fetch(GEOJSON_URLS.study_areas)
     .then(function (r) { return r.json(); })
     .then(function (data) {
       studyAreaSource.addFeatures(
@@ -559,7 +624,7 @@ function loadStudyAreas() {
 }
 
 function loadTransects() {
-  fetch('/api/transects.geojson')
+  fetch(GEOJSON_URLS.transects)
     .then(function (r) { return r.json(); })
     .then(function (data) {
       transectSource.addFeatures(
@@ -571,6 +636,46 @@ function loadTransects() {
 loadLocations();
 loadStudyAreas();
 loadTransects();
+
+/* ── Landforms: viewport-aware reload ── */
+var MIN_LANDFORM_ZOOM = 4;
+var _landformsAbort = null;
+
+function reloadLandforms() {
+  if (!landformsLayer.getVisible()) return;
+  var view = map.getView();
+  var zoom = view.getZoom() || 0;
+  if (zoom < MIN_LANDFORM_ZOOM) {
+    landformSource.clear();
+    if (_landformsAbort) { _landformsAbort.abort(); _landformsAbort = null; }
+    return;
+  }
+  var size = map.getSize();
+  if (!size) return;
+  var extent = view.calculateExtent(size);
+  var ll = ol.proj.transformExtent(extent, view.getProjection(), 'EPSG:4326');
+  var minx = Math.max(ll[0], -180), miny = Math.max(ll[1], -90);
+  var maxx = Math.min(ll[2],  180), maxy = Math.min(ll[3],  90);
+  if (maxx <= minx || maxy <= miny) return;
+  var url = GEOJSON_URLS.landforms
+    + '?bbox=' + [minx, miny, maxx, maxy].map(function (v) { return v.toFixed(6); }).join(',');
+  if (_landformsAbort) { _landformsAbort.abort(); }
+  _landformsAbort = new AbortController();
+  fetch(url, { signal: _landformsAbort.signal })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (data) {
+      landformSource.clear();
+      landformSource.addFeatures(
+        new ol.format.GeoJSON().readFeatures(data, { featureProjection: 'EPSG:3857' })
+      );
+      _landformsAbort = null;
+    })
+    .catch(function (err) {
+      if (err.name !== 'AbortError') console.error('reloadLandforms failed:', err);
+    });
+}
+
+map.on('moveend', debounce(reloadLandforms, 300));
 
 /* ── Filter ── */
 function applyFilter() {
@@ -622,20 +727,34 @@ function populateFilterDropdowns(features) {
 });
 
 /* ── Layer switcher ── */
-var LEGEND_IDS = { bgr_geo: 'legend-bgr', macrostrat: 'legend-macrostrat' };
+var LEGEND_IDS = {
+  bgr_geo:    'legend-bgr',
+  macrostrat: 'legend-macrostrat',
+  landforms:  'legend-landforms',
+};
 var layerMap = {
   locations:   locationsLayer,
   study_areas: studyAreasLayer,
   transects:   transectsLayer,
+  landforms:   landformsLayer,
   bgr_geo:     wmsLayers.bgr_geo,
   macrostrat:  wmsLayers.macrostrat,
 };
 
 document.querySelectorAll('[data-layer]').forEach(function (inp) {
   inp.addEventListener('change', function () {
-    layerMap[inp.dataset.layer].setVisible(inp.checked);
-    var lid = LEGEND_IDS[inp.dataset.layer];
+    var key = inp.dataset.layer;
+    layerMap[key].setVisible(inp.checked);
+    var lid = LEGEND_IDS[key];
     if (lid) document.getElementById(lid).style.display = inp.checked ? '' : 'none';
+    if (key === 'landforms') {
+      if (inp.checked) {
+        reloadLandforms();
+      } else {
+        landformSource.clear();
+        if (_landformsAbort) { _landformsAbort.abort(); _landformsAbort = null; }
+      }
+    }
   });
 });
 document.querySelectorAll('[name="basemap"]').forEach(function (radio) {
@@ -733,6 +852,17 @@ function buildClusterPopup(features) {
     '<ul class="cluster-list">' + items.join('') + extra + '</ul>';
 }
 
+function buildLandformPopup(p) {
+  var rows = '';
+  if (p.name_str)    rows += '<div class="popup-row"><span class="popup-label">Name</span>'      + esc(p.name_str)    + '</div>';
+  if (p.continent)   rows += '<div class="popup-row"><span class="popup-label">Continent</span>' + esc(p.continent)   + '</div>';
+  if (p.division)    rows += '<div class="popup-row"><span class="popup-label">Division</span>'  + esc(p.division)    + '</div>';
+  if (p.province)    rows += '<div class="popup-row"><span class="popup-label">Province</span>'  + esc(p.province)    + '</div>';
+  if (p.murphy_code) rows += '<div class="popup-row"><span class="popup-label">Code</span>'      + esc(p.murphy_code) + '</div>';
+  if (p.glaciate)    rows += '<div class="popup-row"><span class="popup-label">Glaciation</span>' + esc(p.glaciate)   + '</div>';
+  return '<strong>' + esc(p.name_str || 'Landform') + '</strong>' + rows;
+}
+
 /* ── Click handler ── */
 map.on('click', function (evt) {
   var hit = false;
@@ -749,8 +879,9 @@ map.on('click', function (evt) {
       }
       hit = true;
     }
-    if (layer === studyAreasLayer) { showPopup(evt.coordinate, buildStudyAreaPopup(feat.getProperties())); hit = true; }
-    if (layer === transectsLayer)  { showPopup(evt.coordinate, buildTransectPopup(feat.getProperties()));  hit = true; }
+    if (layer === studyAreasLayer)  { showPopup(evt.coordinate, buildStudyAreaPopup(feat.getProperties()));  hit = true; }
+    if (layer === transectsLayer)   { showPopup(evt.coordinate, buildTransectPopup(feat.getProperties()));  hit = true; }
+    if (layer === landformsLayer)   { showPopup(evt.coordinate, buildLandformPopup(feat.getProperties()));  hit = true; }
   }, { hitTolerance: 6 });
 
   if (hit) return;
