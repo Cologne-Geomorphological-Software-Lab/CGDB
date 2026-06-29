@@ -20,8 +20,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.authtoken.views import obtain_auth_token
 
+from prototype.api_router import router
 from prototype.views import (
+    landforms_geojson,
     locations_geojson,
     map_dashboard,
     study_areas_geojson,
@@ -31,6 +35,7 @@ from prototype.views import (
 
 urlpatterns = [
     path("map/", staff_member_required(map_dashboard), name="map_dashboard"),
+    # Existing GeoJSON endpoints (kept for backward compatibility)
     path(
         "api/locations.geojson",
         staff_member_required(locations_geojson),
@@ -51,6 +56,21 @@ urlpatterns = [
         staff_member_required(wms_proxy),
         name="wms_proxy",
     ),
+    # Geodata layer GeoJSON endpoints
+    path(
+        "api/landforms.geojson",
+        staff_member_required(landforms_geojson),
+        name="landforms_geojson",
+    ),
+    # REST API v1
+    path("api/v1/", include((router.urls, "api_v1"))),
+    path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/v1/schema/swagger-ui/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path("api/v1/token-auth/", obtain_auth_token, name="api_token_auth"),
     path("", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
 ]

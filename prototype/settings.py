@@ -21,20 +21,33 @@ from .unfold_settings import UNFOLD as unfold_settings
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # GeoDjango on Windows: point to OSGeo4W if present.
-# os.add_dll_directory() is required in Python 3.8+ so that GDAL's own
-# dependencies (PROJ, GEOS, etc.) are found when ctypes loads gdal311.dll.
+# The add_dll_directory handle must be stored at module level — if it is
+# garbage-collected, Python removes OSGeo4W from the DLL search path, which
+# causes GDAL's transitive dependencies (PROJ, GEOS, OpenSSL) to go missing
+# when the spatialite backend is first loaded during django.setup().
+# Storing _gdal_lib keeps the ctypes handle alive so Windows does not unload
+# the DLL between settings import and the first real GDAL call in libgdal.py.
 _osgeo_bin = Path("C:/OSGeo4W/bin")
+_osgeo_dll_handle = (
+    None  # keeps add_dll_directory alive for the process lifetime
+)
+_gdal_lib = (
+    None  # keeps CDLL handle alive; prevents dependency re-resolution failure
+)
 if os.name == "nt" and _osgeo_bin.exists():
     _osgeo_bin_str = str(_osgeo_bin)
     if hasattr(os, "add_dll_directory"):
-        os.add_dll_directory(_osgeo_bin_str)
+        _osgeo_dll_handle = os.add_dll_directory(_osgeo_bin_str)
     if _osgeo_bin_str not in os.environ.get("PATH", ""):
         os.environ["PATH"] = (
             _osgeo_bin_str + os.pathsep + os.environ.get("PATH", "")
         )
     GDAL_LIBRARY_PATH = str(_osgeo_bin / "gdal311.dll")
     GEOS_LIBRARY_PATH = str(_osgeo_bin / "geos_c.dll")
-    os.environ.setdefault("PROJ_LIB", "C:/OSGeo4W/share/proj")
+    os.environ["PROJ_LIB"] = "C:/OSGeo4W/share/proj"
+    import ctypes as _ctypes
+
+    _gdal_lib = _ctypes.CDLL(GDAL_LIBRARY_PATH)
 
 
 # ==============================================================================
@@ -80,6 +93,11 @@ INSTALLED_APPS = [
     "django_filters",
     "crispy_forms",
     "docs",
+    # REST API
+    "rest_framework",
+    "rest_framework.authtoken",
+    "rest_framework_gis",
+    "drf_spectacular",
     # CGDB Apps
     "prototype",
     "field_data",
@@ -87,6 +105,7 @@ INSTALLED_APPS = [
     "bibliography",
     "laboratory",
     "orchestration",
+    "geodata",
 ]
 
 # ==============================================================================
@@ -247,6 +266,7 @@ LOGGING = {
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -258,6 +278,14 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "CGDB API",
+    "DESCRIPTION": "Cologne Geomorphological Database REST API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 # ==============================================================================
@@ -271,9 +299,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB in bytes
 FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100MB in bytes
 
-# Crispy Forms
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
-CRISPY_TEMPLATE_PACK = "bootstrap5"
+# Crispy Forms — unfold_crispy is provided by django-unfold (no extra package needed)
+CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
+CRISPY_TEMPLATE_PACK = "unfold_crispy"
 
 # Unfold Admin Interface
 UNFOLD = unfold_settings

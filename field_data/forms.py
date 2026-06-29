@@ -166,7 +166,6 @@ class SampleForm(forms.ModelForm):
             "layer",
             "depth_top",
             "depth_bottom",
-            "depth_mid",
         ]
 
         widgets = {

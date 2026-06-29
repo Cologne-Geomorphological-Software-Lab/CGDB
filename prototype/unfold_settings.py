@@ -382,6 +382,16 @@ UNFOLD = {
                             "auth.view_group",
                         ),
                     },
+                    {
+                        "title": _("API Tokens"),
+                        "icon": "key",
+                        "link": reverse_lazy(
+                            "admin:authtoken_tokenproxy_changelist",
+                        ),
+                        "permission": lambda request: (
+                            request.user.is_superuser
+                        ),
+                    },
                 ],
             },
         ],

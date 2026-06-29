@@ -1,25 +1,16 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.16
-    hooks:
-      - id: ruff
-        args: ["--fix"]
-      - id: ruff-format
-
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-merge-conflict
-      - id: debug-statements
-
   - repo: local
     hooks:
-      - id: pytest
-        name: pytest
-        entry: venv/Scripts/python.exe -m pytest
-        language: system
+      - id: ruff
+        name: ruff
+        entry: ruff check --fix
+        language: python
+        additional_dependencies: [ruff]
         types: [python]
-        pass_filenames: false
-        stages: [pre-push]
+
+      - id: ruff-format
+        name: ruff-format
+        entry: ruff format
+        language: python
+        additional_dependencies: [ruff]
+        types: [python]

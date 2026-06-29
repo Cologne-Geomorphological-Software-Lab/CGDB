@@ -18,6 +18,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware, now
 from django.utils.translation import gettext_lazy as _
@@ -96,6 +97,12 @@ def map_dashboard(request: HttpRequest) -> HttpResponse:
 
     context = _admin.site.each_context(request)
     context["navigation"] = _nav(request)
+    context["geojson_urls"] = {
+        "locations": reverse("locations_geojson"),
+        "study_areas": reverse("study_areas_geojson"),
+        "transects": reverse("transects_geojson"),
+        "landforms": reverse("landforms_geojson"),
+    }
     return render(request, "admin/map_dashboard.html", context)
 
 
@@ -225,6 +232,103 @@ def transects_geojson(request: HttpRequest) -> HttpResponse:
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
+_LANDFORM_SIMPLIFY_THRESHOLD = (
+    1e-4  # degrees (~11 m); below this no simplification
+)
+
+
+def _parse_bbox(bbox_param: str) -> tuple[float, float, float, float] | None:
+    """Parse and clamp a 'minx,miny,maxx,maxy' string; return None on failure."""
+    try:
+        minx, miny, maxx, maxy = (float(v) for v in bbox_param.split(","))
+    except (ValueError, TypeError):
+        return None
+    minx = max(minx, -180.0)
+    maxx = min(maxx, 180.0)
+    miny = max(miny, -90.0)
+    maxy = min(maxy, 90.0)
+    if maxx <= minx or maxy <= miny:
+        return None
+    return minx, miny, maxx, maxy
+
+
+@require_GET
+def landforms_geojson(request: HttpRequest) -> HttpResponse:
+    """Return a viewport-filtered GeoJSON FeatureCollection of landform polygons.
+
+    Geometry is serialised entirely in SpatiaLite via AsGeoJSON() so Python
+    never deserialises GEOS objects.  At low zoom Simplify() reduces vertex
+    count proportionally to the viewport width.
+    """
+    from django.contrib.gis.geos import Polygon
+    from django.db.models.expressions import RawSQL
+
+    from geodata.models import Landform
+
+    bbox_param = request.GET.get("bbox", "")
+    bbox = _parse_bbox(bbox_param) if bbox_param else None
+    if bbox is None:
+        return JsonResponse({"type": "FeatureCollection", "features": []})
+
+    span = bbox[2] - bbox[0]
+    tolerance = span / 512.0
+
+    bbox_poly = Polygon.from_bbox(bbox)
+    bbox_poly.srid = 4326
+    qs = Landform.objects.exclude(geometry__isnull=True).filter(
+        geometry__intersects=bbox_poly,
+    )
+
+    if tolerance >= _LANDFORM_SIMPLIFY_THRESHOLD:
+        # SpatiaLite uses AsGeoJSON / Simplify (without ST_ prefix).
+        # COALESCE falls back to full geometry when Simplify returns NULL
+        # (degenerate polygon collapses to a line at the given tolerance).
+        geom_sql = RawSQL(
+            "COALESCE(AsGeoJSON(Simplify(geometry, %s)), AsGeoJSON(geometry))",
+            [tolerance],
+        )
+    else:
+        geom_sql = RawSQL("AsGeoJSON(geometry)", [])
+
+    rows = qs.values_list(
+        "id",
+        "murphy_code",
+        "name_str",
+        "division",
+        "province",
+        "continent",
+        geom_sql,
+    )
+
+    features = []
+    for (
+        pk,
+        murphy_code,
+        name_str,
+        division,
+        province,
+        continent,
+        geom_json,
+    ) in rows:
+        if not geom_json:
+            continue
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": json.loads(geom_json),
+                "properties": {
+                    "id": pk,
+                    "murphy_code": murphy_code,
+                    "name_str": name_str,
+                    "division": division,
+                    "province": province,
+                    "continent": continent,
+                },
+            }
+        )
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+
 _WMS_WHITELIST = ["services.bgr.de"]
 
 
@@ -236,7 +340,7 @@ def wms_proxy(request: HttpRequest) -> HttpResponse:
     if not any(host == w or host.endswith("." + w) for w in _WMS_WHITELIST):
         return HttpResponse("Forbidden", status=403)
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
+        with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310  # nosec B310 — hostname validated against _WMS_WHITELIST above
             content = resp.read()
             ct = resp.headers.get("Content-Type", "text/xml")
     except (urllib.error.URLError, OSError):
@@ -275,9 +379,9 @@ def stat_data(period_days: int = 30) -> dict:
     def _pct(count: int, total: int) -> float:
         return round(count / total * 100, 2) if total > 0 else 0
 
-    def _footer(count: int, total: int) -> str:  # nosec B703, B308 — only floats interpolated
+    def _footer(count: int, total: int) -> str:
         if count == 0:
-            return mark_safe(
+            return mark_safe(  # nosec B308 — pure static literal, no user input
                 '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
             )
         pct = _pct(count, total)
@@ -287,9 +391,12 @@ def stat_data(period_days: int = 30) -> dict:
             else "text-red-600 dark:text-red-400"
         )
         sign = "+" if pct > 0 else ""
-        return mark_safe(  # noqa: S308
-            f'<strong class="{color} font-semibold">{sign}{intcomma(pct)}%</strong>'
-            f"&nbsp; last {period_days} days",
+        return format_html(
+            '<strong class="{} font-semibold">{}{}</strong>&nbsp; last {} days',
+            color,
+            sign,
+            intcomma(pct),
+            period_days,
         )
 
     # Projects
