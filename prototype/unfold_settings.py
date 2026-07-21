@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from django.conf import settings
 from django.templatetags.static import static
@@ -30,10 +30,10 @@ def _sample_pk_from_request(request: HttpRequest) -> str | None:
     """
     cached = getattr(request, "cgdb_sample_pk", _UNSET)
     if cached is not _UNSET:
-        return cached
+        return cast("str | None", cached)
 
     result = _compute_sample_pk(request)
-    request.cgdb_sample_pk = result
+    cast("Any", request).cgdb_sample_pk = result
     return result
 
 
@@ -325,6 +325,32 @@ UNFOLD = {
                 ],
             },
             {
+                "title": _("Raster Data"),
+                "items": [
+                    {
+                        "title": _("Datasets"),
+                        "icon": "dataset",
+                        "link": reverse_lazy(
+                            "admin:raster_data_rasterdataset_changelist",
+                        ),
+                    },
+                    {
+                        "title": _("Raster Scenes"),
+                        "icon": "satellite_alt",
+                        "link": reverse_lazy(
+                            "admin:raster_data_rasterscene_changelist",
+                        ),
+                    },
+                    {
+                        "title": _("Data Sources"),
+                        "icon": "sensors",
+                        "link": reverse_lazy(
+                            "admin:raster_data_datasource_changelist",
+                        ),
+                    },
+                ],
+            },
+            {
                 "title": _("Maintenance"),
                 "items": [
                     {
@@ -518,4 +544,4 @@ def badge_callback(request: HttpRequest) -> int:
 
 def permission_callback(request: HttpRequest) -> bool:
     """Return True if the user has change permission on Project."""
-    return request.user.has_perm("prototype.change_project")
+    return cast("Any", request.user).has_perm("prototype.change_project")

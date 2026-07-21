@@ -72,7 +72,10 @@ ignore = [
 # GrainSizeImportForm.clean_file: broad catch converts any read error to ValidationError (Django form pattern)
 # MicroXRFAdmin.preview: broad catch returns a safe error string in a display-only method
 # TRY301: raise inside try is the Django ValidationError pattern in clean_*
-"analysis/admin.py" = ["BLE001", "TRY301"]
+# ANN401: GrainSizeImportAdmin.save_model overrides ModelAdmin.save_model, whose
+# own django-stubs signature types `form` as Any — matching it is required for
+# a compatible override, not a case of avoidable dynamic typing.
+"analysis/admin.py" = ["BLE001", "TRY301", "ANN401"]
 # Dagster workspace: namespace packages intentional; context.log has no .exception(); broad catch is asset contract
 "orchestration/dagster_home/assets.py" = ["INP001", "BLE001", "TRY300", "TRY400"]
 "orchestration/dagster_home/jobs.py" = ["INP001"]

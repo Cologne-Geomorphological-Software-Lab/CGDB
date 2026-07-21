@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     "laboratory",
     "orchestration",
     "geodata",
+    "raster_data",
 ]
 
 # ==============================================================================
@@ -287,6 +288,10 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Cologne Geomorphological Database REST API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # drf-spectacular defaults SERVE_PERMISSIONS to AllowAny, silently
+    # overriding REST_FRAMEWORK's DEFAULT_PERMISSION_CLASSES for the schema
+    # and Swagger UI views. Keep it consistent with the rest of the API.
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
 }
 
 # ==============================================================================
