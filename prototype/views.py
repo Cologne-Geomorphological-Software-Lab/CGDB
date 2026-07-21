@@ -4,16 +4,17 @@ import json
 import logging
 import urllib.error
 import urllib.request
-from calendar import monthrange
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
-from django.db.models import Count, Q
+from django.db.models import Count, Q, QuerySet
+from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -109,7 +110,8 @@ def map_dashboard(request: HttpRequest) -> HttpResponse:
 @require_GET
 def locations_geojson(request: HttpRequest) -> HttpResponse:
     """Return a GeoJSON FeatureCollection of all accessible locations."""
-    if request.user.is_superuser:
+    user = cast("Any", request.user)
+    if user.is_superuser:
         qs = Location.objects.exclude(location__isnull=True)
     else:
         project_ids = _accessible_projects(request.user).values_list(
@@ -130,45 +132,52 @@ def locations_geojson(request: HttpRequest) -> HttpResponse:
         grain_size_count=Count("sample__grain_sizes", distinct=True),
     )
 
-    features = [
-        {
-            "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [loc.location.x, loc.location.y],
-            },
-            "properties": {
-                "id": loc.id,
-                "identifier": loc.identifier,
-                "project": str(loc.project) if loc.project else None,
-                "data_source": loc.data_source,
-                "location_type": loc.location_type,
-                "location_type_display": loc.get_location_type_display(),
-                "campaign": loc.campaign.label if loc.campaign else None,
-                "date_of_record": loc.date_of_record.isoformat()
-                if loc.date_of_record
-                else None,
-                "altitude": loc.altitude,
-                "exposure_type": loc.exposure_type.name_en
-                if loc.exposure_type
-                else None,
-                "sample_count": loc.sample_count,
-                "luminescence_count": loc.luminescence_count,
-                "grain_size_count": loc.grain_size_count,
-                "admin_url": reverse(
-                    "admin:field_data_location_change", args=[loc.id]
-                ),
-            },
-        }
-        for loc in qs
-    ]
+    features = []
+    for loc in qs:
+        # loc.location is excluded from being NULL above; annotate()d fields
+        # (sample_count, ...) and get_location_type_display() are added
+        # dynamically by Django and are invisible to static analysis.
+        loc_dynamic = cast("Any", loc)
+        point = loc_dynamic.location
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [point.x, point.y],
+                },
+                "properties": {
+                    "id": loc.pk,
+                    "identifier": loc.identifier,
+                    "project": str(loc.project) if loc.project else None,
+                    "data_source": loc.data_source,
+                    "location_type": loc.location_type,
+                    "location_type_display": loc_dynamic.get_location_type_display(),
+                    "campaign": loc.campaign.label if loc.campaign else None,
+                    "date_of_record": loc.date_of_record.isoformat()
+                    if loc.date_of_record
+                    else None,
+                    "altitude": loc.altitude,
+                    "exposure_type": loc.exposure_type.name_en
+                    if loc.exposure_type
+                    else None,
+                    "sample_count": loc_dynamic.sample_count,
+                    "luminescence_count": loc_dynamic.luminescence_count,
+                    "grain_size_count": loc_dynamic.grain_size_count,
+                    "admin_url": reverse(
+                        "admin:field_data_location_change", args=[loc.pk]
+                    ),
+                },
+            }
+        )
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
 @require_GET
 def study_areas_geojson(request: HttpRequest) -> HttpResponse:
     """Return a GeoJSON FeatureCollection of all accessible study areas."""
-    if request.user.is_superuser:
+    user = cast("Any", request.user)
+    if user.is_superuser:
         qs = StudyArea.objects.exclude(geometry__isnull=True)
     else:
         project_ids = _accessible_projects(request.user).values_list(
@@ -178,32 +187,37 @@ def study_areas_geojson(request: HttpRequest) -> HttpResponse:
             geometry__isnull=True
         )
 
-    features = [
-        {
-            "type": "Feature",
-            "geometry": json.loads(sa.geometry.geojson),
-            "properties": {
-                "id": sa.id,
-                "label": sa.label,
-                "project": str(sa.project),
-                "climate_koeppen": sa.climate_koeppen,
-                "climate_koeppen_display": sa.get_climate_koeppen_display(),
-                "ecozone_schultz": sa.ecozone_schultz,
-                "ecozone_schultz_display": sa.get_ecozone_schultz_display(),
-                "admin_url": reverse(
-                    "admin:field_data_studyarea_change", args=[sa.id]
-                ),
-            },
-        }
-        for sa in qs.select_related("project")
-    ]
+    features = []
+    for sa in qs.select_related("project"):
+        # get_*_display() is added dynamically by Django for choices fields
+        # and is invisible to static analysis.
+        sa_dynamic = cast("Any", sa)
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": json.loads(sa.geometry.geojson),
+                "properties": {
+                    "id": sa.pk,
+                    "label": sa.label,
+                    "project": str(sa.project),
+                    "climate_koeppen": sa.climate_koeppen,
+                    "climate_koeppen_display": sa_dynamic.get_climate_koeppen_display(),
+                    "ecozone_schultz": sa.ecozone_schultz,
+                    "ecozone_schultz_display": sa_dynamic.get_ecozone_schultz_display(),
+                    "admin_url": reverse(
+                        "admin:field_data_studyarea_change", args=[sa.pk]
+                    ),
+                },
+            }
+        )
     return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
 @require_GET
 def transects_geojson(request: HttpRequest) -> HttpResponse:
     """Return a GeoJSON FeatureCollection of all accessible transects."""
-    if request.user.is_superuser:
+    user = cast("Any", request.user)
+    if user.is_superuser:
         qs = Transect.objects.exclude(multiline__isnull=True)
     else:
         project_ids = _accessible_projects(request.user).values_list(
@@ -218,12 +232,12 @@ def transects_geojson(request: HttpRequest) -> HttpResponse:
             "type": "Feature",
             "geometry": json.loads(t.multiline.geojson),
             "properties": {
-                "id": t.id,
+                "id": t.pk,
                 "identifier": t.identifier,
                 "study_area": str(t.study_area),
                 "campaign": t.campaign.label if t.campaign else None,
                 "admin_url": reverse(
-                    "admin:field_data_transect_change", args=[t.id]
+                    "admin:field_data_transect_change", args=[t.pk]
                 ),
             },
         }
@@ -351,8 +365,8 @@ def wms_proxy(request: HttpRequest) -> HttpResponse:
 def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
     """Populate the Unfold dashboard context with stats and navigation."""
     try:
-        period_days = int(request.GET.get("period", 30))
-    except (ValueError, TypeError, AttributeError):
+        period_days = int(request.GET.get("period", 30)) if request else 30
+    except (ValueError, TypeError):
         period_days = 30
     if period_days not in {p["days"] for p in _PERIOD_OPTIONS}:
         period_days = 30
@@ -399,27 +413,29 @@ def stat_data(period_days: int = 30) -> dict:
             period_days,
         )
 
+    def _total_and_period(queryset: QuerySet) -> tuple[int, int]:
+        """Return (total count, count in [since, now)) in a single query."""
+        result = queryset.aggregate(
+            total=Count("id"),
+            period=Count(
+                "id", filter=Q(created_at__gte=since, created_at__lt=now)
+            ),
+        )
+        return result["total"], result["period"]
+
     # Projects
-    project_total = Project.objects.count()
-    project_period_count = Project.objects.filter(
-        created_at__gte=since,
-        created_at__lt=now,
-    ).count()
+    project_total, project_period_count = _total_and_period(
+        Project.objects.all()
+    )
     logger.debug("Project total: %s", project_total)
 
     # Locations
-    location_total = Location.objects.count()
-    location_period_count = Location.objects.filter(
-        created_at__gte=since,
-        created_at__lt=now,
-    ).count()
+    location_total, location_period_count = _total_and_period(
+        Location.objects.all()
+    )
 
     # Samples
-    sample_total = Sample.objects.count()
-    sample_period_count = Sample.objects.filter(
-        created_at__gte=since,
-        created_at__lt=now,
-    ).count()
+    sample_total, sample_period_count = _total_and_period(Sample.objects.all())
 
     # Measurements
     measurement_models = [
@@ -428,10 +444,15 @@ def stat_data(period_days: int = 30) -> dict:
         LuminescenceDating,
         RadiocarbonDating,
     ]
-    measurements_total = sum(m.objects.count() for m in measurement_models)
+    measurement_totals = [
+        _total_and_period(m.objects.all()) for m in measurement_models
+    ]
+    measurements_total = sum(total for total, _period in measurement_totals)
     measurements_period_count = sum(
-        m.objects.filter(created_at__gte=since, created_at__lt=now).count()
-        for m in measurement_models
+        period for _total, period in measurement_totals
+    )
+    generic_total, grain_size_total, luminescence_total, radiocarbon_total = (
+        total for total, _period in measurement_totals
     )
 
     # Location type breakdown
@@ -488,7 +509,7 @@ def stat_data(period_days: int = 30) -> dict:
         "performance": [
             {
                 "title": _("Sedimentological Measurements"),
-                "metric": f"{GenericMeasurement.objects.count() + GrainSize.objects.count()}",
+                "metric": f"{generic_total + grain_size_total}",
                 "chart": json.dumps(
                     {
                         "datasets": [
@@ -504,7 +525,7 @@ def stat_data(period_days: int = 30) -> dict:
             },
             {
                 "title": _("Geochronological Measurements"),
-                "metric": f"{LuminescenceDating.objects.count() + RadiocarbonDating.objects.count()}",
+                "metric": f"{luminescence_total + radiocarbon_total}",
                 "chart": json.dumps(
                     {
                         "datasets": [
@@ -553,23 +574,35 @@ MONTH_NAMES = [
 
 
 def _build_monthly_performance(model_classes: list) -> list:
-    """Return a list of [month_label, count] pairs for the last 12 months."""
+    """Return a list of [month_label, count] pairs for the last 12 months.
+
+    Uses one TruncMonth-grouped query per model instead of one .count() per
+    month, so N models cost N queries total instead of 12*N.
+    """
     today = now()
-    result = []
-    for i in range(11, -1, -1):
-        month_date = today - relativedelta(months=i)
-        year = month_date.year
-        month = month_date.month
-        start_date = make_aware(datetime(year, month, 1))
-        end_date = make_aware(
-            datetime(year, month, monthrange(year, month)[1], 23, 59, 59),
+    months = [
+        (
+            (today - relativedelta(months=i)).year,
+            (today - relativedelta(months=i)).month,
         )
-        count = sum(
-            model.objects.filter(
-                created_at__gte=start_date,
-                created_at__lte=end_date,
-            ).count()
-            for model in model_classes
+        for i in range(11, -1, -1)
+    ]
+    counts = dict.fromkeys(months, 0)
+    range_start = make_aware(datetime(months[0][0], months[0][1], 1))
+
+    for model in model_classes:
+        rows = (
+            model.objects.filter(created_at__gte=range_start)
+            .annotate(month=TruncMonth("created_at"))
+            .values("month")
+            .annotate(n=Count("id"))
         )
-        result.append([f"{MONTH_NAMES[month - 1]} {year}", count])
-    return result
+        for row in rows:
+            key = (row["month"].year, row["month"].month)
+            if key in counts:
+                counts[key] += row["n"]
+
+    return [
+        [f"{MONTH_NAMES[month - 1]} {year}", counts[(year, month)]]
+        for year, month in months
+    ]

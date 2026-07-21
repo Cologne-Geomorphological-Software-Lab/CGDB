@@ -13,6 +13,11 @@ from field_data.api_views import (
     TransectViewSet,
 )
 from geodata.api_views import LandformViewSet
+from raster_data.api_views import (
+    DataSourceViewSet,
+    RasterDatasetViewSet,
+    RasterSceneViewSet,
+)
 
 router = DefaultRouter()
 
@@ -30,3 +35,10 @@ router.register(
     r"exposure-types", ExposureTypeViewSet, basename="exposuretype"
 )
 router.register(r"sample-types", SampleTypeViewSet, basename="sampletype")
+
+# raster_data
+router.register(r"data-sources", DataSourceViewSet, basename="datasource")
+router.register(r"raster-scenes", RasterSceneViewSet, basename="rasterscene")
+router.register(
+    r"raster-datasets", RasterDatasetViewSet, basename="rasterdataset"
+)

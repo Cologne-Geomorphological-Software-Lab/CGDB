@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -53,14 +53,14 @@ from .resources import (
 )
 
 if TYPE_CHECKING:
+    from django.core.files.uploadedfile import UploadedFile
     from django.db.models import QuerySet
-    from django.forms import ModelForm
     from django.http import HttpRequest, HttpResponse
 
 mpl.use("Agg")
 
 
-def _normalize_float_image(img: object) -> object:
+def _normalize_float_image(img: Image.Image) -> Image.Image:
     """Convert a 32-bit float raster to 8-bit greyscale for display."""
     import numpy as np
 
@@ -71,14 +71,29 @@ def _normalize_float_image(img: object) -> object:
     return Image.fromarray((arr * 255).astype("uint8"), mode="L")
 
 
-def _format_with_error(value: object, error: object, decimals: int = 2) -> str:
+def _format_with_error(
+    value: float | None, error: float | None, decimals: int = 2
+) -> str:
     """Return 'value ± error' rounded to *decimals*, or an em-dash when *value* is absent."""
     if not value:
         return "—"
+    if error is None:
+        return f"{round(value, decimals)}"
     return f"{round(value, decimals)} ± {round(error, decimals)}"
 
 
-class SampleContextMixin:
+if TYPE_CHECKING:
+    # SampleContextMixin is only ever combined with ModelAdmin subclasses;
+    # this lets the type checker see the ModelAdmin attributes and methods
+    # it relies on, without actually changing its runtime base (which stays
+    # plain `object`, so the concrete admin classes' own MRO/base-class
+    # order is unaffected).
+    _SampleContextBase = ModelAdmin
+else:
+    _SampleContextBase = object
+
+
+class SampleContextMixin(_SampleContextBase):
     """Keeps all measurement forms under the Sample URL hierarchy.
 
     - add_view / change_view: redirect to the sample-scoped URL when accessed
@@ -181,11 +196,12 @@ class SampleContextMixin:
         request: HttpRequest,
         obj: object,
     ) -> HttpResponse | None:
-        if "_save" in request.POST and getattr(obj, "sample_id", None):
+        sample_id = getattr(obj, "sample_id", None)
+        if "_save" in request.POST and sample_id:
             return redirect(
                 reverse(
                     "admin:field_data_sample_change",
-                    args=[obj.sample_id],
+                    args=[sample_id],
                 ),
             )
         return None
@@ -227,8 +243,8 @@ class AlgorithmAdmin(ExportMixin, ModelAdmin):
 
 class RawMeasurementAdmin(
     ExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for the RawMeasurement model."""
 
@@ -272,8 +288,8 @@ class RawMeasurementAdmin(
 
 class RawProcessingAdmin(
     ExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for the RawProcessing model."""
 
@@ -301,8 +317,8 @@ class PollenCountInline(TabularInline):
 class CountingAdmin(
     SampleContextMixin,
     ExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for the Counting model with inline pollen counts."""
 
@@ -493,8 +509,8 @@ class LuminescenceDatingAdmin(
 class RadiocarbonDatingAdmin(
     SampleContextMixin,
     ImportExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for the RadiocarbonDating model."""
 
@@ -510,8 +526,8 @@ class RadiocarbonDatingAdmin(
 class CosmogenicNuclideDatingAdmin(
     SampleContextMixin,
     ExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for CosmogenicNuclideDating with tabbed fieldsets and color-coded columns."""
 
@@ -766,8 +782,8 @@ _SAMPLE_CONC_MAX = 20
 class GrainSizeAdmin(
     SampleContextMixin,
     ImportExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for GrainSize with file import, Wentworth fraction display, and a plot tab."""
 
@@ -937,7 +953,7 @@ class GrainSizeAdmin(
         self,
         request: HttpRequest,
         obj: GrainSize,
-        form: ModelForm,
+        form: Any,
         change: bool,
     ) -> None:
         """Parse and import an uploaded .av file before delegating to super."""
@@ -952,7 +968,7 @@ class GrainSizeAdmin(
             )
         super().save_model(request, obj, form, change)
 
-    def process_file(self, file: object, obj: GrainSize) -> None:
+    def process_file(self, file: UploadedFile, obj: GrainSize) -> None:
         """Save the uploaded file to temp storage, parse it, and populate obj fields."""
         file_path = default_storage.save(
             f"tmp/{file.name}",
@@ -1019,8 +1035,8 @@ class GrainSizeAdmin(
 class GenericMeasurementAdmin(
     SampleContextMixin,
     ExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for GenericMeasurement with import/export and value-with-error display."""
 
@@ -1096,6 +1112,7 @@ class MicroXRFElementInline(admin.TabularInline):
         """Render a 120 px thumbnail of the element map raster file."""
         if not (
             obj.raster_file
+            and obj.raster_file.name
             and obj.raster_file.name.lower().endswith((".tif", ".tiff"))
         ):
             return "No preview"
@@ -1123,8 +1140,8 @@ class MicroXRFElementInline(admin.TabularInline):
 class MicroXRFAdmin(
     SampleContextMixin,
     ExportMixin,
-    ModelAdmin,
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin for MicroXRFMeasurement with element map inlines."""
 

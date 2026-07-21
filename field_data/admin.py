@@ -361,8 +361,8 @@ class LocationAdmin(
     BulkTagActionMixin,
     TagFilterMixin,
     ImportExportMixin,
-    ModelAdmin,
     ProjectBasedPermissionMixin,
+    ModelAdmin,
 ):
     """Admin interface for Location records with export and project-based permissions."""
 
@@ -613,7 +613,7 @@ class LocationAdmin(
     )
 
 
-class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+class StudyAreaAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
     """Admin interface for StudyArea records with export and project-based permissions."""
 
     save_on_top = True
@@ -667,9 +667,9 @@ class StudyAreaAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
 
 class SiteAdmin(
     ImportExportMixin,
-    ModelAdmin,
     admin.options.GeoModelAdminMixin,  # pyright: ignore[reportAttributeAccessIssue]
     NestedProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin interface for Site records with geo support and nested project permissions."""
 
@@ -700,7 +700,7 @@ class SiteAdmin(
     )
 
 
-class CampaignAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+class CampaignAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
     """Admin interface for Campaign records with export and project-based permissions."""
 
     save_on_top = True
@@ -795,7 +795,7 @@ class LayerAdminForm(django_forms.ModelForm):  # type: ignore[type-arg]
         ].help_text = "Chroma/saturation (0–12, step 0.5); e.g. 6."
 
 
-class LayerAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class LayerAdmin(ExportMixin, NestedProjectPermissionMixin, ModelAdmin):
     """Admin interface for Layer records with nested project permissions."""
 
     form = LayerAdminForm
@@ -859,8 +859,8 @@ class SampleAdmin(
     BulkTagActionMixin,
     TagFilterMixin,
     ExportMixin,
-    ModelAdmin,
     HybridProjectPermissionMixin,
+    ModelAdmin,
 ):
     """Admin interface for Sample records with analysis sub-views and hybrid project permissions."""
 
@@ -1142,7 +1142,7 @@ class SampleTypeAdmin(ImportExportMixin, ModelAdmin):
     list_filter_submit = True
 
 
-class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
+class TagAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
     """Admin interface for Tag records with project-based permissions."""
 
     change_form_show_cancel_button = True
@@ -1207,7 +1207,7 @@ class TagAdmin(ExportMixin, ModelAdmin, ProjectBasedPermissionMixin):
         return queryset, may_have_duplicates
 
 
-class TransectAdmin(ExportMixin, ModelAdmin, NestedProjectPermissionMixin):
+class TransectAdmin(ExportMixin, NestedProjectPermissionMixin, ModelAdmin):
     """Admin interface for Transect records with nested project permissions."""
 
     change_form_show_cancel_button = True
