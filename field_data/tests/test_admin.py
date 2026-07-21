@@ -11,7 +11,9 @@ Tests cover:
 from urllib.parse import parse_qs, unquote
 
 from django.contrib.auth.models import User
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from field_data.models import Location, Sample
@@ -108,6 +110,7 @@ class ChangelistViewTest(_AdminSetup):
             "admin:field_data_sample_genericmeasurement", args=[self.sample.pk]
         )
         response = self.client.get(url)
+        assert response.context_data is not None
         cl = response.context_data["cl"]
         self.assertEqual(
             cl.params.get("sample__id__exact"), str(self.sample.pk)
@@ -119,6 +122,7 @@ class ChangelistViewTest(_AdminSetup):
             "admin:field_data_sample_genericmeasurement", args=[self.sample.pk]
         )
         response = self.client.get(url)
+        assert response.context_data is not None
         pf = response.context_data.get("preserved_filters", "")
         decoded = unquote(pf)
         self.assertIn(f"sample__id__exact={self.sample.pk}", decoded)
@@ -152,3 +156,43 @@ class AddViewTest(_AdminSetup):
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
+
+
+# ===========================================================================
+# Changelist query count — regression test for N+1 on project/location
+# ===========================================================================
+
+
+class SampleChangelistQueryCountTest(_AdminSetup):
+    """SampleAdmin's changelist must select_related() project and location.
+
+    Without it, the "project" and "location" list_display columns each
+    trigger one extra query per row, so the query count grows linearly with
+    the number of samples shown on the page.
+    """
+
+    def test_query_count_does_not_scale_with_row_count(self):
+        url = reverse("admin:field_data_sample_changelist")
+
+        with CaptureQueriesContext(connection) as baseline:
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        baseline_count = len(baseline.captured_queries)
+
+        for i in range(20):
+            Sample.objects.create(
+                identifier=f"SA_EXTRA_{i:03d}",
+                project=self.project,
+                location=self.location,
+            )
+
+        with CaptureQueriesContext(connection) as after:
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(
+            len(after.captured_queries),
+            baseline_count,
+            "Query count grew with the number of samples — project/location "
+            "must stay select_related() on SampleAdmin.get_queryset().",
+        )
