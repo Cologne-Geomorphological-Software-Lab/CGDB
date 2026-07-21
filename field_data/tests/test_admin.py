@@ -196,3 +196,29 @@ class SampleChangelistQueryCountTest(_AdminSetup):
             "Query count grew with the number of samples — project/location "
             "must stay select_related() on SampleAdmin.get_queryset().",
         )
+
+
+# ===========================================================================
+# FieldPhoto inline on Location and Layer change pages
+# ===========================================================================
+
+
+class FieldPhotoInlineTest(_AdminSetup):
+    """The FieldPhoto generic inline must render on Location and Layer forms."""
+
+    def test_location_change_page_shows_photo_inline(self):
+        url = reverse(
+            "admin:field_data_location_change", args=[self.location.pk]
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "field_data-fieldphoto")
+
+    def test_layer_change_page_shows_photo_inline(self):
+        from field_data.models import Layer
+
+        layer = Layer.objects.create(location=self.location, identifier=1)
+        url = reverse("admin:field_data_layer_change", args=[layer.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "field_data-fieldphoto")
