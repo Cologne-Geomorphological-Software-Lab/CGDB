@@ -56,7 +56,7 @@ class LocationCleanTest(_BaseSetup):
 
     def _make_location(self, **kwargs: object):
         """Returns an unsaved Location – does NOT call save() or clean()."""
-        defaults = {"identifier": "TEMP"}
+        defaults: dict[str, object] = {"identifier": "TEMP"}
         defaults.update(kwargs)
         return Location(**defaults)
 
@@ -121,7 +121,7 @@ class LocationSaveTest(_BaseSetup):
             northing=51.5136,
             srid=4326,
         )
-        self.assertIsNotNone(loc.location)
+        assert loc.location is not None
         self.assertAlmostEqual(loc.location.x, 7.4653, places=4)
         self.assertAlmostEqual(loc.location.y, 51.5136, places=4)
 
@@ -193,6 +193,7 @@ class LocationSaveTest(_BaseSetup):
         loc.easting = 8.0
         loc.northing = 51.0
         loc.save()
+        assert loc.location is not None
         self.assertAlmostEqual(loc.location.x, 8.0)
         self.assertAlmostEqual(loc.location.y, 51.0)
 
@@ -206,7 +207,7 @@ class SampleCleanTest(_BaseSetup):
     """Unit-level validation tests for Sample.clean()."""
 
     def _make_sample(self, **kwargs: object):
-        defaults = {"identifier": "TEMP_S"}
+        defaults: dict[str, object] = {"identifier": "TEMP_S"}
         defaults.update(kwargs)
         return Sample(**defaults)
 
@@ -317,6 +318,7 @@ class SampleDepthMidTest(_BaseSetup):
             depth_top=5,
             depth_bottom=16,
         )
+        assert s.depth_mid is not None
         self.assertAlmostEqual(float(s.depth_mid), 10.5)
 
     def test_depth_mid_none_without_top(self):
@@ -360,6 +362,7 @@ class LayerThicknessTest(_BaseSetup):
             depth_top=5.0,
             depth_bottom=25.0,
         )
+        assert layer.thickness is not None
         self.assertAlmostEqual(layer.thickness, 20.0)
 
     def test_thickness_small_interval(self):
@@ -369,6 +372,7 @@ class LayerThicknessTest(_BaseSetup):
             depth_top=0.0,
             depth_bottom=0.5,
         )
+        assert layer.thickness is not None
         self.assertAlmostEqual(layer.thickness, 0.5)
 
     def test_thickness_none_without_top(self):
@@ -459,3 +463,58 @@ class CampaignTest(_BaseSetup):
             campaign=campaign_b,
         )
         self.assertIsNotNone(loc_b.pk)
+
+
+# ===========================================================================
+# FieldPhoto
+# ===========================================================================
+
+
+class FieldPhotoTest(_BaseSetup):
+    """Tests for the generic FieldPhoto model on Location and Layer."""
+
+    @staticmethod
+    def _make_file(name: str = "profile.jpg"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return SimpleUploadedFile(name, b"fake-image-bytes")
+
+    def test_attach_photo_to_location(self):
+        photo = self.internal_location.field_photos.create(
+            file=self._make_file(),
+            caption="North profile wall",
+        )
+        self.assertEqual(photo.content_object, self.internal_location)
+        self.assertEqual(self.internal_location.field_photos.count(), 1)
+
+    def test_attach_photo_to_layer(self):
+        layer = Layer.objects.create(
+            location=self.internal_location, identifier=1
+        )
+        photo = layer.field_photos.create(file=self._make_file("sketch.png"))
+        self.assertEqual(photo.content_object, layer)
+        self.assertEqual(layer.field_photos.count(), 1)
+
+    def test_deleting_location_deletes_photos(self):
+        from field_data.models import FieldPhoto
+
+        location = Location.objects.create(
+            identifier="PHOTO_LOC",
+            data_source="internal",
+            project=self.project,
+        )
+        location.field_photos.create(file=self._make_file())
+        location.delete()
+        self.assertEqual(FieldPhoto.objects.count(), 0)
+
+    def test_str_returns_caption_or_file_name(self):
+        photo = self.internal_location.field_photos.create(
+            file=self._make_file(),
+            caption="Stratigraphy overview",
+        )
+        self.assertEqual(str(photo), "Stratigraphy overview")
+
+        uncaptioned = self.internal_location.field_photos.create(
+            file=self._make_file("notes.pdf"),
+        )
+        self.assertIn("notes", str(uncaptioned))

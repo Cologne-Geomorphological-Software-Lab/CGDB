@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from django.contrib.contenttypes.fields import (
+    GenericForeignKey,
+    GenericRelation,
+)
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
@@ -819,6 +823,10 @@ class Location(BaseModel):
         Tag,
         blank=True,
     )
+    field_photos = GenericRelation(
+        "FieldPhoto",
+        related_query_name="location",
+    )
 
     class Meta:
         """Meta options for Location."""
@@ -1023,6 +1031,10 @@ class Layer(BaseModel):
     tags = models.ManyToManyField(
         Tag,
     )
+    field_photos = GenericRelation(
+        "FieldPhoto",
+        related_query_name="layer",
+    )
 
     class Meta:
         """Meta options for Layer."""
@@ -1205,3 +1217,59 @@ class Sample(BaseModel):
     def __str__(self) -> str:
         """Return the sample identifier."""
         return str(self.identifier)
+
+
+class FieldPhoto(BaseModel):
+    """Field documentation (photos, sketches, notes) attached to any record.
+
+    Uses a generic relation so a single model can hold stratigraphic photos,
+    profile sketches, and scanned field notes for Locations, Layers, or any
+    other model. Attach via the ``field_photos`` GenericRelation on the
+    target model.
+
+    Attributes:
+        content_type (ForeignKey): Content type of the record this photo belongs to.
+        object_id (PositiveIntegerField): Primary key of the related record.
+        content_object (GenericForeignKey): The related record itself.
+        file (FileField): The uploaded photo, sketch, or note file.
+        caption (CharField): Optional short caption describing the file.
+        taken_at (DateTimeField): Optional timestamp when the photo was taken.
+
+    Methods:
+        __str__(): Returns the caption if set, otherwise the file name.
+    """
+
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+    )
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+
+    file = models.FileField(
+        upload_to="field_photos/",
+        help_text="Photo, sketch, or scanned field note.",
+    )
+    caption = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Short description of the photo or sketch.",
+    )
+    taken_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the photo was taken in the field.",
+    )
+
+    class Meta:
+        """Meta options for FieldPhoto."""
+
+        indexes = [
+            models.Index(fields=["content_type", "object_id"]),
+        ]
+        verbose_name = "Field photo"
+        verbose_name_plural = "Field photos"
+
+    def __str__(self) -> str:
+        """Return the caption if set, otherwise the file name."""
+        return self.caption or self.file.name or ""

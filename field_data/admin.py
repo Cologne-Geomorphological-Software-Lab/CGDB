@@ -14,7 +14,12 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from import_export.admin import ExportMixin, ImportExportMixin
-from unfold.admin import ModelAdmin, StackedInline, TabularInline
+from unfold.admin import (
+    GenericTabularInline,
+    ModelAdmin,
+    StackedInline,
+    TabularInline,
+)
 from unfold.contrib.filters.admin import (
     ChoicesDropdownFilter,
     RangeDateFilter,
@@ -37,6 +42,7 @@ from .models import (
     Campaign,
     Country,
     ExposureType,
+    FieldPhoto,
     Layer,
     Location,
     Province,
@@ -61,6 +67,19 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
     from django.forms import Field
     from django.http import HttpRequest, HttpResponse
+
+
+class FieldPhotoTabularInline(GenericTabularInline):
+    """Generic tabular inline for FieldPhoto records attached to any model."""
+
+    model = FieldPhoto
+    tab = True
+    extra = 0
+    fields = [
+        "file",
+        "caption",
+        "taken_at",
+    ]
 
 
 class SampleTabularInline(TabularInline):
@@ -435,6 +454,7 @@ class LocationAdmin(
     inlines = [
         LayerStackedInline,
         SampleTabularInline,
+        FieldPhotoTabularInline,
     ]
 
     search_fields = ["identifier", "campaign__label"]
@@ -822,6 +842,7 @@ class LayerAdmin(ExportMixin, NestedProjectPermissionMixin, ModelAdmin):
     list_filter_sheet = False
     list_filter_submit = True
     readonly_fields = AUDIT_READONLY_FIELDS
+    inlines = [FieldPhotoTabularInline]
     fieldsets = (
         (
             None,
