@@ -949,6 +949,17 @@ class SampleAdmin(
         ),
     )
 
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Sample]:
+        """Return the project-scoped queryset with project/location pre-fetched.
+
+        list_display renders "project" and "location" for every row; without
+        select_related each column triggers its own query per row (~2N extra
+        queries for N samples on the changelist).
+        """
+        return (
+            super().get_queryset(request).select_related("project", "location")
+        )
+
     def formfield_for_foreignkey(
         self,
         db_field: object,
