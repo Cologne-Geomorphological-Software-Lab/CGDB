@@ -22,7 +22,7 @@ drf-spectacular>=0.29.0
 # Data Processing & Visualization
 matplotlib>=3.11.0
 numpy>=2.5.0
-pillow>=12.2.0
+pillow>=12.3.0
 
 # Data Orchestration
 dagster>=1.13.11
