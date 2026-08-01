@@ -6,7 +6,6 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, cast
 from urllib.parse import urlparse
 
 from dateutil.relativedelta import relativedelta
@@ -15,7 +14,7 @@ from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db.models import Count, Q, QuerySet
 from django.db.models.functions import TruncMonth
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -31,8 +30,7 @@ from analysis.models import (
     LuminescenceDating,
     RadiocarbonDating,
 )
-from field_data.models import Location, Sample, StudyArea, Transect
-from prototype.mixins import _accessible_projects
+from field_data.models import Location, Sample
 from prototype.models import Project
 
 logger = logging.getLogger(__name__)
@@ -99,248 +97,12 @@ def map_dashboard(request: HttpRequest) -> HttpResponse:
     context = _admin.site.each_context(request)
     context["navigation"] = _nav(request)
     context["geojson_urls"] = {
-        "locations": reverse("locations_geojson"),
-        "study_areas": reverse("study_areas_geojson"),
-        "transects": reverse("transects_geojson"),
-        "landforms": reverse("landforms_geojson"),
+        "locations": reverse("api_v1:location-map"),
+        "study_areas": reverse("api_v1:studyarea-map"),
+        "transects": reverse("api_v1:transect-map"),
+        "landforms": reverse("api_v1:landform-list"),
     }
     return render(request, "admin/map_dashboard.html", context)
-
-
-@require_GET
-def locations_geojson(request: HttpRequest) -> HttpResponse:
-    """Return a GeoJSON FeatureCollection of all accessible locations."""
-    user = cast("Any", request.user)
-    if user.is_superuser:
-        qs = Location.objects.exclude(location__isnull=True)
-    else:
-        project_ids = _accessible_projects(request.user).values_list(
-            "id",
-            flat=True,
-        )
-        qs = Location.objects.filter(
-            Q(project_id__in=project_ids) | Q(data_source="literature"),
-        ).exclude(
-            location__isnull=True,
-        )
-
-    qs = qs.select_related("project", "campaign", "exposure_type").annotate(
-        sample_count=Count("sample", distinct=True),
-        luminescence_count=Count(
-            "sample__luminescence_datings", distinct=True
-        ),
-        grain_size_count=Count("sample__grain_sizes", distinct=True),
-    )
-
-    features = []
-    for loc in qs:
-        # loc.location is excluded from being NULL above; annotate()d fields
-        # (sample_count, ...) and get_location_type_display() are added
-        # dynamically by Django and are invisible to static analysis.
-        loc_dynamic = cast("Any", loc)
-        point = loc_dynamic.location
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [point.x, point.y],
-                },
-                "properties": {
-                    "id": loc.pk,
-                    "identifier": loc.identifier,
-                    "project": str(loc.project) if loc.project else None,
-                    "data_source": loc.data_source,
-                    "location_type": loc.location_type,
-                    "location_type_display": loc_dynamic.get_location_type_display(),
-                    "campaign": loc.campaign.label if loc.campaign else None,
-                    "date_of_record": loc.date_of_record.isoformat()
-                    if loc.date_of_record
-                    else None,
-                    "altitude": loc.altitude,
-                    "exposure_type": loc.exposure_type.name_en
-                    if loc.exposure_type
-                    else None,
-                    "sample_count": loc_dynamic.sample_count,
-                    "luminescence_count": loc_dynamic.luminescence_count,
-                    "grain_size_count": loc_dynamic.grain_size_count,
-                    "admin_url": reverse(
-                        "admin:field_data_location_change", args=[loc.pk]
-                    ),
-                },
-            }
-        )
-    return JsonResponse({"type": "FeatureCollection", "features": features})
-
-
-@require_GET
-def study_areas_geojson(request: HttpRequest) -> HttpResponse:
-    """Return a GeoJSON FeatureCollection of all accessible study areas."""
-    user = cast("Any", request.user)
-    if user.is_superuser:
-        qs = StudyArea.objects.exclude(geometry__isnull=True)
-    else:
-        project_ids = _accessible_projects(request.user).values_list(
-            "id", flat=True
-        )
-        qs = StudyArea.objects.filter(project_id__in=project_ids).exclude(
-            geometry__isnull=True
-        )
-
-    features = []
-    for sa in qs.select_related("project"):
-        # get_*_display() is added dynamically by Django for choices fields
-        # and is invisible to static analysis.
-        sa_dynamic = cast("Any", sa)
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": json.loads(sa.geometry.geojson),
-                "properties": {
-                    "id": sa.pk,
-                    "label": sa.label,
-                    "project": str(sa.project),
-                    "climate_koeppen": sa.climate_koeppen,
-                    "climate_koeppen_display": sa_dynamic.get_climate_koeppen_display(),
-                    "ecozone_schultz": sa.ecozone_schultz,
-                    "ecozone_schultz_display": sa_dynamic.get_ecozone_schultz_display(),
-                    "admin_url": reverse(
-                        "admin:field_data_studyarea_change", args=[sa.pk]
-                    ),
-                },
-            }
-        )
-    return JsonResponse({"type": "FeatureCollection", "features": features})
-
-
-@require_GET
-def transects_geojson(request: HttpRequest) -> HttpResponse:
-    """Return a GeoJSON FeatureCollection of all accessible transects."""
-    user = cast("Any", request.user)
-    if user.is_superuser:
-        qs = Transect.objects.exclude(multiline__isnull=True)
-    else:
-        project_ids = _accessible_projects(request.user).values_list(
-            "id", flat=True
-        )
-        qs = Transect.objects.filter(
-            study_area__project_id__in=project_ids
-        ).exclude(multiline__isnull=True)
-
-    features = [
-        {
-            "type": "Feature",
-            "geometry": json.loads(t.multiline.geojson),
-            "properties": {
-                "id": t.pk,
-                "identifier": t.identifier,
-                "study_area": str(t.study_area),
-                "campaign": t.campaign.label if t.campaign else None,
-                "admin_url": reverse(
-                    "admin:field_data_transect_change", args=[t.pk]
-                ),
-            },
-        }
-        for t in qs.select_related("study_area", "campaign")
-    ]
-    return JsonResponse({"type": "FeatureCollection", "features": features})
-
-
-_LANDFORM_SIMPLIFY_THRESHOLD = (
-    1e-4  # degrees (~11 m); below this no simplification
-)
-
-
-def _parse_bbox(bbox_param: str) -> tuple[float, float, float, float] | None:
-    """Parse and clamp a 'minx,miny,maxx,maxy' string; return None on failure."""
-    try:
-        minx, miny, maxx, maxy = (float(v) for v in bbox_param.split(","))
-    except (ValueError, TypeError):
-        return None
-    minx = max(minx, -180.0)
-    maxx = min(maxx, 180.0)
-    miny = max(miny, -90.0)
-    maxy = min(maxy, 90.0)
-    if maxx <= minx or maxy <= miny:
-        return None
-    return minx, miny, maxx, maxy
-
-
-@require_GET
-def landforms_geojson(request: HttpRequest) -> HttpResponse:
-    """Return a viewport-filtered GeoJSON FeatureCollection of landform polygons.
-
-    Geometry is serialised entirely in SpatiaLite via AsGeoJSON() so Python
-    never deserialises GEOS objects.  At low zoom Simplify() reduces vertex
-    count proportionally to the viewport width.
-    """
-    from django.contrib.gis.geos import Polygon
-    from django.db.models.expressions import RawSQL
-
-    from geodata.models import Landform
-
-    bbox_param = request.GET.get("bbox", "")
-    bbox = _parse_bbox(bbox_param) if bbox_param else None
-    if bbox is None:
-        return JsonResponse({"type": "FeatureCollection", "features": []})
-
-    span = bbox[2] - bbox[0]
-    tolerance = span / 512.0
-
-    bbox_poly = Polygon.from_bbox(bbox)
-    bbox_poly.srid = 4326
-    qs = Landform.objects.exclude(geometry__isnull=True).filter(
-        geometry__intersects=bbox_poly,
-    )
-
-    if tolerance >= _LANDFORM_SIMPLIFY_THRESHOLD:
-        # SpatiaLite uses AsGeoJSON / Simplify (without ST_ prefix).
-        # COALESCE falls back to full geometry when Simplify returns NULL
-        # (degenerate polygon collapses to a line at the given tolerance).
-        geom_sql = RawSQL(
-            "COALESCE(AsGeoJSON(Simplify(geometry, %s)), AsGeoJSON(geometry))",
-            [tolerance],
-        )
-    else:
-        geom_sql = RawSQL("AsGeoJSON(geometry)", [])
-
-    rows = qs.values_list(
-        "id",
-        "murphy_code",
-        "name_str",
-        "division",
-        "province",
-        "continent",
-        geom_sql,
-    )
-
-    features = []
-    for (
-        pk,
-        murphy_code,
-        name_str,
-        division,
-        province,
-        continent,
-        geom_json,
-    ) in rows:
-        if not geom_json:
-            continue
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": json.loads(geom_json),
-                "properties": {
-                    "id": pk,
-                    "murphy_code": murphy_code,
-                    "name_str": name_str,
-                    "division": division,
-                    "province": province,
-                    "continent": continent,
-                },
-            }
-        )
-    return JsonResponse({"type": "FeatureCollection", "features": features})
 
 
 _WMS_WHITELIST = ["services.bgr.de"]

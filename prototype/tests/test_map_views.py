@@ -1,8 +1,10 @@
-"""Tests for the map dashboard views.
+"""Tests for the map dashboard view and its DRF-backed GeoJSON overlays.
 
 Covers:
 - map_dashboard: authentication redirect, HTTP 200 for staff
-- locations_geojson: structure, permission filtering, geometry exclusion
+- LocationViewSet.map ("/api/v1/locations/map/"): structure, permission
+  filtering, geometry exclusion — this action replaced the old hand-rolled
+  locations_geojson view (see F3 in the architecture-audit plan).
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ from guardian.shortcuts import assign_perm
 from bibliography.models import Author, Reference
 from field_data.models import Location
 from prototype.models import Project
+
+_LOCATIONS_MAP_URL = "/api/v1/locations/map/"
 
 
 def _make_point_location(
@@ -78,9 +82,19 @@ class MapDashboardAuthTest(TestCase):
         # The template marks the active nav item — check the active path is present
         self.assertContains(resp, "/map/")
 
+    def test_geojson_urls_point_at_drf_endpoints(self):
+        """The injected GEOJSON_URLS must resolve to the new DRF map endpoints."""
+        c = Client()
+        c.login(username="map_staff", password="pw")
+        resp = c.get("/map/")
+        self.assertContains(resp, "/api/v1/locations/map/")
+        self.assertContains(resp, "/api/v1/study-areas/map/")
+        self.assertContains(resp, "/api/v1/transects/map/")
+        self.assertContains(resp, "/api/v1/landforms/")
 
-class LocationsGeoJSONAuthTest(TestCase):
-    """GET /api/locations.geojson — authentication."""
+
+class LocationsMapAuthTest(TestCase):
+    """GET /api/v1/locations/map/ — authentication."""
 
     @classmethod
     def setUpTestData(cls):
@@ -88,25 +102,25 @@ class LocationsGeoJSONAuthTest(TestCase):
             username="geo_staff", password="pw", is_staff=True
         )
 
-    def test_unauthenticated_redirects(self):
-        resp = Client().get("/api/locations.geojson")
-        self.assertIn(resp.status_code, (301, 302))
+    def test_unauthenticated_returns_401_or_403(self):
+        resp = Client().get(_LOCATIONS_MAP_URL)
+        self.assertIn(resp.status_code, (401, 403))
 
-    def test_staff_gets_200(self):
+    def test_authenticated_gets_200(self):
         c = Client()
         c.login(username="geo_staff", password="pw")
-        resp = c.get("/api/locations.geojson")
+        resp = c.get(_LOCATIONS_MAP_URL)
         self.assertEqual(resp.status_code, 200)
 
     def test_content_type_is_json(self):
         c = Client()
         c.login(username="geo_staff", password="pw")
-        resp = c.get("/api/locations.geojson")
+        resp = c.get(_LOCATIONS_MAP_URL)
         self.assertIn("application/json", resp["Content-Type"])
 
 
-class LocationsGeoJSONStructureTest(TestCase):
-    """GeoJSON structure is valid FeatureCollection."""
+class LocationsMapStructureTest(TestCase):
+    """GeoJSON structure is a valid FeatureCollection."""
 
     @classmethod
     def setUpTestData(cls):
@@ -121,19 +135,19 @@ class LocationsGeoJSONStructureTest(TestCase):
     def test_type_is_feature_collection(self):
         c = Client()
         c.login(username="geo_su", password="pw")
-        data = json.loads(c.get("/api/locations.geojson").content)
+        data = json.loads(c.get(_LOCATIONS_MAP_URL).content)
         self.assertEqual(data["type"], "FeatureCollection")
 
     def test_features_is_list(self):
         c = Client()
         c.login(username="geo_su", password="pw")
-        data = json.loads(c.get("/api/locations.geojson").content)
+        data = json.loads(c.get(_LOCATIONS_MAP_URL).content)
         self.assertIsInstance(data["features"], list)
 
     def test_feature_has_geometry(self):
         c = Client()
         c.login(username="geo_su", password="pw")
-        data = json.loads(c.get("/api/locations.geojson").content)
+        data = json.loads(c.get(_LOCATIONS_MAP_URL).content)
         feature = next(
             f
             for f in data["features"]
@@ -143,22 +157,39 @@ class LocationsGeoJSONStructureTest(TestCase):
         self.assertEqual(len(feature["geometry"]["coordinates"]), 2)
 
     def test_feature_properties_keys(self):
+        """Property keys must match what the map dashboard's popup JS reads.
+
+        Note: "id" is placed at the top-level Feature.id by GeoFeatureModelSerializer
+        (per the GeoJSON spec), not inside properties — the popup JS never reads
+        properties.id, so this is a harmless structural difference from the old
+        hand-rolled view, which duplicated "id" inside properties too.
+        """
         c = Client()
         c.login(username="geo_su", password="pw")
-        data = json.loads(c.get("/api/locations.geojson").content)
+        data = json.loads(c.get(_LOCATIONS_MAP_URL).content)
         feature = next(
             f
             for f in data["features"]
             if f["properties"]["identifier"] == "GJ_LOC1"
         )
+        self.assertIn("id", feature)
         props = feature["properties"]
-        for key in ("id", "identifier", "project", "data_source", "admin_url"):
+        for key in (
+            "identifier",
+            "project",
+            "data_source",
+            "location_type_display",
+            "sample_count",
+            "luminescence_count",
+            "grain_size_count",
+            "admin_url",
+        ):
             self.assertIn(key, props, msg=f"Missing property: {key}")
 
     def test_admin_url_points_to_change_page(self):
         c = Client()
         c.login(username="geo_su", password="pw")
-        data = json.loads(c.get("/api/locations.geojson").content)
+        data = json.loads(c.get(_LOCATIONS_MAP_URL).content)
         feature = next(
             f
             for f in data["features"]
@@ -168,7 +199,7 @@ class LocationsGeoJSONStructureTest(TestCase):
         self.assertIn("change", feature["properties"]["admin_url"])
 
 
-class LocationsGeoJSONPermissionTest(TestCase):
+class LocationsMapPermissionTest(TestCase):
     """Locations are filtered by Guardian project permissions."""
 
     @classmethod
@@ -213,7 +244,7 @@ class LocationsGeoJSONPermissionTest(TestCase):
     def _fetch(self, user: object):
         c = Client()
         c.login(username=user.username, password="pw")
-        return json.loads(c.get("/api/locations.geojson").content)["features"]
+        return json.loads(c.get(_LOCATIONS_MAP_URL).content)["features"]
 
     def _ids(self, features: object):
         return {f["properties"]["identifier"] for f in features}
@@ -248,7 +279,7 @@ class LocationsGeoJSONPermissionTest(TestCase):
         self.assertIn("GEO_LIT", ids)
 
 
-class LocationsGeoJSONGeometryTest(TestCase):
+class LocationsMapGeometryTest(TestCase):
     """Locations without geometry are excluded from the GeoJSON output."""
 
     @classmethod
@@ -272,13 +303,13 @@ class LocationsGeoJSONGeometryTest(TestCase):
     def test_location_with_geometry_is_included(self):
         c = Client()
         c.login(username="geo_geom_su", password="pw")
-        data = json.loads(c.get("/api/locations.geojson").content)
+        data = json.loads(c.get(_LOCATIONS_MAP_URL).content)
         ids = {f["properties"]["identifier"] for f in data["features"]}
         self.assertIn("GEO_WITH_GEOM", ids)
 
     def test_location_without_geometry_is_excluded(self):
         c = Client()
         c.login(username="geo_geom_su", password="pw")
-        data = json.loads(c.get("/api/locations.geojson").content)
+        data = json.loads(c.get(_LOCATIONS_MAP_URL).content)
         ids = {f["properties"]["identifier"] for f in data["features"]}
         self.assertNotIn("GEO_NO_GEOM", ids)

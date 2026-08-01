@@ -879,7 +879,7 @@ class Location(BaseModel):
         else:
             self.location = None
         self.clean()
-        super().save(*args, **kwargs)  # type: ignore[arg-type]
+        super().save(*args, **kwargs)
 
 
 class Layer(BaseModel):
@@ -1212,7 +1212,7 @@ class Sample(BaseModel):
             self.project = self.location.project
 
         self.clean()
-        super().save(*args, **kwargs)  # type: ignore[arg-type]
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         """Return the sample identifier."""

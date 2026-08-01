@@ -38,15 +38,6 @@ STATICFILES_DIRS = []
 MEDIA_URL = ""
 MEDIA_ROOT = ""
 
-# ==============================================================================
-# DATA ORCHESTRATION (OPTIONAL)
-# ==============================================================================
-
-# Dagster Web UI URL (uncomment to enable Dagster link in admin sidebar)
-DAGSTER_URL = None  # Disabled by default
-# DAGSTER_URL = "http://localhost:3000"  # Development
-# DAGSTER_URL = "https://dagster.your-domain.com"  # Production
-
 
 # SECURITY WARNING: Do not set DEBUG = True in production!
 DEBUG = False

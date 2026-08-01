@@ -195,11 +195,6 @@ UNFOLD = {
             "title": _("Home"),
             "link": reverse_lazy("admin:index"),
         },
-        {
-            "icon": "diamond",
-            "title": _("Data Orchestration"),
-            "link": getattr(settings, "DAGSTER_URL", None),
-        },
     ],
     "EXTENSIONS": {
         "modeltranslation": {

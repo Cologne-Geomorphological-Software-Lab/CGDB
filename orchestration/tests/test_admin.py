@@ -11,9 +11,10 @@ from orchestration.admin import (
     DuckDBTableConfigAdmin,
     IntegrityIssueInline,
     MaintenanceRunAdmin,
-    _fire_maintenance_subprocess,
+    _submit_maintenance_run,
 )
 from orchestration.models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
+from prototype.middleware import CurrentUserMiddleware
 
 
 class MaintenanceRunAdminPermissionTests(TestCase):
@@ -82,41 +83,88 @@ class MaintenanceRunAdminActionTests(TestCase):
         request._messages = MagicMock()
         return request
 
-    def test_trigger_action_fires_subprocess_for_pending_runs(self):
+    def test_trigger_action_submits_pending_runs(self):
         run = MaintenanceRun.objects.create(job_type="integrity", status="pending")
         request = self._request(self.superuser)
 
-        with patch(
-            "orchestration.admin._fire_maintenance_subprocess"
-        ) as mock_fire:
+        with patch("orchestration.admin._submit_maintenance_run") as mock_submit:
             self.admin.trigger_maintenance_job(
                 request, MaintenanceRun.objects.filter(pk=run.pk)
             )
-            mock_fire.assert_called_once_with(run)
+            mock_submit.assert_called_once_with(run)
+
+    def test_trigger_action_marks_run_running_before_submit(self):
+        run = MaintenanceRun.objects.create(job_type="integrity", status="pending")
+        request = self._request(self.superuser)
+
+        with patch("orchestration.admin._submit_maintenance_run"):
+            self.admin.trigger_maintenance_job(
+                request, MaintenanceRun.objects.filter(pk=run.pk)
+            )
+        run.refresh_from_db()
+        self.assertEqual(run.status, "running")
+        self.assertIsNotNone(run.started_at)
+
+    def test_trigger_action_marks_run_failed_on_submit_error(self):
+        import subprocess
+
+        run = MaintenanceRun.objects.create(job_type="integrity", status="pending")
+        request = self._request(self.superuser)
+        error = subprocess.CalledProcessError(
+            1, ["dagster"], stderr=b"boom: code location failed to load"
+        )
+
+        with patch(
+            "orchestration.admin._submit_maintenance_run", side_effect=error
+        ):
+            self.admin.trigger_maintenance_job(
+                request, MaintenanceRun.objects.filter(pk=run.pk)
+            )
+        run.refresh_from_db()
+        self.assertEqual(run.status, "failed")
+        self.assertIn("code location failed to load", run.log)
+        self.assertIsNotNone(run.finished_at)
+
+    def test_trigger_action_marks_run_failed_when_subprocess_cannot_start(self):
+        """The subprocess never launching at all (e.g. broken venv, missing
+        interpreter) must be caught too, not just a launch that ran and
+        failed -- FileNotFoundError/OSError previously propagated uncaught,
+        crashing the whole admin action instead of marking just this run
+        as failed."""
+        run = MaintenanceRun.objects.create(job_type="integrity", status="pending")
+        request = self._request(self.superuser)
+        error = FileNotFoundError("no such file or directory: 'dagster'")
+
+        with patch(
+            "orchestration.admin._submit_maintenance_run", side_effect=error
+        ):
+            self.admin.trigger_maintenance_job(
+                request, MaintenanceRun.objects.filter(pk=run.pk)
+            )
+        run.refresh_from_db()
+        self.assertEqual(run.status, "failed")
+        self.assertIn("no such file or directory", run.log)
+        self.assertIsNotNone(run.finished_at)
 
     def test_trigger_action_skips_non_pending_runs(self):
         run = MaintenanceRun.objects.create(job_type="backup", status="running")
         request = self._request(self.superuser)
 
-        with patch(
-            "orchestration.admin._fire_maintenance_subprocess"
-        ) as mock_fire:
+        with patch("orchestration.admin._submit_maintenance_run") as mock_submit:
             self.admin.trigger_maintenance_job(
                 request, MaintenanceRun.objects.filter(pk=run.pk)
             )
-            mock_fire.assert_not_called()
+            mock_submit.assert_not_called()
 
     def test_trigger_action_denied_for_non_superuser(self):
         run = MaintenanceRun.objects.create(job_type="backup", status="pending")
         request = self._request(self.regular_user)
 
-        with patch(
-            "orchestration.admin._fire_maintenance_subprocess"
-        ) as mock_fire:
+        with patch("orchestration.admin._submit_maintenance_run") as mock_submit:
             self.admin.trigger_maintenance_job(
                 request, MaintenanceRun.objects.filter(pk=run.pk)
             )
-            mock_fire.assert_not_called()
+            mock_submit.assert_not_called()
 
     def test_save_model_sets_triggered_by_on_create(self):
         request = self._request(self.superuser)
@@ -135,6 +183,20 @@ class MaintenanceRunAdminActionTests(TestCase):
         self.admin.save_model(request, run, form, change=True)
         # triggered_by should not change on update
         self.assertEqual(run.triggered_by, other_user)
+
+    def test_save_model_sets_both_triggered_by_and_created_by(self):
+        """F1 regression: MaintenanceRunAdmin's explicit triggered_by and
+        BaseModel.save()'s created_by/updated_by (via CurrentUserMiddleware's
+        thread-local state) must both end up set after a real save_model
+        call, not just triggered_by."""
+        request = self._request(self.superuser)
+        CurrentUserMiddleware(lambda _r: None)(request)
+        run = MaintenanceRun(job_type="backup")
+        form = MagicMock()
+        self.admin.save_model(request, run, form, change=False)
+        self.assertEqual(run.triggered_by, self.superuser)
+        self.assertEqual(run.created_by, self.superuser)
+        self.assertEqual(run.updated_by, self.superuser)
 
     def test_download_link_returns_dash_when_no_file(self):
         run = MaintenanceRun(job_type="backup")
@@ -179,32 +241,83 @@ class DuckDBTableConfigAdminPermissionTests(TestCase):
         self.assertFalse(self.admin.has_view_permission(self._request(self.regular_user)))
 
 
-class FireMaintenanceSubprocessTests(TestCase):
-    def test_popen_called_with_correct_args(self):
+class SubmitMaintenanceRunTests(TestCase):
+    def test_launch_command_targets_correct_job_and_repository(self):
         run = MaintenanceRun(pk=42, job_type="integrity")
 
-        with patch("orchestration.admin.subprocess.Popen") as mock_popen, patch(
+        with patch("orchestration.admin.subprocess.run") as mock_run, patch(
             "orchestration.admin.sys.executable", "/usr/bin/python"
         ):
-            _fire_maintenance_subprocess(run)
-            args = mock_popen.call_args.args[0]
+            _submit_maintenance_run(run)
+            args = mock_run.call_args.args[0]
 
-        self.assertIn("run_maintenance_job", args)
-        self.assertIn("integrity", args)
-        self.assertIn("--run-id", args)
-        self.assertIn("42", args)
+        self.assertIn("job", args)
+        self.assertIn("launch", args)
+        self.assertIn("orchestration.dagster_home.repository", args)
+        self.assertIn("integrity_check_job", args)
 
-    def test_popen_stdout_stderr_devnull(self):
+    def test_launch_command_config_json_carries_run_id(self):
+        import json
+
+        run = MaintenanceRun(pk=42, job_type="integrity")
+
+        with patch("orchestration.admin.subprocess.run") as mock_run:
+            _submit_maintenance_run(run)
+            args = mock_run.call_args.args[0]
+
+        config_json = args[args.index("--config-json") + 1]
+        config = json.loads(config_json)
+        self.assertEqual(
+            config["ops"]["run_integrity_checks"]["config"]["run_id"], 42
+        )
+
+    def test_launch_command_tags_carry_maintenance_run_id(self):
+        import json
+
+        run = MaintenanceRun(pk=7, job_type="backup", dump_format="plain")
+
+        with patch("orchestration.admin.subprocess.run") as mock_run:
+            _submit_maintenance_run(run)
+            args = mock_run.call_args.args[0]
+
+        tags_json = args[args.index("--tags") + 1]
+        tags = json.loads(tags_json)
+        self.assertEqual(tags["maintenance_run_id"], "7")
+
+    def test_backup_dump_format_included_in_op_config(self):
+        import json
+
+        run = MaintenanceRun(pk=7, job_type="backup", dump_format="plain")
+
+        with patch("orchestration.admin.subprocess.run") as mock_run:
+            _submit_maintenance_run(run)
+            args = mock_run.call_args.args[0]
+
+        config_json = args[args.index("--config-json") + 1]
+        config = json.loads(config_json)
+        self.assertEqual(
+            config["ops"]["run_pg_dump"]["config"]["dump_format"], "plain"
+        )
+
+    def test_run_called_with_check_true_and_timeout(self):
+        run = MaintenanceRun(pk=1, job_type="duckdb")
+
+        with patch("orchestration.admin.subprocess.run") as mock_run:
+            _submit_maintenance_run(run)
+            kwargs = mock_run.call_args.kwargs
+
+        self.assertTrue(kwargs["check"])
+        self.assertIsNotNone(kwargs.get("timeout"))
+
+    def test_submission_failure_propagates_called_process_error(self):
         import subprocess
 
         run = MaintenanceRun(pk=1, job_type="backup")
+        error = subprocess.CalledProcessError(1, ["dagster"], stderr=b"boom")
 
-        with patch("orchestration.admin.subprocess.Popen") as mock_popen:
-            _fire_maintenance_subprocess(run)
-            kwargs = mock_popen.call_args.kwargs
-
-        self.assertEqual(kwargs["stdout"], subprocess.DEVNULL)
-        self.assertEqual(kwargs["stderr"], subprocess.DEVNULL)
+        with patch("orchestration.admin.subprocess.run", side_effect=error):
+            with self.assertRaises(subprocess.CalledProcessError):
+                _submit_maintenance_run(run)
 
 
 class AdminChangelistAccessTests(TestCase):

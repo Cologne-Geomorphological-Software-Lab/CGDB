@@ -19,6 +19,12 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 _TEST_MEDIA_ROOT: str | None = None
 
@@ -49,3 +55,22 @@ def pytest_sessionfinish(session, exitstatus) -> None:
     """Remove the temporary MEDIA_ROOT after the test session completes."""
     if _TEST_MEDIA_ROOT:
         shutil.rmtree(_TEST_MEDIA_ROOT, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def _reset_current_user_thread_local() -> Iterator[None]:
+    """Reset CurrentUserMiddleware's thread-local between every test.
+
+    Any test that issues a real HTTP request (Client.get/post, not just
+    force_authenticate) runs the full middleware stack, including
+    CurrentUserMiddleware — which stores request.user in a thread-local
+    that otherwise outlives the test's DB transaction rollback. Without
+    this reset, a later test's plain .objects.create() calls can silently
+    pick up a stale, now-deleted user as created_by/updated_by (BaseModel.save()),
+    causing FK integrity errors far from the test that actually caused them.
+    """
+    from prototype.middleware import _user
+
+    _user.value = None
+    yield
+    _user.value = None

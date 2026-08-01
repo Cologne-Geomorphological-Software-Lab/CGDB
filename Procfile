@@ -1,2 +1,6 @@
+# Headless everywhere — no Dagster UI, in dev or production. Maintenance
+# jobs are triggered via the Django admin action ("Trigger selected
+# maintenance job(s)"), which submits directly to the daemon's run queue
+# via `dagster job launch`; nothing depends on the UI to function.
 web: python manage.py runserver
-dagster: export DAGSTER_HOME=$(pwd)/orchestration/dagster_home && dagster dev -m orchestration.dagster_home.repository -h 0.0.0.0 -p 3000
+daemon: export DAGSTER_HOME=$(pwd)/orchestration/dagster_home && dagster-daemon run

@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-import platform
+import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
@@ -25,6 +28,17 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
     from django.forms import ModelForm
     from django.http import HttpRequest
+
+_OP_NAME_BY_JOB_TYPE = {
+    "backup": "run_pg_dump",
+    "duckdb": "export_to_duckdb",
+    "integrity": "run_integrity_checks",
+}
+_JOB_NAME_BY_JOB_TYPE = {
+    "backup": "backup_job",
+    "duckdb": "duckdb_export_job",
+    "integrity": "integrity_check_job",
+}
 
 # Maps check_type to (app_label, model_name) for admin change-page links
 _CHECK_TYPE_MODEL_MAP: dict[str, tuple[str, str]] = {
@@ -46,33 +60,63 @@ _CHECK_TYPE_LABELS: dict[str, str] = {
 }
 
 
-def _fire_maintenance_subprocess(run: MaintenanceRun) -> None:
-    """Launch manage.py run_maintenance_job as a detached background process."""
+def _submit_maintenance_run(run: MaintenanceRun) -> None:
+    """Submit a maintenance job to the dagster-daemon's run queue.
+
+    Shells out to `dagster job launch` rather than calling
+    DagsterInstance.submit_run() directly: submit_run() requires a real
+    BaseWorkspaceRequestContext (a loaded code location), which is too
+    heavyweight to construct inline in a Django admin request — the CLI
+    resolves the workspace itself. With QueuedRunCoordinator configured in
+    dagster.yaml, the CLI just enqueues the run and returns; the daemon's
+    queue processor dispatches it later via run_launcher, so this call is
+    non-blocking on the job's actual execution.
+
+    Unlike the old detached subprocess.Popen (which could silently fail to
+    even start), this call is checked — a submission failure (bad config,
+    unreachable Postgres run-storage, code-location import error) raises
+    CalledProcessError with the CLI's stderr, which the caller surfaces to
+    the admin instead of claiming "dispatched" regardless.
+    """
     from django.conf import settings
 
-    manage_py = str(settings.BASE_DIR / "manage.py")
+    dagster_home = str(settings.BASE_DIR / "orchestration" / "dagster_home")
+    env = os.environ.copy()
+    env.setdefault("DAGSTER_HOME", dagster_home)
+
+    output_dir = Path(settings.MEDIA_ROOT) / "maintenance"
+    op_config: dict = {"run_id": run.pk, "output_dir": str(output_dir)}
+    if run.job_type == "backup":
+        op_config["dump_format"] = run.dump_format or "custom"
+
     cmd = [
         sys.executable,
-        manage_py,
-        "run_maintenance_job",
-        run.job_type,
-        "--run-id",
-        str(run.pk),
+        "-m",
+        "dagster",
+        "job",
+        "launch",
+        "-m",
+        "orchestration.dagster_home.repository",
+        "-j",
+        _JOB_NAME_BY_JOB_TYPE[run.job_type],
+        "--config-json",
+        json.dumps(
+            {
+                "ops": {
+                    _OP_NAME_BY_JOB_TYPE[run.job_type]: {"config": op_config}
+                }
+            }
+        ),
+        "--tags",
+        json.dumps({"maintenance_run_id": str(run.pk)}),
     ]
-
-    kwargs: dict = {
-        "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
-    }
-    if platform.system() == "Windows":
-        kwargs["creationflags"] = (
-            subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-        )
-    else:
-        kwargs["start_new_session"] = True
-        kwargs["close_fds"] = True
-
-    subprocess.Popen(cmd, **kwargs)  # noqa: S603 — cmd is fully static; no user-controlled input
+    subprocess.run(  # noqa: S603 — cmd is built from static parts and this run's own pk/dump_format, no external user input
+        cmd,
+        env=env,
+        check=True,
+        capture_output=True,
+        timeout=60,
+    )
 
 
 class IntegrityIssueInline(TabularInline):
@@ -241,7 +285,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     def trigger_maintenance_job(
         self, request: HttpRequest, queryset: QuerySet
     ) -> None:
-        """Dispatch pending runs as background subprocesses."""
+        """Submit pending runs to the dagster-daemon's run queue."""
         if not request.user.is_superuser:
             self.message_user(
                 request,
@@ -251,17 +295,44 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
             return
 
         triggered = 0
+        failed = 0
         for run in queryset.filter(status="pending"):
-            _fire_maintenance_subprocess(run)
-            triggered += 1
+            run.status = "running"
+            run.started_at = timezone.now()
+            run.save(update_fields=["status", "started_at"])
+            try:
+                _submit_maintenance_run(run)
+            except (subprocess.SubprocessError, OSError) as exc:
+                # SubprocessError covers CalledProcessError/TimeoutExpired
+                # (submission ran but failed/hung); OSError covers the
+                # subprocess never starting at all (e.g. FileNotFoundError,
+                # PermissionError) -- without this broader catch, that case
+                # would crash the whole admin action instead of marking
+                # just this run as failed and continuing with the rest.
+                stderr = getattr(exc, "stderr", None) or b""
+                if isinstance(stderr, bytes):
+                    stderr = stderr.decode("utf-8", errors="replace")
+                run.status = "failed"
+                run.log = stderr or str(exc)
+                run.finished_at = timezone.now()
+                run.save(update_fields=["status", "log", "finished_at"])
+                failed += 1
+            else:
+                triggered += 1
 
         if triggered:
             self.message_user(
                 request,
-                f"{triggered} maintenance job(s) dispatched in background.",
+                f"{triggered} maintenance job(s) submitted to the dagster queue.",
                 messages.SUCCESS,
             )
-        else:
+        if failed:
+            self.message_user(
+                request,
+                f"{failed} maintenance job(s) failed to submit — see their log field.",
+                messages.ERROR,
+            )
+        if not triggered and not failed:
             self.message_user(
                 request,
                 "No pending runs in selection — only pending runs can be triggered.",

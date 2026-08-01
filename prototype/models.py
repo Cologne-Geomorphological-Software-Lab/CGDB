@@ -17,6 +17,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from guardian.models import UserObjectPermissionBase
 
+from prototype.middleware import get_current_user
+
 
 class BaseModel(models.Model):
     """Abstract base model with common fields for all models."""
@@ -55,6 +57,22 @@ class BaseModel(models.Model):
 
         abstract = True
         ordering = ["-modified_at", "-created_at"]
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Set created_by/updated_by from the current request user, if any.
+
+        Covers every write path uniformly (admin, DRF, management commands
+        run inside a request) via CurrentUserMiddleware's thread-local
+        state. Outside a request (shell, migrations, background jobs)
+        get_current_user() returns None and the fields are left untouched —
+        the correct fallback, not an error.
+        """
+        user = get_current_user()
+        if user is not None and getattr(user, "is_authenticated", False):
+            if not self.pk:
+                self.created_by = user
+            self.updated_by = user
+        super().save(*args, **kwargs)
 
 
 class ResearchGroup(BaseModel):

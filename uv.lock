@@ -331,9 +331,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argon2-cffi", specifier = ">=25.1.0" },
-    { name = "dagster", specifier = ">=1.12.8" },
-    { name = "dagster-postgres", specifier = ">=0.28.8" },
-    { name = "dagster-webserver", specifier = ">=1.12.8" },
+    { name = "dagster", specifier = ">=1.13.11" },
+    { name = "dagster-postgres", specifier = ">=0.29.11" },
+    { name = "dagster-webserver", specifier = ">=1.13.11" },
     { name = "django", extras = ["argon2"], specifier = ">=6.0.6" },
     { name = "django-crispy-forms", specifier = ">=2.5" },
     { name = "django-docs", specifier = ">=0.3.3" },

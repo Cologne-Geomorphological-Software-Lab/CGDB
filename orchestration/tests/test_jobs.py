@@ -114,6 +114,40 @@ class TestIntegrityCheckJob:
         count_second = IntegrityIssue.objects.filter(run=run).count()
         assert count_first == count_second
 
+    def test_result_file_written_to_maintenance_run(self, tmp_path):
+        """F5: the op writes its own output path onto MaintenanceRun.result_file
+        directly, since the daemon-submitted path has no wrapper command to
+        do it afterward (see _record_result_file)."""
+        run = self._make_run()
+        integrity_check_job.execute_in_process(
+            run_config=self._cfg(run, tmp_path),
+            instance=DagsterInstance.ephemeral(),
+        )
+        run.refresh_from_db()
+        assert run.result_file.name.startswith("maintenance/integrity_")
+
+
+@pytest.mark.django_db
+class TestRecordResultFile:
+    """Unit tests for the _record_result_file helper used by all three ops."""
+
+    def test_sets_result_file_name(self):
+        from orchestration.dagster_home.maintenance_jobs import _record_result_file
+
+        run = MaintenanceRun.objects.create(job_type="backup")
+        # _record_result_file only stores the name string via a DB update() —
+        # it never opens or writes to this path, so a real filesystem
+        # location isn't needed here.
+        _record_result_file(run.pk, Path("output/backup_20250101.sqlite3.gz"))
+        run.refresh_from_db()
+        assert run.result_file.name == "maintenance/backup_20250101.sqlite3.gz"
+
+    def test_nonexistent_run_id_is_a_noop(self):
+        from orchestration.dagster_home.maintenance_jobs import _record_result_file
+
+        # Must not raise even if the MaintenanceRun row doesn't exist.
+        _record_result_file(999999, Path("output/x.gz"))
+
 
 class TestBackupSQLiteHelper:
     """Tests for _backup_sqlite helper — no Dagster overhead, no file-lock risk."""
@@ -127,21 +161,25 @@ class TestBackupSQLiteHelper:
     def test_output_file_created(self, tmp_path):
         db_file = self._make_db(tmp_path / "source.sqlite3")
         out_dir = tmp_path / "out"
-        context = MagicMock()
+        log = MagicMock()
 
         db = {"NAME": str(db_file)}
-        result_path = _backup_sqlite(context, db, str(out_dir), "20250101_120000")
+        result_path = _backup_sqlite(log, db, str(out_dir), "20250101_120000")
 
         assert result_path.exists()
         assert result_path.name == "backup_20250101_120000.sqlite3.gz"
+        # log is a plain Callable[[str], None] — a single pre-formatted
+        # string, not the %-style (msg, *args) signature dagster's
+        # context.log.info uses.
+        log.assert_called_once_with(f"Backing up SQLite database {db_file}")
 
     def test_output_is_valid_gzip_of_sqlite(self, tmp_path):
         db_file = self._make_db(tmp_path / "source.sqlite3")
         out_dir = tmp_path / "out"
-        context = MagicMock()
+        log = MagicMock()
 
         result_path = _backup_sqlite(
-            context, {"NAME": str(db_file)}, str(out_dir), "20250101_120000"
+            log, {"NAME": str(db_file)}, str(out_dir), "20250101_120000"
         )
 
         with gzip.open(result_path, "rb") as f:
@@ -149,10 +187,10 @@ class TestBackupSQLiteHelper:
         assert header[:6] == b"SQLite"
 
     def test_raises_if_db_file_missing(self, tmp_path):
-        context = MagicMock()
+        log = MagicMock()
         with pytest.raises(FileNotFoundError):
             _backup_sqlite(
-                context,
+                log,
                 {"NAME": str(tmp_path / "nonexistent.sqlite3")},
                 str(tmp_path / "out"),
                 "20250101_120000",
@@ -182,7 +220,7 @@ class TestBackupPostgresFormats:
         """_backup_postgres with 'plain' format produces a .sql.gz filename."""
         import unittest.mock as mock
 
-        context = mock.MagicMock()
+        log = mock.MagicMock()
         db = {
             "NAME": "testdb",
             "HOST": "localhost",
@@ -196,16 +234,19 @@ class TestBackupPostgresFormats:
         mock_proc.stdout = fake_output
 
         with mock.patch("subprocess.run", return_value=mock_proc):
-            result = _backup_postgres(context, db, str(tmp_path), "20250101_120000", "plain")
+            result = _backup_postgres(log, db, str(tmp_path), "20250101_120000", "plain")
 
         assert result.name.endswith(".sql.gz")
         assert result.exists()
+        log.assert_called_once_with(
+            "Running pg_dump for database testdb (format=plain)"
+        )
 
     def test_backup_postgres_uses_custom_extension(self, tmp_path):
         """_backup_postgres with 'custom' format produces a .dump.gz filename."""
         import unittest.mock as mock
 
-        context = mock.MagicMock()
+        log = mock.MagicMock()
         db = {
             "NAME": "testdb",
             "HOST": "localhost",
@@ -219,7 +260,7 @@ class TestBackupPostgresFormats:
         mock_proc.stdout = fake_output
 
         with mock.patch("subprocess.run", return_value=mock_proc):
-            result = _backup_postgres(context, db, str(tmp_path), "20250101_120000", "custom")
+            result = _backup_postgres(log, db, str(tmp_path), "20250101_120000", "custom")
 
         assert result.name.endswith(".dump.gz")
         assert result.exists()

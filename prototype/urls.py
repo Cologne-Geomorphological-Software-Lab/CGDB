@@ -24,43 +24,14 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.authtoken.views import obtain_auth_token
 
 from prototype.api_router import router
-from prototype.views import (
-    landforms_geojson,
-    locations_geojson,
-    map_dashboard,
-    study_areas_geojson,
-    transects_geojson,
-    wms_proxy,
-)
+from prototype.views import map_dashboard, wms_proxy
 
 urlpatterns = [
     path("map/", staff_member_required(map_dashboard), name="map_dashboard"),
-    # Existing GeoJSON endpoints (kept for backward compatibility)
-    path(
-        "api/locations.geojson",
-        staff_member_required(locations_geojson),
-        name="locations_geojson",
-    ),
-    path(
-        "api/study_areas.geojson",
-        staff_member_required(study_areas_geojson),
-        name="study_areas_geojson",
-    ),
-    path(
-        "api/transects.geojson",
-        staff_member_required(transects_geojson),
-        name="transects_geojson",
-    ),
     path(
         "api/wms-proxy",
         staff_member_required(wms_proxy),
         name="wms_proxy",
-    ),
-    # Geodata layer GeoJSON endpoints
-    path(
-        "api/landforms.geojson",
-        staff_member_required(landforms_geojson),
-        name="landforms_geojson",
     ),
     # REST API v1
     path("api/v1/", include((router.urls, "api_v1"))),

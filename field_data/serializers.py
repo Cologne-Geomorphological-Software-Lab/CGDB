@@ -1,5 +1,6 @@
 """DRF serializers for field_data models."""
 
+from django.urls import reverse
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
@@ -62,6 +63,47 @@ class StudyAreaGeoSerializer(GeoFeatureModelSerializer):
         ]
 
 
+class StudyAreaMapSerializer(GeoFeatureModelSerializer):
+    """GeoJSON serializer for the map dashboard's StudyArea overlay.
+
+    Property keys match those the map dashboard's popup JS reads:
+    project, climate_koeppen_display, ecozone_schultz_display, admin_url.
+    """
+
+    project = serializers.StringRelatedField()
+    climate_koeppen_display = serializers.SerializerMethodField()
+    ecozone_schultz_display = serializers.SerializerMethodField()
+    admin_url = serializers.SerializerMethodField()
+
+    class Meta:
+        """Serializer metadata."""
+
+        model = StudyArea
+        geo_field = "geometry"
+        fields = [
+            "id",
+            "label",
+            "project",
+            "climate_koeppen",
+            "climate_koeppen_display",
+            "ecozone_schultz",
+            "ecozone_schultz_display",
+            "admin_url",
+        ]
+
+    def get_climate_koeppen_display(self, obj: StudyArea) -> str:
+        """Return the human-readable Köppen climate label."""
+        return obj.get_climate_koeppen_display()
+
+    def get_ecozone_schultz_display(self, obj: StudyArea) -> str:
+        """Return the human-readable Schultz ecozone label."""
+        return obj.get_ecozone_schultz_display()
+
+    def get_admin_url(self, obj: StudyArea) -> str:
+        """Return the admin change-form URL for this study area."""
+        return reverse("admin:field_data_studyarea_change", args=[obj.pk])
+
+
 class TransectSerializer(serializers.ModelSerializer):
     """Serializer for Transect records."""
 
@@ -70,6 +112,33 @@ class TransectSerializer(serializers.ModelSerializer):
 
         model = Transect
         fields = ["id", "identifier", "study_area", "campaign", "description"]
+
+
+class TransectMapSerializer(GeoFeatureModelSerializer):
+    """GeoJSON serializer for the map dashboard's Transect overlay.
+
+    Transect's plain TransectSerializer above has no geometry field —
+    this one carries the multiline geometry plus the map popup's property keys.
+    """
+
+    study_area = serializers.StringRelatedField()
+    campaign = serializers.SerializerMethodField()
+    admin_url = serializers.SerializerMethodField()
+
+    class Meta:
+        """Serializer metadata."""
+
+        model = Transect
+        geo_field = "multiline"
+        fields = ["id", "identifier", "study_area", "campaign", "admin_url"]
+
+    def get_campaign(self, obj: Transect) -> str | None:
+        """Return the campaign label, or None if unset."""
+        return obj.campaign.label if obj.campaign else None
+
+    def get_admin_url(self, obj: Transect) -> str:
+        """Return the admin change-form URL for this transect."""
+        return reverse("admin:field_data_transect_change", args=[obj.pk])
 
 
 class LayerSerializer(serializers.ModelSerializer):
@@ -192,3 +261,61 @@ class LocationFlatSerializer(serializers.ModelSerializer):
             "created_at",
             "modified_at",
         ]
+
+
+class LocationMapSerializer(GeoFeatureModelSerializer):
+    """GeoJSON serializer for the map dashboard's Location overlay.
+
+    Property keys match those the map dashboard's popup JS reads:
+    project, location_type_display, campaign, exposure_type, sample_count,
+    luminescence_count, grain_size_count, admin_url. The count fields are
+    expected to be annotated onto the queryset by the caller (see
+    LocationViewSet.map).
+    """
+
+    project = serializers.StringRelatedField()
+    campaign = serializers.SerializerMethodField()
+    exposure_type = serializers.SerializerMethodField()
+    location_type_display = serializers.SerializerMethodField()
+    sample_count = serializers.IntegerField(read_only=True)
+    luminescence_count = serializers.IntegerField(read_only=True)
+    grain_size_count = serializers.IntegerField(read_only=True)
+    admin_url = serializers.SerializerMethodField()
+
+    class Meta:
+        """Serializer metadata."""
+
+        model = Location
+        geo_field = "location"
+        fields = [
+            "id",
+            "identifier",
+            "project",
+            "data_source",
+            "location_type",
+            "location_type_display",
+            "campaign",
+            "date_of_record",
+            "altitude",
+            "exposure_type",
+            "sample_count",
+            "luminescence_count",
+            "grain_size_count",
+            "admin_url",
+        ]
+
+    def get_campaign(self, obj: Location) -> str | None:
+        """Return the campaign label, or None if unset."""
+        return obj.campaign.label if obj.campaign else None
+
+    def get_exposure_type(self, obj: Location) -> str | None:
+        """Return the exposure type's English name, or None if unset."""
+        return obj.exposure_type.name_en if obj.exposure_type else None
+
+    def get_location_type_display(self, obj: Location) -> str:
+        """Return the human-readable location type label."""
+        return obj.get_location_type_display()
+
+    def get_admin_url(self, obj: Location) -> str:
+        """Return the admin change-form URL for this location."""
+        return reverse("admin:field_data_location_change", args=[obj.pk])

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import datetime
 import json
 from pathlib import Path
@@ -13,6 +12,7 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from analysis.mps_parser import STATS_KEY_MAP, read_mps_file
 from bibliography.models import Reference
 from field_data.models import Sample
 from laboratory.models import Accessory, Device, Method
@@ -1448,21 +1448,6 @@ _WENTWORTH_FRACTIONS: list[tuple[float, str]] = [
     (_W_COARSE_SAND, "coarse_sand"),
 ]
 
-# Maps .mps file stat key → model field name
-_STATS_KEY_MAP: dict[str, str] = {
-    "Mean": "mean",
-    "Mode": "mode",
-    "Median": "median",
-    "SD": "std",
-    "Skew": "skew",
-    "Kurtosis": "kurtosis",
-    "FWMean": "fwmean",
-    "FWMedian": "fwmedian",
-    "FWSD": "fwsd",
-    "FWSkew": "fwskew",
-    "FWKurt": "fwkurt",
-}
-
 
 def _classify_fraction(class_value: float) -> str:
     """Return the Wentworth fraction name for a given grain size in µm."""
@@ -1470,17 +1455,6 @@ def _classify_fraction(class_value: float) -> str:
         if class_value < boundary:
             return name
     return "gravel"
-
-
-def _parse_stats_line(line: str, stats: dict) -> None:
-    """Parse one key=value line from a [SizeStats] block into the stats dict."""
-    try:
-        key, value = line.split("=")
-        attr = _STATS_KEY_MAP.get(key.strip())
-        if attr:
-            stats[attr] = float(value.strip())
-    except ValueError:
-        pass
 
 
 class GrainSize(BaseModel):
@@ -1715,50 +1689,6 @@ class GrainSize(BaseModel):
 
         verbose_name_plural = "Grain size"
 
-    @staticmethod
-    def _parse_block_line(line: str, block: str | None, state: dict) -> None:
-        """Update mutable parse state for one data line based on the current block."""
-        if block == "#Bindiam":
-            with contextlib.suppress(ValueError):
-                state["classes"].append(float(line))
-        elif block == "#Binheight":
-            with contextlib.suppress(ValueError):
-                state["measured_data"].append(float(line))
-        elif block in {"Size0", "Size1", "Size2"}:
-            try:
-                key, value = line.split("=")
-                if key.strip() == "Obs":
-                    state["concentration"].append(float(value.strip()))
-            except ValueError:
-                pass
-        elif block == "SizeStats":
-            _parse_stats_line(line, state["stats"])
-
-    @classmethod
-    def _parse_file_lines(cls, lines: list[str]) -> dict:
-        """Parse .mps file lines into a structured data dict."""
-        state: dict = {
-            "classes": [],
-            "measured_data": [],
-            "concentration": [],
-            "stats": dict.fromkeys(_STATS_KEY_MAP.values(), None),
-        }
-        current_block: str | None = None
-
-        for raw_line in lines:
-            line = raw_line.strip()
-            if line.startswith("[") and line.endswith("]"):
-                current_block = line[1:-1]
-            else:
-                cls._parse_block_line(line, current_block, state)
-
-        return {
-            "classes": state["classes"],
-            "measured_data": state["measured_data"],
-            "concentration": state["concentration"],
-            **state["stats"],
-        }
-
     @classmethod
     def from_file(
         cls,
@@ -1767,8 +1697,7 @@ class GrainSize(BaseModel):
         method: Method,
     ) -> Self:
         """Create a GrainSize instance by parsing a .mps instrument file."""
-        with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
-            parsed = cls._parse_file_lines(file.readlines())
+        parsed = read_mps_file(file_path)
 
         try:
             sample_concentration = sum(parsed["concentration"]) / len(
@@ -1784,7 +1713,7 @@ class GrainSize(BaseModel):
             classes=parsed["classes"],
             measured_data=parsed["measured_data"],
             sample_concentration=sample_concentration,
-            **{k: parsed[k] for k in _STATS_KEY_MAP.values()},
+            **{k: parsed[k] for k in STATS_KEY_MAP.values()},
         )
 
 
