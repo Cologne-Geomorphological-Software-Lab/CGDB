@@ -19,6 +19,8 @@ import django
 from dagster import job, op
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from django.db.models import QuerySet
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prototype.settings")
@@ -26,6 +28,21 @@ django.setup()
 
 _BASE_CONFIG_SCHEMA = {"run_id": int, "output_dir": str}
 _BACKUP_CONFIG_SCHEMA = {"run_id": int, "output_dir": str, "dump_format": str}
+
+
+def _record_result_file(run_id: int, output_path: Path) -> None:
+    """Attach the op's output file to its MaintenanceRun.
+
+    Each op knows its own output path directly, so it writes result_file
+    itself rather than the daemon's run-status sensor trying to reconstruct
+    it after the fact from Dagster's event log.
+    """
+    from orchestration.models import MaintenanceRun
+
+    MaintenanceRun.objects.filter(pk=run_id).update(
+        result_file=f"maintenance/{output_path.name}"
+    )
+
 
 # ---------------------------------------------------------------------------
 # backup_job
@@ -38,7 +55,7 @@ def _is_sqlite(engine: str) -> bool:
 
 
 def _backup_sqlite(
-    context,
+    log: Callable[[str], None],
     db: dict,
     output_dir: str,
     timestamp: str,
@@ -54,7 +71,7 @@ def _backup_sqlite(
     output_path = Path(output_dir) / f"backup_{timestamp}.sqlite3.gz"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    context.log.info("Backing up SQLite database %s", db_path)
+    log(f"Backing up SQLite database {db_path}")
     with db_path.open("rb") as src, gzip.open(output_path, "wb") as dst:
         shutil.copyfileobj(src, dst)
 
@@ -72,7 +89,7 @@ _PG_FORMAT_EXTENSIONS = {
 
 
 def _backup_postgres(
-    context,
+    log: Callable[[str], None],
     db: dict,
     output_dir: str,
     timestamp: str,
@@ -99,9 +116,7 @@ def _backup_postgres(
         format_flag,
         str(db["NAME"]),
     ]
-    context.log.info(
-        "Running pg_dump for database %s (format=%s)", db["NAME"], dump_format
-    )
+    log(f"Running pg_dump for database {db['NAME']} (format={dump_format})")
 
     proc = subprocess.run(  # noqa: S603 — dump_cmd built from settings, no user-controlled input
         dump_cmd,
@@ -128,10 +143,12 @@ def run_pg_dump(context) -> str:
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
     if _is_sqlite(engine):
-        output_path = _backup_sqlite(context, db, output_dir, timestamp)
+        output_path = _backup_sqlite(
+            context.log.info, db, output_dir, timestamp
+        )
     else:
         output_path = _backup_postgres(
-            context, db, output_dir, timestamp, dump_format
+            context.log.info, db, output_dir, timestamp, dump_format
         )
 
     context.log.info(
@@ -139,6 +156,7 @@ def run_pg_dump(context) -> str:
         output_path,
         output_path.stat().st_size,
     )
+    _record_result_file(context.op_config["run_id"], output_path)
     return str(output_path)
 
 
@@ -234,6 +252,7 @@ def export_to_duckdb(context) -> str:
 
     conn.close()
     context.log.info("DuckDB export written to %s", output_path)
+    _record_result_file(context.op_config["run_id"], output_path)
     return str(output_path)
 
 
@@ -332,6 +351,7 @@ def run_integrity_checks(context) -> str:
 
     output_path.write_text(json.dumps(results, indent=2, default=str))
     context.log.info("Integrity report written to %s", output_path)
+    _record_result_file(run_id, output_path)
     return str(output_path)
 
 

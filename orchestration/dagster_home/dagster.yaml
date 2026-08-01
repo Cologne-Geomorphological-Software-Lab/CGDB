@@ -1,25 +1,33 @@
 # Dagster configuration
 # Configuration inherits from Django settings
 
-# Production: Use PostgreSQL
-# storage:
-#   postgres:
-#     postgres_db:
-#       username: { env: DAGSTER_PG_USER }
-#       password: { env: DAGSTER_PG_PASSWORD }
-#       hostname: { env: DAGSTER_PG_HOST }
-#       db_name: { env: DAGSTER_PG_DB }
-#       port: 5432
-
-# Development: SQLite file storage
+# Run storage: SQLite by default — CGDB runs a single daemon process with
+# jobs triggered only manually (no scheduler, no multi-worker setup), which
+# is exactly the scenario Dagster's own docs consider SQLite storage safe
+# for. base_dir is relative to DAGSTER_HOME, so no extra environment
+# variable is needed — only DAGSTER_HOME itself. For higher-throughput
+# deployments (multiple concurrent workers, scheduled runs), switch to
+# PostgreSQL: comment out the sqlite block below, uncomment the postgres
+# block, and set the four DAGSTER_PG_* environment variables (see README.md).
 storage:
   sqlite:
-    base_dir:
-      env: DAGSTER_STORAGE_DIR
+    base_dir: "storage"
+#  postgres:
+#    postgres_db:
+#      username: { env: DAGSTER_PG_USER }
+#      password: { env: DAGSTER_PG_PASSWORD }
+#      hostname: { env: DAGSTER_PG_HOST }
+#      db_name: { env: DAGSTER_PG_DB }
+#      port: 5432
 
 run_launcher:
   module: dagster.core.launcher
   class: DefaultRunLauncher
+
+# Runs submitted via `dagster job launch` are launched directly by
+# DefaultRunLauncher. QueuedRunCoordinator (concurrency-limited queueing) is
+# only needed once runs can be submitted concurrently from multiple workers —
+# switch it on alongside PostgreSQL storage if that becomes necessary.
 
 telemetry:
   enabled: false

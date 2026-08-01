@@ -1,4 +1,14 @@
-"""Management command: run a maintenance job headlessly via Dagster."""
+"""Management command: run a maintenance job headlessly via Dagster.
+
+Manual fallback only. The admin's "Trigger selected maintenance job(s)"
+action no longer calls this command — it submits directly to the
+dagster-daemon's run queue via `dagster job launch` (see
+orchestration.admin._submit_maintenance_run), and status/log/result_file
+are now written by the ops themselves plus the run-status sensors in
+orchestration/dagster_home/sensors.py, not by this command. Kept as a
+synchronous, in-process way to run a job by hand (e.g. if the daemon is
+unavailable) without needing a Dagster CLI/daemon round-trip.
+"""
 
 from __future__ import annotations
 
@@ -16,9 +26,14 @@ if TYPE_CHECKING:
 
 
 class Command(BaseCommand):
-    """Run a Dagster maintenance job headlessly and update the MaintenanceRun record."""
+    """Run a Dagster maintenance job synchronously, in-process (manual fallback)."""
 
-    help = "Run a Dagster maintenance job headlessly and update the MaintenanceRun record."
+    help = (
+        "Run a Dagster maintenance job synchronously, in-process, and update "
+        "the MaintenanceRun record directly. Manual fallback only — the admin "
+        "action submits to the dagster-daemon queue instead (see "
+        "orchestration.admin._submit_maintenance_run)."
+    )
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         """Register job_type positional arg and --run-id option."""
@@ -56,14 +71,12 @@ class Command(BaseCommand):
 
         try:
             # DAGSTER_HOME: where dagster.yaml lives (project source, read-only).
-            # DAGSTER_STORAGE_DIR: where Dagster writes SQLite run history (writable data dir).
+            # Run storage itself is PostgreSQL (DAGSTER_PG_* env vars, see
+            # dagster.yaml) — must already be set in the environment.
             dagster_home = str(
                 settings.BASE_DIR / "orchestration" / "dagster_home"
             )
-            dagster_storage = str(Path(settings.MEDIA_ROOT) / "dagster")
             os.environ.setdefault("DAGSTER_HOME", dagster_home)
-            os.environ.setdefault("DAGSTER_STORAGE_DIR", dagster_storage)
-            Path(dagster_storage).mkdir(parents=True, exist_ok=True)
 
             from dagster import DagsterInstance
 

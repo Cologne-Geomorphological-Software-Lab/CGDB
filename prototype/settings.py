@@ -1,11 +1,14 @@
 """Django settings for CGDB (Cologne Geomorphological Database).
 
-This configuration supports the consolidated app structure:
+This configuration supports the following app structure:
 - prototype: Core management and organisation models
-- field_data: Field campaigns, locations, samples (includes former geodata)
+- field_data: Field campaigns, locations, samples
 - analysis: All analytical methods (includes paleobotany, geochronology, sedimentology)
 - bibliography: Literature management
 - laboratory: Equipment and procedures
+- orchestration: Dagster-based data orchestration and maintenance jobs
+- geodata: Global classification layers (e.g. Murphy Landform Regions)
+- raster_data: Georeferenced raster scene and dataset catalog
 
 For more information on this file, see
 https://docs.djangoproject.com/en/4.2/topics/settings/
@@ -123,6 +126,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "prototype.middleware.CurrentUserMiddleware",
 ]
 
 
@@ -323,7 +327,6 @@ UNFOLD["STYLES"] = [
 
 DEBUG = False
 ALLOWED_HOSTS: list[str] = []
-DAGSTER_URL = None
 
 try:
     from .local_settings import *  # noqa: F401, F403

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, ClassVar, cast
 
 from django.contrib.auth.models import User
@@ -269,3 +270,51 @@ class RasterDatasetCreateTest(_BaseApiTest):
             format="json",
         )
         assert resp.status_code == 403
+
+
+class RasterSceneCreatedByAuditTest(TestCase):
+    """F1 regression test: created_by/updated_by must be populated for
+    records created via the DRF API, not just via the admin.
+
+    Uses a real session login + plain django.test.Client (not
+    force_authenticate) — force_authenticate only fakes auth inside DRF's
+    view layer, so CurrentUserMiddleware (regular WSGI middleware, runs
+    before the view) would still see AnonymousUser and this test would not
+    actually exercise the fix. A real login populates request.user before
+    CurrentUserMiddleware runs, matching how a real browser request works.
+    """
+
+    user: ClassVar[User]
+    project: ClassVar[Project]
+    ds: ClassVar[DataSource]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.user = User.objects.create_user(
+            username="audit_api_user", password="pw"
+        )
+        cls.project = Project.objects.create(
+            title="Audit API Project", label="AUDAPI01", status="ACTIVE"
+        )
+        assign_perm("view_project", cls.user, cls.project)
+        assign_perm("add_project", cls.user, cls.project)
+        cls.ds = DataSource.objects.create(name="Audit DS")
+
+    def test_create_via_real_session_login_sets_created_by(self) -> None:
+        client = Client()
+        client.login(username="audit_api_user", password="pw")
+        resp = client.post(
+            "/api/v1/raster-scenes/",
+            data=json.dumps(
+                {
+                    "project": self.project.pk,
+                    "data_source": self.ds.pk,
+                    "corpus_path": "/corpus/scenes/audit.tif",
+                }
+            ),
+            content_type="application/json",
+        )
+        assert resp.status_code == 201, resp.content
+        scene = RasterScene.objects.get(corpus_path="/corpus/scenes/audit.tif")
+        assert scene.created_by_id == self.user.pk
+        assert scene.updated_by_id == self.user.pk

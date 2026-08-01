@@ -1,44 +1,18 @@
-"""Central DRF router for all CGDB API endpoints."""
+"""Central DRF router — aggregates each app's own router."""
 
 from rest_framework.routers import DefaultRouter
 
-from field_data.api_views import (
-    CampaignViewSet,
-    ExposureTypeViewSet,
-    LayerViewSet,
-    LocationViewSet,
-    SampleTypeViewSet,
-    SampleViewSet,
-    StudyAreaViewSet,
-    TransectViewSet,
-)
-from geodata.api_views import LandformViewSet
-from raster_data.api_views import (
-    DataSourceViewSet,
-    RasterDatasetViewSet,
-    RasterSceneViewSet,
-)
+from analysis.api_urls import router as analysis_router
+from bibliography.api_urls import router as bibliography_router
+from field_data.api_urls import router as field_data_router
+from geodata.api_urls import router as geodata_router
+from laboratory.api_urls import router as laboratory_router
+from raster_data.api_urls import router as raster_data_router
 
 router = DefaultRouter()
-
-# Geodata layers
-router.register(r"landforms", LandformViewSet, basename="landform")
-
-# field_data
-router.register(r"locations", LocationViewSet, basename="location")
-router.register(r"samples", SampleViewSet, basename="sample")
-router.register(r"campaigns", CampaignViewSet, basename="campaign")
-router.register(r"study-areas", StudyAreaViewSet, basename="studyarea")
-router.register(r"layers", LayerViewSet, basename="layer")
-router.register(r"transects", TransectViewSet, basename="transect")
-router.register(
-    r"exposure-types", ExposureTypeViewSet, basename="exposuretype"
-)
-router.register(r"sample-types", SampleTypeViewSet, basename="sampletype")
-
-# raster_data
-router.register(r"data-sources", DataSourceViewSet, basename="datasource")
-router.register(r"raster-scenes", RasterSceneViewSet, basename="rasterscene")
-router.register(
-    r"raster-datasets", RasterDatasetViewSet, basename="rasterdataset"
-)
+router.registry.extend(field_data_router.registry)
+router.registry.extend(geodata_router.registry)
+router.registry.extend(raster_data_router.registry)
+router.registry.extend(laboratory_router.registry)
+router.registry.extend(bibliography_router.registry)
+router.registry.extend(analysis_router.registry)

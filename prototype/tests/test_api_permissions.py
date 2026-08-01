@@ -1,10 +1,16 @@
-"""Tests for the IsProjectMember DRF permission class."""
+"""Tests for the IsProjectMember and ProjectPathPermission DRF permission classes."""
 
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 from guardian.shortcuts import assign_perm
 
-from prototype.api_permissions import IsProjectMember
+from prototype.api_permissions import (
+    CountingScopedPermission,
+    IsProjectMember,
+    MeasurementScopedPermission,
+    ProjectPathPermission,
+    SampleScopedPermission,
+)
 from prototype.models import Project
 
 
@@ -121,4 +127,126 @@ class IsProjectMemberTest(TestCase):
             self.perm.has_object_permission(
                 _make_request(self.user), None, _Obj()
             )
+        )
+
+
+class ProjectPathPermissionTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.superuser = User.objects.create_superuser(
+            username="path_admin", password="pw"
+        )
+        cls.user = User.objects.create_user(username="path_user", password="pw")
+        cls.other = User.objects.create_user(
+            username="path_other", password="pw"
+        )
+        cls.project = Project.objects.create(
+            title="Path Project", label="PTP01", status="ACTIVE"
+        )
+
+    def setUp(self):
+        assign_perm("prototype.view_project", self.user, self.project)
+
+    # --- has_permission ---
+
+    def test_authenticated_user_passes(self):
+        perm = ProjectPathPermission()
+        self.assertTrue(perm.has_permission(_make_request(self.user), None))
+
+    def test_unauthenticated_user_denied(self):
+        from unittest.mock import MagicMock
+
+        anon = MagicMock()
+        anon.is_authenticated = False
+        r = RequestFactory().get("/")
+        r.user = anon
+        perm = ProjectPathPermission()
+        self.assertFalse(perm.has_permission(r, None))
+
+    # --- SampleScopedPermission: single-hop path.sample.project ---
+
+    def test_sample_scoped_allows_member(self):
+        sample = _Obj()
+        sample.project = self.project
+        obj = _Obj()
+        obj.sample = sample
+        perm = SampleScopedPermission()
+        self.assertTrue(
+            perm.has_object_permission(_make_request(self.user), None, obj)
+        )
+
+    def test_sample_scoped_denies_non_member(self):
+        sample = _Obj()
+        sample.project = self.project
+        obj = _Obj()
+        obj.sample = sample
+        perm = SampleScopedPermission()
+        self.assertFalse(
+            perm.has_object_permission(_make_request(self.other), None, obj)
+        )
+
+    # --- CountingScopedPermission: two-hop path.counting.sample.project ---
+
+    def test_counting_scoped_allows_member(self):
+        sample = _Obj()
+        sample.project = self.project
+        counting = _Obj()
+        counting.sample = sample
+        obj = _Obj()
+        obj.counting = counting
+        perm = CountingScopedPermission()
+        self.assertTrue(
+            perm.has_object_permission(_make_request(self.user), None, obj)
+        )
+
+    def test_counting_scoped_denies_non_member(self):
+        sample = _Obj()
+        sample.project = self.project
+        counting = _Obj()
+        counting.sample = sample
+        obj = _Obj()
+        obj.counting = counting
+        perm = CountingScopedPermission()
+        self.assertFalse(
+            perm.has_object_permission(_make_request(self.other), None, obj)
+        )
+
+    # --- MeasurementScopedPermission: two-hop path.measurement.sample.project ---
+
+    def test_measurement_scoped_allows_member(self):
+        sample = _Obj()
+        sample.project = self.project
+        measurement = _Obj()
+        measurement.sample = sample
+        obj = _Obj()
+        obj.measurement = measurement
+        perm = MeasurementScopedPermission()
+        self.assertTrue(
+            perm.has_object_permission(_make_request(self.user), None, obj)
+        )
+
+    # --- superuser / missing project / broken chain ---
+
+    def test_superuser_always_allowed(self):
+        perm = SampleScopedPermission()
+        self.assertTrue(
+            perm.has_object_permission(
+                _make_request(self.superuser), None, _Obj()
+            )
+        )
+
+    def test_broken_chain_falls_back_to_literature_check(self):
+        obj = _Obj()
+        obj.data_source = "literature"
+        perm = SampleScopedPermission()
+        self.assertTrue(
+            perm.has_object_permission(_make_request(self.user), None, obj)
+        )
+
+    def test_broken_chain_non_literature_denied(self):
+        obj = _Obj()
+        obj.data_source = "internal"
+        perm = SampleScopedPermission()
+        self.assertFalse(
+            perm.has_object_permission(_make_request(self.user), None, obj)
         )

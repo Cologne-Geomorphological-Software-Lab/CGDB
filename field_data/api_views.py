@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from django.db.models import Q
+from django.db.models import Count, Q
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
     from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
+    from rest_framework.request import Request
     from rest_framework.serializers import BaseSerializer
 
 from prototype.api_permissions import IsProjectMember
@@ -32,9 +35,12 @@ from .serializers import (
     LayerSerializer,
     LocationFlatSerializer,
     LocationGeoSerializer,
+    LocationMapSerializer,
     SampleSerializer,
     SampleTypeSerializer,
     StudyAreaGeoSerializer,
+    StudyAreaMapSerializer,
+    TransectMapSerializer,
     TransectSerializer,
 )
 
@@ -93,6 +99,25 @@ class LocationViewSet(ReadOnlyModelViewSet):
             return LocationFlatSerializer
         return LocationGeoSerializer
 
+    @action(detail=False, methods=["get"], url_path="map")
+    def map(self, request: Request) -> Response:
+        """Return a GeoJSON FeatureCollection for the map dashboard's locations overlay."""
+        qs = (
+            self.get_queryset()
+            .exclude(location__isnull=True)
+            .annotate(
+                sample_count=Count("sample", distinct=True),
+                luminescence_count=Count(
+                    "sample__luminescence_datings", distinct=True
+                ),
+                grain_size_count=Count("sample__grain_sizes", distinct=True),
+            )
+        )
+        serializer = LocationMapSerializer(
+            qs, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
+
 
 class CampaignViewSet(ReadOnlyModelViewSet):
     """Read-only list of campaigns scoped to accessible projects."""
@@ -126,6 +151,15 @@ class StudyAreaViewSet(ReadOnlyModelViewSet):
             self.request.user, StudyArea.objects.select_related("project")
         )
 
+    @action(detail=False, methods=["get"], url_path="map")
+    def map(self, request: Request) -> Response:
+        """Return a GeoJSON FeatureCollection for the map dashboard's study areas overlay."""
+        qs = self.get_queryset().exclude(geometry__isnull=True)
+        serializer = StudyAreaMapSerializer(
+            qs, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
+
 
 class TransectViewSet(ReadOnlyModelViewSet):
     """Read-only list of transects scoped to accessible projects."""
@@ -144,6 +178,15 @@ class TransectViewSet(ReadOnlyModelViewSet):
             return qs
         project_ids = _accessible_projects(user).values_list("id", flat=True)
         return qs.filter(study_area__project_id__in=project_ids)
+
+    @action(detail=False, methods=["get"], url_path="map")
+    def map(self, request: Request) -> Response:
+        """Return a GeoJSON FeatureCollection for the map dashboard's transects overlay."""
+        qs = self.get_queryset().exclude(multiline__isnull=True)
+        serializer = TransectMapSerializer(
+            qs, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
 
 
 class LayerViewSet(ReadOnlyModelViewSet):

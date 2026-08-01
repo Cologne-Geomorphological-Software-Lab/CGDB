@@ -8,9 +8,10 @@ because they are simple enough for SimpleTestCase).
 from __future__ import annotations
 
 from django.contrib.auth.models import Group, User
-from django.test import SimpleTestCase, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from field_data.models import Country, Province
+from prototype.middleware import CurrentUserMiddleware
 from prototype.models import Project, Researcher, ResearchGroup
 
 # ===========================================================================
@@ -135,3 +136,56 @@ class ProvinceStrTest(SimpleTestCase):
     def test_str_with_none_name_uses_id(self):
         p = self._make_province(None, pk=7)
         self.assertEqual(str(p), "Province 7")
+
+
+# ===========================================================================
+# BaseModel.save() — audit trail (created_by/updated_by)
+# ===========================================================================
+
+
+class BaseModelAuditTrailTest(TestCase):
+    """BaseModel.save() sets created_by/updated_by from CurrentUserMiddleware's
+    thread-local state — the F1 fix for records created outside the admin
+    (e.g. via the DRF API), which previously got NULL silently."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user_a = User.objects.create_user(
+            username="audit_user_a", password="pw"
+        )
+        cls.user_b = User.objects.create_user(
+            username="audit_user_b", password="pw"
+        )
+
+    def _set_current_user(self, user):
+        request = RequestFactory().get("/")
+        request.user = user
+        CurrentUserMiddleware(lambda _r: None)(request)
+
+    def test_created_by_and_updated_by_set_on_create(self):
+        self._set_current_user(self.user_a)
+        project = Project.objects.create(
+            title="Audit Project", label="AUD01", status="ACTIVE"
+        )
+        self.assertEqual(project.created_by, self.user_a)
+        self.assertEqual(project.updated_by, self.user_a)
+
+    def test_updated_by_changes_on_resave_created_by_unchanged(self):
+        self._set_current_user(self.user_a)
+        project = Project.objects.create(
+            title="Audit Project 2", label="AUD02", status="ACTIVE"
+        )
+        self._set_current_user(self.user_b)
+        project.title = "Renamed"
+        project.save()
+        project.refresh_from_db()
+        self.assertEqual(project.created_by, self.user_a)
+        self.assertEqual(project.updated_by, self.user_b)
+
+    def test_no_current_user_leaves_fields_none(self):
+        """Saves outside any request (shell, migration) get NULL, not an error."""
+        project = Project.objects.create(
+            title="Audit Project 3", label="AUD03", status="ACTIVE"
+        )
+        self.assertIsNone(project.created_by)
+        self.assertIsNone(project.updated_by)
