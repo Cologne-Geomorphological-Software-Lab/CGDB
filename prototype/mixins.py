@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, PermissionDenied
 from django.db.models import Q, QuerySet
 from guardian.shortcuts import get_objects_for_user
 
 from prototype.models import Project
 
 if TYPE_CHECKING:
+    from django.db.models import Field
+    from django.forms import ModelChoiceField
     from django.http import HttpRequest
 
 
@@ -58,6 +60,46 @@ AUDIT_READONLY_FIELDS = [
 ]
 
 
+def _project_scoped_queryset(
+    request: HttpRequest,
+    admin_model: type[Any],
+    field_name: str,
+    related_model: type[Any],
+    project_lookup: str,
+) -> QuerySet:
+    """Restrict a FK field's admin choices to add_project-permitted projects.
+
+    Always also includes the object's *current* value for this field (found
+    via the change view's object_id in the URL) even when the user can't
+    newly "add" there — otherwise editing a record without touching this
+    field could fail with a spurious "select a valid choice" error.
+
+    *field_name* is the FK field on *admin_model* (e.g. "project",
+    "study_area"); *related_model* is what it points at; *project_lookup* is
+    the path from *related_model* back to Project ("pk" when related_model
+    already is Project itself, otherwise an ORM lookup like "project" or
+    "location__project").
+    """
+    addable_ids = _addable_projects(request.user).values_list("id", flat=True)
+    allowed = related_model.objects.filter(
+        **{f"{project_lookup}__in": addable_ids}
+    )
+    object_id = (
+        request.resolver_match.kwargs.get("object_id")
+        if request.resolver_match
+        else None
+    )
+    if object_id:
+        current_id = (
+            admin_model.objects.filter(pk=object_id)
+            .values_list(f"{field_name}_id", flat=True)
+            .first()
+        )
+        if current_id is not None:
+            allowed = allowed | related_model.objects.filter(pk=current_id)
+    return allowed.distinct()
+
+
 class CreatedUpdatedModelAdminMixin:
     """Sets created_by and updated_by on save. Use as a base for admin classes that manage BaseModel objects."""
 
@@ -99,6 +141,20 @@ class ProjectBasedPermissionMixin:
             )
         return qs.filter(project_id__in=accessible_project_ids)
 
+    def formfield_for_foreignkey(
+        self, db_field: Field, request: HttpRequest, **kwargs: object
+    ) -> ModelChoiceField | None:
+        """Scope the "project" field's choices to add_project-permitted projects.
+
+        Also restricts the *add* form's project dropdown, which had no
+        restriction at all before this.
+        """
+        if db_field.name == "project" and not request.user.is_superuser:
+            kwargs["queryset"] = _project_scoped_queryset(
+                request, self.model, "project", Project, "pk"
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def has_add_permission(self, request: HttpRequest) -> bool:
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
@@ -112,18 +168,9 @@ class ProjectBasedPermissionMixin:
     ) -> bool:
         """Allow change only when the user has change_project on the object's project.
 
-        KNOWN GAP: this only checks the object's project *before* the edit —
-        Django calls it with the pre-save `obj`, both to gate access to the
-        change form and again just before the POST is processed, never with
-        the form's submitted values. If a model here has a writable
-        `project` FK (or a writable FK chain leading to one) and no admin
-        class overrides formfield_for_foreignkey to restrict its choices,
-        a user with change_project on project A could reparent an object
-        into any other project via the form, bypassing that project's own
-        add/change permission entirely — the same class of bug fixed for
-        the DRF write endpoints in field_data/api_views.py's
-        StudyAreaViewSet/TransectViewSet.perform_update. Not yet verified
-        against every admin class using this mixin, and not fixed here.
+        This only ever checks the object's project *before* an edit — see
+        save_model() below, which is what actually blocks reparenting the
+        object into a project the user has no add_project permission on.
         """
         if obj is None:
             return True
@@ -178,6 +225,37 @@ class ProjectBasedPermissionMixin:
             )
 
         return super().has_delete_permission(request, obj)
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: object,
+        form: object,
+        change: bool,
+    ) -> None:
+        """Reject a save that reparents obj into a project the user can't add to.
+
+        has_change_permission() above only ever sees the object's project
+        *before* the edit — this is the check that actually looks at the
+        form's new value. formfield_for_foreignkey() already keeps the
+        project dropdown from offering an unauthorized project in the first
+        place; this is the server-side backstop for direct POSTs.
+        """
+        if change and not request.user.is_superuser:
+            old_project = getattr(
+                self.model.objects.get(pk=obj.pk), "project", None
+            )
+            new_project = getattr(obj, "project", None)
+            if (
+                new_project is not None
+                and new_project != old_project
+                and not request.user.has_perm(
+                    "prototype.add_project", new_project
+                )
+            ):
+                msg = "You do not have permission to move this record into that project."
+                raise PermissionDenied(msg)
+        super().save_model(request, obj, form, change)
 
 
 class GuardianPermissionMixin:
@@ -293,6 +371,30 @@ class NestedProjectPermissionMixin:
         }
         return qs.filter(**filter_kwargs)
 
+    def formfield_for_foreignkey(
+        self, db_field: Field, request: HttpRequest, **kwargs: object
+    ) -> ModelChoiceField | None:
+        """Scope project_path's anchor field to add_project-permitted projects.
+
+        E.g. for project_path="study_area__project", restricts the
+        "study_area" field to study areas whose own project is addable.
+        Derived entirely from project_path — no per-subclass code needed.
+        """
+        path_parts = (self.project_path or "").split("__")
+        if (
+            self.project_path
+            and db_field.name == path_parts[0]
+            and not request.user.is_superuser
+        ):
+            kwargs["queryset"] = _project_scoped_queryset(
+                request,
+                self.model,
+                path_parts[0],
+                db_field.related_model,
+                "__".join(path_parts[1:]),
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def has_add_permission(self, request: HttpRequest) -> bool:
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
@@ -306,11 +408,9 @@ class NestedProjectPermissionMixin:
     ) -> bool:
         """Allow change when the user has change_project on the nested project.
 
-        KNOWN GAP: same as ProjectBasedPermissionMixin.has_change_permission
-        above — only checks the pre-edit object, never the form's submitted
-        values, so a writable FK along project_path with no
-        formfield_for_foreignkey restriction could let a user reparent an
-        object into a project they have no permission on. Not fixed here.
+        This only ever checks the pre-edit object — see save_model() below,
+        which is what actually blocks reparenting the object into a project
+        the user has no add_project permission on.
         """
         if obj is None:
             return True
@@ -351,6 +451,35 @@ class NestedProjectPermissionMixin:
             return request.user.has_perm("prototype.delete_project", project)
         return super().has_delete_permission(request, obj)
 
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: object,
+        form: object,
+        change: bool,
+    ) -> None:
+        """Reject a save that reparents obj into a project the user can't add to.
+
+        See ProjectBasedPermissionMixin.save_model — same shape, resolving
+        old/new project via get_project_from_obj() instead of a bare project
+        attribute.
+        """
+        if change and not request.user.is_superuser:
+            old_project = self.get_project_from_obj(
+                self.model.objects.get(pk=obj.pk)
+            )
+            new_project = self.get_project_from_obj(obj)
+            if (
+                new_project is not None
+                and new_project != old_project
+                and not request.user.has_perm(
+                    "prototype.add_project", new_project
+                )
+            ):
+                msg = "You do not have permission to move this record into that project."
+                raise PermissionDenied(msg)
+        super().save_model(request, obj, form, change)
+
 
 class HybridProjectPermissionMixin:
     """Mixin for models with both a direct project FK and an indirect one through location.
@@ -371,6 +500,21 @@ class HybridProjectPermissionMixin:
             Q(project_id__in=accessible_project_ids)
             | Q(location__project_id__in=accessible_project_ids),
         )
+
+    def formfield_for_foreignkey(
+        self, db_field: Field, request: HttpRequest, **kwargs: object
+    ) -> ModelChoiceField | None:
+        """Scope the direct "project" field's choices to add_project-permitted projects.
+
+        The indirect "location" field is scoped by SampleAdmin's own
+        formfield_for_foreignkey override (field_data/admin.py) instead —
+        Location isn't native to this app, and that override already exists.
+        """
+        if db_field.name == "project" and not request.user.is_superuser:
+            kwargs["queryset"] = _project_scoped_queryset(
+                request, self.model, "project", Project, "pk"
+            )
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         """Allow add only when the user has add_project permission on at least one project."""
@@ -433,3 +577,30 @@ class HybridProjectPermissionMixin:
         if project:
             return request.user.has_perm("prototype.delete_project", project)
         return super().has_delete_permission(request, obj)
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: object,
+        form: object,
+        change: bool,
+    ) -> None:
+        """Reject a save that reparents obj into a project the user can't add to.
+
+        See ProjectBasedPermissionMixin.save_model — same shape, resolving
+        old/new project via _get_project() instead of a bare project
+        attribute.
+        """
+        if change and not request.user.is_superuser:
+            old_project = self._get_project(self.model.objects.get(pk=obj.pk))
+            new_project = self._get_project(obj)
+            if (
+                new_project is not None
+                and new_project != old_project
+                and not request.user.has_perm(
+                    "prototype.add_project", new_project
+                )
+            ):
+                msg = "You do not have permission to move this record into that project."
+                raise PermissionDenied(msg)
+        super().save_model(request, obj, form, change)

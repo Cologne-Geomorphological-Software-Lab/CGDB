@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from django import forms as django_forms
 from django.contrib import messages
@@ -32,7 +32,7 @@ from prototype.mixins import (
     HybridProjectPermissionMixin,
     NestedProjectPermissionMixin,
     ProjectBasedPermissionMixin,
-    _accessible_projects,
+    _project_scoped_queryset,
 )
 
 from .models import (
@@ -64,8 +64,9 @@ from .resources import (
 )
 
 if TYPE_CHECKING:
+    from django.db.models import Field as DBField
     from django.db.models import QuerySet
-    from django.forms import Field
+    from django.forms import Field, ModelChoiceField
     from django.http import HttpRequest, HttpResponse
 
 
@@ -945,16 +946,29 @@ class SampleAdmin(
 
     def formfield_for_foreignkey(
         self,
-        db_field: object,
+        db_field: DBField[Any, Any],
         request: HttpRequest,
         **kwargs: object,
-    ) -> Field | None:
-        """Restrict the location dropdown to locations in accessible projects."""
-        if db_field.name == "location":  # type: ignore[attr-defined]
-            kwargs["queryset"] = Location.objects.filter(
-                project__in=_accessible_projects(request.user)
+    ) -> ModelChoiceField[Any] | None:
+        """Restrict the location dropdown to locations in add_project-permitted projects.
+
+        Narrower than the previous view-level restriction: reassigning a
+        Sample's location is effectively adding data under that location's
+        project, so it needs add_project, not just view_project — same
+        reasoning as HybridProjectPermissionMixin.formfield_for_foreignkey's
+        "project" field (prototype/mixins.py), which this pairs with.
+        """
+        if db_field.name == "location" and not getattr(
+            request.user, "is_superuser", False
+        ):
+            kwargs["queryset"] = _project_scoped_queryset(
+                request,
+                cast("type[Any]", self.model),
+                "location",
+                Location,
+                "project",
             )
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)  # type: ignore[no-any-return]
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     # Registry: (url_slug, model_import_path) — drives get_urls() without 18 delegates.
     _ANALYSIS_REGISTRY = [
