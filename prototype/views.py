@@ -72,36 +72,34 @@ _LOCATION_TYPE_LABELS = {
 }
 
 
-_DASHBOARD_NAV = [
-    {"title": _("Overview"), "link": "/", "active_path": "/"},
-    {"title": _("Map"), "link": "/map/", "active_path": "/map/"},
-]
-
-
-def _nav(request: HttpRequest | None) -> list:
-    path = request.path if request else ""
-    return [
-        {
-            "title": n["title"],
-            "link": n["link"],
-            "active": path == n["active_path"],
-        }
-        for n in _DASHBOARD_NAV
-    ]
-
-
 def map_dashboard(request: HttpRequest) -> HttpResponse:
     """Render the full-screen map dashboard page."""
     from django.contrib import admin as _admin
 
+    from prototype.mixins import _addable_projects
+
     context = _admin.site.each_context(request)
-    context["navigation"] = _nav(request)
-    context["geojson_urls"] = {
+    geojson_urls = {
         "locations": reverse("api_v1:location-map"),
         "study_areas": reverse("api_v1:studyarea-map"),
         "transects": reverse("api_v1:transect-map"),
         "landforms": reverse("api_v1:landform-list"),
     }
+    context["geojson_urls"] = geojson_urls
+    # Same check the admin layer already uses to decide add access
+    # (ProjectBasedPermissionMixin.has_add_permission) — the edit toolbar
+    # is only worth showing to users who could actually save anything.
+    can_edit = (
+        request.user.is_superuser or _addable_projects(request.user).exists()
+    )
+    context["map_config"] = {
+        "geojsonUrls": geojson_urls,
+        "wmsProxyUrl": reverse("wms_proxy"),
+        "canEdit": can_edit,
+    }
+    # Also exposed as a plain context variable: {% if %} can't reach inside
+    # map_config, which is only ever rendered as an opaque JSON blob for JS.
+    context["can_edit"] = can_edit
     return render(request, "admin/map_dashboard.html", context)
 
 
@@ -112,8 +110,11 @@ _WMS_WHITELIST = ["services.bgr.de"]
 def wms_proxy(request: HttpRequest) -> HttpResponse:
     """Server-side proxy for WMS GetFeatureInfo to avoid browser CORS restrictions."""
     url = request.GET.get("url", "")
-    host = urlparse(url).hostname or ""
-    if not any(host == w or host.endswith("." + w) for w in _WMS_WHITELIST):
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    if parsed.scheme not in ("http", "https") or not any(
+        host == w or host.endswith("." + w) for w in _WMS_WHITELIST
+    ):
         return HttpResponse("Forbidden", status=403)
     try:
         with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310  # nosec B310 — hostname validated against _WMS_WHITELIST above
@@ -134,7 +135,6 @@ def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
         period_days = 30
 
     context.update(stat_data(period_days))
-    context["navigation"] = _nav(request)
     context["filters"] = [
         {
             "title": _(p["label"]),

@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     "guardian",
     "import_export",
     "django_filters",
+    "django_vite",
     "crispy_forms",
     "docs",
     # REST API
@@ -339,6 +340,27 @@ if not globals().get("SECRET_KEY"):
     raise ImproperlyConfigured(
         "SECRET_KEY is not set. Add it to prototype/local_settings.py."
     )
+
+# ==============================================================================
+# FRONTEND BUILD (Vite)
+# ==============================================================================
+
+# Explicit env var rather than tying this to DEBUG, which already drives
+# unrelated security settings (SECURE_SSL_REDIRECT etc.) — dev mode here
+# means "proxy to the Vite dev server", not "Django debug mode".
+_vite_dev_mode = os.environ.get("VITE_DEV_MODE", "true" if DEBUG else "false")
+DJANGO_VITE = {
+    "default": {
+        "dev_mode": _vite_dev_mode.lower() == "true",
+        "manifest_path": BASE_DIR / "static" / "dist" / ".vite" / "manifest.json",
+        "static_url_prefix": "dist",
+        # Explicit IPv4 literal, matching frontend/vite.config.js's server.host —
+        # the default "localhost" can resolve to the IPv6 loopback only on some
+        # machines, leaving the dev server unreachable (or reachable only after
+        # a slow Happy-Eyeballs fallback) at this URL.
+        "dev_server_host": "127.0.0.1",
+    },
+}
 
 DOCS_ROOT = os.path.join(BASE_DIR, "docs/_build/html")
 DOCS_ACCESS = "public"

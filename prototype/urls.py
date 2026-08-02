@@ -23,6 +23,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.authtoken.views import obtain_auth_token
 
+from geodata.api_views import landform_tile
 from prototype.api_router import router
 from prototype.views import map_dashboard, wms_proxy
 
@@ -32,6 +33,11 @@ urlpatterns = [
         "api/wms-proxy",
         staff_member_required(wms_proxy),
         name="wms_proxy",
+    ),
+    path(
+        "api/v1/landforms/tiles/<int:z>/<int:x>/<int:y>.mvt",
+        landform_tile,
+        name="landform-tile",
     ),
     # REST API v1
     path("api/v1/", include((router.urls, "api_v1"))),

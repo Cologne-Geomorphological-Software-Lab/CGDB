@@ -84,6 +84,31 @@ Start the local development server:
 python manage.py runserver
 ```
 
+### Frontend (map dashboard)
+
+The `/map/` dashboard's frontend is a Vite-built app under `frontend/`, not
+plain static files. In development, Django's templates load it from a Vite
+dev server rather than a built bundle.
+
+Install the frontend dependencies once:
+```
+cd frontend
+npm install
+cd ..
+```
+
+`python manage.py runserver` then starts the Vite dev server automatically
+alongside Django (see `PrototypeConfig.ready()` /
+`prototype/vite_dev_server.py`) — nothing else to run. If you skip
+`npm install`, `runserver` still starts, but prints a warning and leaves the
+map dashboard's script unavailable, which shows up in the browser as a
+cross-origin/module-load error pointing at `localhost:5173` rather than an
+obvious "connection refused".
+
+In production, `VITE_DEV_MODE=false` (the default when `DEBUG=False`) skips
+the dev server entirely and serves the built bundle instead — run
+`npm run build` from `frontend/` as part of your deploy step.
+
 ## Running the Tests
 
 The test suite uses **pytest** with **pytest-django** and an in-memory SpatiaLite database — no PostgreSQL/PostGIS installation required.
@@ -149,6 +174,36 @@ pytest -k "grainsize"
 # Measure test coverage (requires pytest-cov)
 pytest --cov=. --cov-report=term-missing
 ```
+
+### Testing against PostGIS
+
+Production runs PostGIS, not SpatiaLite — a few endpoints use GIS-specific SQL
+(raw queries, vendor-specific ORM functions) that can behave differently
+between the two backends. Tests exercising that code are marked
+`@pytest.mark.gis` and are run against **both** backends to catch divergence.
+Some functionality (e.g. the landform vector tile endpoint, `ST_AsMVT`) has no
+SpatiaLite equivalent at all — those tests are marked `@pytest.mark.postgis_only`
+and are excluded from the default suite entirely, since they can only ever
+pass against real PostGIS.
+
+Start a local PostGIS instance via the repo-root `docker-compose.yml`:
+
+```bash
+docker compose up -d postgis
+```
+
+Then run the marked tests against it:
+
+```bash
+DJANGO_SETTINGS_MODULE=prototype.test_settings_postgis pytest -m "gis or postgis_only"
+```
+
+`prototype/test_settings_postgis.py` reads connection details from
+`CGDB_TEST_PG_HOST`/`_PORT`/`_NAME`/`_USER`/`_PASSWORD` env vars, defaulted to
+match the compose service. On Windows, GeoDjango still imports GDAL/GEOS at
+`django.setup()` regardless of which database backend is active, so the same
+OSGeo4W setup described above is required even when testing against PostGIS —
+switching database backends does not remove the GDAL dependency.
 
 ### Test structure
 
@@ -414,15 +469,6 @@ The module is intentionally minimal to avoid overhead while providing a complete
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
-## Citation
-
-If you use CGDB in your research, please cite:
-
-```
-Handy, D., & van der Meij, M. (2025). Cologne-Geomorphological-Software-Lab/CGDB: intitial (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.17869731
-
-```
 
 ## Security & Production Notes
 

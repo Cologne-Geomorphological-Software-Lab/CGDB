@@ -19,7 +19,9 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
     from rest_framework.serializers import BaseSerializer
 
-from prototype.mixins import _accessible_projects, _addable_projects
+    from prototype.models import Project
+
+from prototype.mixins import _accessible_projects
 
 from .models import DataSource, RasterDataset, RasterScene
 from .serializers import (
@@ -43,12 +45,19 @@ def _project_qs[T: Model](
 
 
 def _assert_can_add(
-    user: AbstractBaseUser | AnonymousUser, project_id: int
+    user: AbstractBaseUser | AnonymousUser, project: Project
 ) -> None:
-    """Raise PermissionDenied unless the user may add data to the project."""
+    """Raise PermissionDenied unless the user may add data to the project.
+
+    Takes the Project instance (not a pk) for a direct has_perm() object
+    check, instead of building the user's whole addable-projects queryset
+    via guardian's get_objects_for_user() just to test membership of one pk.
+    """
     if getattr(user, "is_superuser", False):
         return
-    if not _addable_projects(user).filter(pk=project_id).exists():
+    # AbstractBaseUser lacks has_perm in django-stubs (PermissionsMixin adds
+    # it) — same accepted gap as field_data.api_views (mypy-ignored there).
+    if not user.has_perm("prototype.add_project", project):  # type: ignore[union-attr]
         msg = "You do not have permission to add data to this project."
         raise PermissionDenied(msg)
 
@@ -90,8 +99,8 @@ class RasterSceneViewSet(CreateModelMixin, ReadOnlyModelViewSet):
     def perform_create(self, serializer: BaseSerializer) -> None:
         """Save the scene after checking the user may add to its project."""
         validated_data = cast("dict[str, Any]", serializer.validated_data)
-        project_id = validated_data["project"].pk
-        _assert_can_add(self.request.user, project_id)
+        project = validated_data["project"]
+        _assert_can_add(self.request.user, project)
         serializer.save()
 
 
@@ -118,10 +127,30 @@ class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
         return RasterDatasetSerializer
 
     def perform_create(self, serializer: BaseSerializer) -> None:
-        """Save the dataset after checking the user may add to its project."""
+        """Save the dataset after checking add permission and scene visibility.
+
+        Without the scene check, scene_ids (raster_data/serializers.py's
+        RasterDatasetWriteSerializer) resolves against an unrestricted
+        RasterScene.objects.all() queryset — a user could attach a scene
+        from a project they have no access to into their own dataset, then
+        read its path/crs/spatial_bbox back out via the manifest action.
+        """
         validated_data = cast("dict[str, Any]", serializer.validated_data)
-        project_id = validated_data["project"].pk
-        _assert_can_add(self.request.user, project_id)
+        project = validated_data["project"]
+        user = self.request.user
+        _assert_can_add(user, project)
+
+        scenes = validated_data.get("scenes", [])
+        if scenes and not getattr(user, "is_superuser", False):
+            accessible_ids = set(
+                _accessible_projects(user).values_list("id", flat=True)
+            )
+            if any(scene.project_id not in accessible_ids for scene in scenes):
+                msg = (
+                    "One or more scenes belong to a project you cannot access."
+                )
+                raise PermissionDenied(msg)
+
         serializer.save()
 
     @action(detail=True, methods=["get"], url_path="manifest")

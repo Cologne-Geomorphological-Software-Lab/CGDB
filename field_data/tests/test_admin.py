@@ -16,7 +16,16 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from field_data.models import Location, Sample
+from field_data.admin import SiteAdmin
+from field_data.models import (
+    Country,
+    Location,
+    Province,
+    Sample,
+    Site,
+    StudyArea,
+    Transect,
+)
 from prototype.models import Project
 
 ANALYSIS_SLUGS = [
@@ -222,3 +231,135 @@ class FieldPhotoInlineTest(_AdminSetup):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "field_data-fieldphoto")
+
+
+# ===========================================================================
+# GIS map widgets (Phase 5: StudyArea/Transect/Country/Province admin cleanup)
+# ===========================================================================
+
+# django.contrib.gis's OpenLayersWidget template (gis/openlayers.html) always
+# renders this wrapper div around the map — a plain textarea-only form (the
+# pre-Phase-5 state) never contains it.
+_GIS_WIDGET_MARKER = "dj_map_wrapper"
+
+
+class GISWidgetChangeFormTest(_AdminSetup):
+    """StudyArea/Transect/Country/Province change forms must render a map widget."""
+
+    def test_study_area_change_form_has_map_widget(self):
+        study_area = StudyArea.objects.create(
+            label="Test Area", project=self.project
+        )
+        url = reverse(
+            "admin:field_data_studyarea_change", args=[study_area.pk]
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, _GIS_WIDGET_MARKER)
+
+    def test_transect_change_form_has_map_widget_and_multiline_field(self):
+        study_area = StudyArea.objects.create(
+            label="Test Area", project=self.project
+        )
+        transect = Transect.objects.create(
+            identifier="T1", study_area=study_area, description="desc"
+        )
+        url = reverse("admin:field_data_transect_change", args=[transect.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, _GIS_WIDGET_MARKER)
+        # multiline was previously absent from admin.py entirely (no
+        # fieldsets at all) — confirm it's now a reachable form field.
+        self.assertContains(response, 'name="multiline"')
+
+    def test_country_change_form_has_map_widget(self):
+        country = Country.objects.create(name="Testland", iso_code="TST")
+        url = reverse("admin:field_data_country_change", args=[country.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, _GIS_WIDGET_MARKER)
+
+    def test_province_change_form_has_map_widget(self):
+        country = Country.objects.create(name="Testland", iso_code="TST")
+        province = Province.objects.create(name="Testprovince", country=country)
+        url = reverse("admin:field_data_province_change", args=[province.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, _GIS_WIDGET_MARKER)
+
+
+class SiteAdminNoGeoMixinTest(_AdminSetup):
+    """Site has no geometry field — SiteAdmin's GIS mixin was dead code."""
+
+    def test_site_admin_does_not_mix_in_geo_admin(self):
+        mro_names = [cls.__name__ for cls in SiteAdmin.__mro__]
+        self.assertNotIn("GeoModelAdminMixin", mro_names)
+
+    def test_site_change_form_renders(self):
+        study_area = StudyArea.objects.create(
+            label="Test Area", project=self.project
+        )
+        site = Site.objects.create(label="Test Site", study_area=study_area)
+        url = reverse("admin:field_data_site_change", args=[site.pk])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+
+# ===========================================================================
+# LocationAdmin.map_preview — ported from CDN OpenLayers/proj4 to the Vite bundle
+# ===========================================================================
+
+
+class LocationMapPreviewTest(_AdminSetup):
+    """map_preview must use the bundled frontend, not CDN script tags."""
+
+    def test_change_form_uses_vite_bundle_not_cdn(self):
+        # .location is recomputed from easting/northing/srid on save() — it
+        # cannot be set directly (see field_data/models.py Location.save()).
+        self.location.easting = 7.0
+        self.location.northing = 50.0
+        self.location.srid = 4326
+        self.location.save()
+        url = reverse(
+            "admin:field_data_location_change", args=[self.location.pk]
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "cgdb-loc-preview")
+        self.assertContains(response, "adminLocationPreview")
+        self.assertNotContains(response, "cdn.jsdelivr.net")
+        self.assertNotContains(response, "cdnjs.cloudflare.com")
+
+
+class ProvinceChangelistQueryCountTest(_AdminSetup):
+    """ProvinceAdmin's changelist must select_related('country').
+
+    Without it, the "country" list_display column triggers one extra query
+    per row, so the query count grows linearly with the number of provinces
+    shown on the page.
+    """
+
+    def test_query_count_does_not_scale_with_row_count(self):
+        country = Country.objects.create(name="Testland", iso_code="TST")
+        url = reverse("admin:field_data_province_changelist")
+
+        with CaptureQueriesContext(connection) as baseline:
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        baseline_count = len(baseline.captured_queries)
+
+        for i in range(20):
+            Province.objects.create(
+                name=f"Province {i:03d}", country=country
+            )
+
+        with CaptureQueriesContext(connection) as after:
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(
+            len(after.captured_queries),
+            baseline_count,
+            "Query count grew with the number of provinces — country must "
+            "stay select_related() on ProvinceAdmin.get_queryset().",
+        )

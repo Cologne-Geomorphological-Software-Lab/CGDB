@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
-from django.db.models import Count, Q
+from django.db.models import Count, IntegerField, OuterRef, Q, Subquery
+from django.db.models.functions import Coalesce
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.mixins import CreateModelMixin, UpdateModelMixin
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
@@ -16,6 +20,9 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
     from rest_framework.serializers import BaseSerializer
 
+    from prototype.models import Project
+
+from analysis.models import GrainSize, LuminescenceDating
 from prototype.api_permissions import IsProjectMember
 from prototype.mixins import _accessible_projects
 
@@ -36,12 +43,15 @@ from .serializers import (
     LocationFlatSerializer,
     LocationGeoSerializer,
     LocationMapSerializer,
+    LocationWriteSerializer,
     SampleSerializer,
     SampleTypeSerializer,
     StudyAreaGeoSerializer,
     StudyAreaMapSerializer,
+    StudyAreaWriteSerializer,
     TransectMapSerializer,
     TransectSerializer,
+    TransectWriteSerializer,
 )
 
 
@@ -55,10 +65,87 @@ def _project_qs(
     return qs.filter(project_id__in=project_ids)
 
 
-class LocationViewSet(ReadOnlyModelViewSet):
-    """Paginated, filterable list of accessible locations."""
+def _location_count_subquery(qs: QuerySet, location_lookup: str) -> Subquery:
+    """Build a correlated-subquery row count of *qs* per outer Location.
 
-    permission_classes = [IsProjectMember]
+    *location_lookup* is the field path from *qs*'s model back to Location
+    (e.g. "location" for Sample, "sample__location" for LuminescenceDating/
+    GrainSize) — always a chain of forward ForeignKeys, so it can't itself
+    fan out (each row has exactly one sample, each sample exactly one
+    location), unlike the reverse-relation joins this replaces.
+
+    Used instead of a joined Count(..., distinct=True) annotation: combining
+    multiple Count()s over different relations (sample, sample__x, sample__y)
+    in one annotate() call makes Django join all of them simultaneously,
+    fanning out to len(samples) * len(x) * len(y) intermediate rows per
+    location before GROUP BY collapses them back down. A Subquery/OuterRef
+    per count runs as an independent correlated subquery instead — no fan-out.
+    """
+    return Subquery(
+        qs.filter(**{location_lookup: OuterRef("pk")})
+        .order_by()
+        .values(location_lookup)
+        .annotate(c=Count("id"))
+        .values("c"),
+        output_field=IntegerField(),
+    )
+
+
+def _assert_can_add(
+    user: AbstractBaseUser | AnonymousUser, project: Project
+) -> None:
+    """Raise PermissionDenied unless the user may add data to the project.
+
+    Takes the Project instance (not a pk) so this can do a direct
+    has_perm() object check — same shape as _assert_can_change below —
+    instead of building the user's whole addable-projects queryset via
+    guardian's get_objects_for_user() just to test membership of one pk.
+    Mirrors raster_data/api_views.py's helper of the same name/shape — the
+    duplication matches the existing pattern (_project_qs is also
+    independently duplicated between field_data and raster_data) rather
+    than a cross-app refactor for this phase.
+    """
+    if getattr(user, "is_superuser", False):
+        return
+    if not user.has_perm("prototype.add_project", project):
+        msg = "You do not have permission to add data to this project."
+        raise PermissionDenied(msg)
+
+
+def _assert_can_change(
+    user: AbstractBaseUser | AnonymousUser, project: Project | None
+) -> None:
+    """Raise PermissionDenied unless the user may change data in the project.
+
+    Same has_perm("prototype.change_project", ...) check already used
+    throughout the admin layer (prototype/mixins.py's
+    ProjectBasedPermissionMixin etc.) via guardian's ObjectPermissionBackend
+    — this is its first use from a DRF view.
+    """
+    if getattr(user, "is_superuser", False):
+        return
+    if project is None or not user.has_perm(
+        "prototype.change_project", project
+    ):
+        msg = "You do not have permission to change data in this project."
+        raise PermissionDenied(msg)
+
+
+class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
+    """Paginated, filterable list of accessible locations.
+
+    Update-only (no create): drawing a bare point with no other context is
+    a poor UX fit versus the existing admin create form — the map
+    dashboard's edit mode only ever reshapes/relocates an existing marker.
+
+    permission_classes is IsAuthenticated rather than IsProjectMember:
+    get_queryset() already scopes list/retrieve/map to accessible projects
+    (the real read gate), and IsProjectMember's has_object_permission only
+    checks view_project — wrong for a write path. perform_update() below
+    does the real write-permission check (change_project).
+    """
+
+    permission_classes = [IsAuthenticated]
     filterset_fields = [
         "project",
         "campaign",
@@ -91,13 +178,34 @@ class LocationViewSet(ReadOnlyModelViewSet):
         )
 
     def get_serializer_class(self) -> type[BaseSerializer]:
-        """Return GeoJSON serializer by default; flat JSON for explicit JSON format."""
+        """Return the write serializer for updates; GeoJSON/flat JSON for reads."""
+        if self.action in ("update", "partial_update"):
+            return LocationWriteSerializer
         if (
             getattr(self.request, "accepted_renderer", None)
             and self.request.accepted_renderer.format == "json"
         ):
             return LocationFlatSerializer
         return LocationGeoSerializer
+
+    def perform_update(self, serializer: BaseSerializer) -> None:
+        """Reject the write unless the user may change data in this location's project.
+
+        Literature data (data_source="literature") is never editable via the
+        API, mirroring ProjectBasedPermissionMixin's identical rule for the
+        admin (prototype/mixins.py) — it has no single owning project a
+        change_project check could even target.
+        """
+        instance = cast("Location", serializer.instance)
+        user = self.request.user
+        if (
+            not getattr(user, "is_superuser", False)
+            and instance.data_source == "literature"
+        ):
+            msg = "Literature data cannot be edited."
+            raise PermissionDenied(msg)
+        _assert_can_change(user, instance.project)
+        serializer.save()
 
     @action(detail=False, methods=["get"], url_path="map")
     def map(self, request: Request) -> Response:
@@ -106,11 +214,22 @@ class LocationViewSet(ReadOnlyModelViewSet):
             self.get_queryset()
             .exclude(location__isnull=True)
             .annotate(
-                sample_count=Count("sample", distinct=True),
-                luminescence_count=Count(
-                    "sample__luminescence_datings", distinct=True
+                sample_count=Coalesce(
+                    _location_count_subquery(Sample.objects.all(), "location"),
+                    0,
                 ),
-                grain_size_count=Count("sample__grain_sizes", distinct=True),
+                luminescence_count=Coalesce(
+                    _location_count_subquery(
+                        LuminescenceDating.objects.all(), "sample__location"
+                    ),
+                    0,
+                ),
+                grain_size_count=Coalesce(
+                    _location_count_subquery(
+                        GrainSize.objects.all(), "sample__location"
+                    ),
+                    0,
+                ),
             )
         )
         serializer = LocationMapSerializer(
@@ -136,11 +255,18 @@ class CampaignViewSet(ReadOnlyModelViewSet):
         )
 
 
-class StudyAreaViewSet(ReadOnlyModelViewSet):
-    """Read-only list of study areas scoped to accessible projects."""
+class StudyAreaViewSet(
+    CreateModelMixin, UpdateModelMixin, ReadOnlyModelViewSet
+):
+    """List of study areas scoped to accessible projects; create/update supported.
+
+    permission_classes is IsAuthenticated rather than IsProjectMember — see
+    LocationViewSet's docstring for why. perform_create()/perform_update()
+    below do the real write-permission checks (add_project/change_project).
+    """
 
     serializer_class = StudyAreaGeoSerializer
-    permission_classes = [IsProjectMember]
+    permission_classes = [IsAuthenticated]
     filterset_fields = ["project"]
     search_fields = ["label"]
     ordering = ["label"]
@@ -150,6 +276,35 @@ class StudyAreaViewSet(ReadOnlyModelViewSet):
         return _project_qs(
             self.request.user, StudyArea.objects.select_related("project")
         )
+
+    def get_serializer_class(self) -> type[BaseSerializer]:
+        """Return the write serializer for create/update; GeoJSON otherwise."""
+        if self.action in ("create", "update", "partial_update"):
+            return StudyAreaWriteSerializer
+        return StudyAreaGeoSerializer
+
+    def perform_create(self, serializer: BaseSerializer) -> None:
+        """Reject the write unless the user may add data to the target project."""
+        validated_data = cast("dict[str, Any]", serializer.validated_data)
+        project = validated_data["project"]
+        _assert_can_add(self.request.user, project)
+        serializer.save()
+
+    def perform_update(self, serializer: BaseSerializer) -> None:
+        """Reject the write unless permitted for both the object and its target project.
+
+        'project' is a writable field — without this second check, a user
+        with change_project on the study area's current project could PATCH
+        it into any other project in the system, bypassing that project's
+        own add permission entirely.
+        """
+        instance = cast("StudyArea", serializer.instance)
+        _assert_can_change(self.request.user, instance.project)
+        validated_data = cast("dict[str, Any]", serializer.validated_data)
+        new_project = validated_data.get("project", instance.project)
+        if new_project.pk != instance.project.pk:
+            _assert_can_add(self.request.user, new_project)
+        serializer.save()
 
     @action(detail=False, methods=["get"], url_path="map")
     def map(self, request: Request) -> Response:
@@ -161,11 +316,17 @@ class StudyAreaViewSet(ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-class TransectViewSet(ReadOnlyModelViewSet):
-    """Read-only list of transects scoped to accessible projects."""
+class TransectViewSet(
+    CreateModelMixin, UpdateModelMixin, ReadOnlyModelViewSet
+):
+    """List of transects scoped to accessible projects; create/update supported.
+
+    permission_classes is IsAuthenticated rather than IsProjectMember — see
+    LocationViewSet's docstring for why.
+    """
 
     serializer_class = TransectSerializer
-    permission_classes = [IsProjectMember]
+    permission_classes = [IsAuthenticated]
     filterset_fields = ["study_area", "campaign"]
     search_fields = ["identifier"]
     ordering = ["identifier"]
@@ -178,6 +339,32 @@ class TransectViewSet(ReadOnlyModelViewSet):
             return qs
         project_ids = _accessible_projects(user).values_list("id", flat=True)
         return qs.filter(study_area__project_id__in=project_ids)
+
+    def get_serializer_class(self) -> type[BaseSerializer]:
+        """Return the write serializer for create/update; the default otherwise."""
+        if self.action in ("create", "update", "partial_update"):
+            return TransectWriteSerializer
+        return TransectSerializer
+
+    def perform_create(self, serializer: BaseSerializer) -> None:
+        """Reject the write unless the user may add data to the transect's study area's project."""
+        validated_data = cast("dict[str, Any]", serializer.validated_data)
+        study_area = validated_data["study_area"]
+        _assert_can_add(self.request.user, study_area.project)
+        serializer.save()
+
+    def perform_update(self, serializer: BaseSerializer) -> None:
+        """Reject the write unless permitted for both the object and its target project.
+
+        See StudyAreaViewSet.perform_update for why.
+        """
+        instance = cast("Transect", serializer.instance)
+        _assert_can_change(self.request.user, instance.study_area.project)
+        validated_data = cast("dict[str, Any]", serializer.validated_data)
+        new_study_area = validated_data.get("study_area", instance.study_area)
+        if new_study_area.project.pk != instance.study_area.project.pk:
+            _assert_can_add(self.request.user, new_study_area.project)
+        serializer.save()
 
     @action(detail=False, methods=["get"], url_path="map")
     def map(self, request: Request) -> Response:

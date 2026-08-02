@@ -13,6 +13,7 @@ import json
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
+from django.urls import reverse
 
 from guardian.shortcuts import assign_perm
 
@@ -68,19 +69,19 @@ class MapDashboardAuthTest(TestCase):
         resp = c.get("/map/")
         self.assertContains(resp, 'id="cgdb-map"')
 
-    def test_navigation_contains_overview_link(self):
+    def test_map_page_has_no_local_dashboard_tab_bar(self):
+        """The map page is a standalone page, not a Dashboard sub-tab."""
         c = Client()
         c.login(username="map_staff", password="pw")
         resp = c.get("/map/")
-        self.assertContains(resp, 'href="/"')
+        self.assertNotContains(resp, "Overview")
 
-    def test_navigation_map_tab_is_active(self):
-        """The Map navigation item must be rendered as active on /map/."""
+    def test_sidebar_links_to_map_dashboard(self):
+        """The main Unfold sidebar links to the map page (not a Dashboard tab)."""
         c = Client()
         c.login(username="map_staff", password="pw")
-        resp = c.get("/map/")
-        # The template marks the active nav item — check the active path is present
-        self.assertContains(resp, "/map/")
+        resp = c.get(reverse("admin:index"))
+        self.assertContains(resp, reverse("map_dashboard"))
 
     def test_geojson_urls_point_at_drf_endpoints(self):
         """The injected GEOJSON_URLS must resolve to the new DRF map endpoints."""

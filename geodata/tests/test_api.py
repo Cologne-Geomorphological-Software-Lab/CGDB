@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, cast
 
+import pytest
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
 from django.test import Client, TestCase
@@ -80,6 +81,7 @@ class LandformDetailTest(_BaseApiTest):
         assert data["properties"]["brid_nam"] == "Test Region"
 
 
+@pytest.mark.gis
 class LandformBboxTest(_BaseApiTest):
     def test_valid_bbox_returns_feature_collection(self) -> None:
         resp = self.client.get("/api/v1/landforms/?bbox=6.0,50.0,8.0,52.0")
@@ -87,7 +89,17 @@ class LandformBboxTest(_BaseApiTest):
         data = resp.json()
         assert data["type"] == "FeatureCollection"
         assert len(data["features"]) == 1
-        assert data["features"][0]["properties"]["murphy_code"] == "TR"
+        feature = data["features"][0]
+        assert feature["type"] == "Feature"
+        assert feature["geometry"]["type"] == "MultiPolygon"
+        assert feature["properties"] == {
+            "id": self.landform.pk,
+            "murphy_code": "TR",
+            "name_str": self.landform.name_str,
+            "division": self.landform.division,
+            "province": self.landform.province,
+            "continent": "Europe",
+        }
 
     def test_bbox_outside_landform_returns_empty_features(self) -> None:
         resp = self.client.get("/api/v1/landforms/?bbox=60.0,10.0,61.0,11.0")

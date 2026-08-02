@@ -7,9 +7,11 @@ from bibliography.api_urls import router as bibliography_router
 from field_data.api_urls import router as field_data_router
 from geodata.api_urls import router as geodata_router
 from laboratory.api_urls import router as laboratory_router
+from prototype.api_urls import router as prototype_router
 from raster_data.api_urls import router as raster_data_router
 
 router = DefaultRouter()
+router.registry.extend(prototype_router.registry)
 router.registry.extend(field_data_router.registry)
 router.registry.extend(geodata_router.registry)
 router.registry.extend(raster_data_router.registry)
