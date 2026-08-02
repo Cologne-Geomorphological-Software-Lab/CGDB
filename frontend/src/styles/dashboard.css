@@ -1,0 +1,695 @@
+/* Color tokens follow Unfold's dark-mode convention: Alpine toggles a
+   `.dark` class on <html> (see unfold/static/unfold/js/app.js), Tailwind's
+   `dark:` variants respond to it. These custom properties mirror that so the
+   map shell switches themes in step with the rest of the admin — not a
+   `prefers-color-scheme` media query, which would ignore the user's explicit
+   light/dark override. */
+:root {
+  --cgdb-bg: #fff;
+  --cgdb-bg-subtle: rgba(255, 255, 255, 0.88);
+  --cgdb-bg-hover: #f9fafb;
+  --cgdb-border: #e5e7eb;
+  --cgdb-divider: #f3f4f6;
+  --cgdb-text: #1f2937;
+  --cgdb-text-muted: #6b7280;
+  --cgdb-text-faint: #9ca3af;
+  --cgdb-accent: #3b82f6;
+  --cgdb-accent-dark: #1d4ed8;
+  --cgdb-shadow: rgba(0, 0, 0, 0.15);
+  --cgdb-shadow-strong: rgba(0, 0, 0, 0.22);
+  --cgdb-badge-internal-bg: #dbeafe;
+  --cgdb-badge-internal-text: #1e40af;
+  --cgdb-badge-literature-bg: #f3f4f6;
+  --cgdb-badge-literature-text: #374151;
+}
+.dark {
+  --cgdb-bg: #1f2937;
+  --cgdb-bg-subtle: rgba(31, 41, 55, 0.88);
+  --cgdb-bg-hover: #111827;
+  --cgdb-border: #374151;
+  --cgdb-divider: #374151;
+  --cgdb-text: #f3f4f6;
+  --cgdb-text-muted: #9ca3af;
+  --cgdb-text-faint: #6b7280;
+  --cgdb-accent: #60a5fa;
+  --cgdb-accent-dark: #93c5fd;
+  --cgdb-shadow: rgba(0, 0, 0, 0.45);
+  --cgdb-shadow-strong: rgba(0, 0, 0, 0.6);
+  --cgdb-badge-internal-bg: #1e3a8a;
+  --cgdb-badge-internal-text: #bfdbfe;
+  --cgdb-badge-literature-bg: #374151;
+  --cgdb-badge-literature-text: #e5e7eb;
+}
+
+/* ── GIS shell layout ── */
+#cgdb-gis-shell {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--cgdb-border);
+  min-height: 400px;
+}
+
+/* ── Sidebar ── */
+#cgdb-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--cgdb-border);
+  background: var(--cgdb-bg);
+  transition: width 0.18s ease;
+  overflow: hidden;
+  position: relative;
+}
+#cgdb-sidebar.collapsed {
+  width: 0;
+}
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--cgdb-border);
+  flex-shrink: 0;
+}
+.sidebar-tab {
+  flex: 1;
+  padding: 9px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  color: var(--cgdb-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.sidebar-tab:hover {
+  color: var(--cgdb-text);
+}
+.sidebar-tab.active {
+  color: var(--cgdb-accent);
+  border-bottom-color: var(--cgdb-accent);
+}
+
+.sidebar-panel {
+  display: none;
+  padding: 10px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+.sidebar-panel.active {
+  display: block;
+}
+
+.ls-section {
+  margin-bottom: 14px;
+}
+.ls-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cgdb-text-faint);
+  margin-bottom: 5px;
+}
+.ls-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 13px;
+  color: var(--cgdb-text);
+  cursor: pointer;
+}
+.ls-item input[type='checkbox'],
+.ls-item input[type='radio'] {
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ls-sublabel {
+  font-size: 11px;
+  color: var(--cgdb-text-faint);
+  padding-left: 20px;
+}
+.ls-opacity {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 2px 0 4px 20px;
+  accent-color: var(--cgdb-accent);
+}
+
+/* ── Layer rows: inline swatch, loading spinner, expandable legend ── */
+.layer-row {
+  margin-bottom: 2px;
+}
+.layer-swatch {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.loading-spinner .material-symbols-outlined {
+  font-size: 14px;
+  color: var(--cgdb-text-faint);
+  animation: cgdb-spin 0.8s linear infinite;
+}
+@keyframes cgdb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.legend-toggle {
+  margin-left: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--cgdb-text-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.legend-toggle:hover {
+  color: var(--cgdb-text);
+}
+.legend-toggle .material-symbols-outlined {
+  font-size: 16px;
+  transition: transform 0.15s ease;
+}
+.legend-toggle.expanded .material-symbols-outlined {
+  transform: rotate(180deg);
+}
+.layer-legend {
+  padding: 4px 0 2px 20px;
+}
+.legend-note {
+  font-size: 11px;
+  color: var(--cgdb-text-muted);
+}
+.legend-note a {
+  color: var(--cgdb-accent);
+}
+
+/* ── Basemap gallery ── */
+.basemap-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.basemap-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  color: var(--cgdb-text-muted);
+}
+.basemap-thumb img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--cgdb-border);
+}
+.basemap-thumb span {
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-align: center;
+}
+.basemap-thumb:hover {
+  color: var(--cgdb-text);
+}
+.basemap-thumb.active {
+  border-color: var(--cgdb-accent);
+  color: var(--cgdb-accent);
+}
+.basemap-thumb.active img {
+  border-color: var(--cgdb-accent);
+}
+
+/* ── Filter selects ── */
+.cgdb-select {
+  width: 100%;
+  margin-bottom: 4px;
+  font-size: 12px;
+  border: 1px solid var(--cgdb-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: var(--cgdb-bg);
+  color: var(--cgdb-text);
+}
+
+/* ── Legend swatches ── */
+.cgdb-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--cgdb-text-muted);
+  margin-bottom: 3px;
+}
+.cgdb-legend-row svg {
+  flex-shrink: 0;
+}
+
+/* ── Sidebar toggle ──
+   A sibling of #cgdb-sidebar, positioned relative to the shell itself
+   (never the sidebar) so it stays reachable even when the sidebar's own
+   overflow:hidden clips its content down to zero width while collapsed. */
+#cgdb-sidebar-toggle {
+  position: absolute;
+  left: 242px; /* sidebar width (260px) minus the button's own width */
+  top: 50%;
+  transform: translateY(-50%);
+  transition: left 0.18s ease;
+  z-index: 1001;
+  width: 18px;
+  height: 44px;
+  background: var(--cgdb-bg);
+  border: 1px solid var(--cgdb-border);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  color: var(--cgdb-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 2px 0 4px var(--cgdb-shadow);
+  padding: 0;
+}
+#cgdb-sidebar-toggle:hover {
+  color: var(--cgdb-text);
+}
+#cgdb-sidebar-toggle:not(.sidebar-open) {
+  left: 0;
+  border-left: 1px solid var(--cgdb-border);
+  border-radius: 0 4px 4px 0;
+}
+#cgdb-sidebar-toggle .material-symbols-outlined {
+  font-size: 16px;
+}
+
+/* ── Map zone ── */
+#cgdb-map-zone {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+#cgdb-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Floating toolbar ── */
+#cgdb-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--cgdb-bg);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px var(--cgdb-shadow);
+  padding: 2px;
+}
+.map-toolbar-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--cgdb-text-muted);
+  cursor: pointer;
+}
+.map-toolbar-btn:hover {
+  background: var(--cgdb-bg-hover);
+  color: var(--cgdb-text);
+}
+.map-toolbar-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+/* ── Search ── */
+#cgdb-search {
+  position: absolute;
+  top: 8px;
+  right: 46px;
+  z-index: 999;
+  background: var(--cgdb-bg);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px var(--cgdb-shadow);
+  padding: 6px 8px;
+  width: 240px;
+}
+#cgdb-search-input {
+  width: 100%;
+  font-size: 12px;
+  border: 1px solid var(--cgdb-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: var(--cgdb-bg);
+  color: var(--cgdb-text);
+}
+#cgdb-search-status {
+  font-size: 10.5px;
+  color: var(--cgdb-text-faint);
+  margin-top: 4px;
+  min-height: 12px;
+}
+
+/* ── Measure ── */
+#cgdb-measure {
+  position: absolute;
+  top: 46px;
+  right: 46px;
+  z-index: 999;
+  background: var(--cgdb-bg);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px var(--cgdb-shadow);
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+}
+#cgdb-measure button {
+  font-size: 11px;
+  border: 1px solid var(--cgdb-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: var(--cgdb-bg);
+  color: var(--cgdb-text-muted);
+  cursor: pointer;
+}
+#cgdb-measure button:hover {
+  color: var(--cgdb-text);
+  background: var(--cgdb-bg-hover);
+}
+#cgdb-measure button.active {
+  border-color: var(--cgdb-accent);
+  color: var(--cgdb-accent);
+}
+
+.measure-tooltip {
+  position: relative;
+  background: rgba(249, 115, 22, 0.9);
+  color: #fff;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.measure-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(249, 115, 22, 0.9);
+}
+.measure-tooltip-done {
+  background: #f97316;
+  font-weight: 600;
+}
+.measure-tooltip-done::after {
+  border-top-color: #f97316;
+}
+
+/* ── Edit ── */
+#cgdb-edit {
+  position: absolute;
+  top: 84px;
+  right: 46px;
+  z-index: 999;
+  background: var(--cgdb-bg);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px var(--cgdb-shadow);
+  padding: 8px 10px;
+  width: 180px;
+  font-size: 12px;
+  color: var(--cgdb-text);
+}
+#cgdb-edit label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+#cgdb-edit-hint {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--cgdb-text-faint);
+}
+
+#cgdb-edit-error {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #b91c1c;
+  color: #fff;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  max-width: 80%;
+  box-shadow: 0 2px 8px var(--cgdb-shadow-strong);
+}
+
+/* ── New-feature properties modal ── */
+.edit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.edit-modal {
+  background: var(--cgdb-bg);
+  color: var(--cgdb-text);
+  border-radius: 6px;
+  padding: 16px 18px;
+  width: 280px;
+  box-shadow: 0 4px 20px var(--cgdb-shadow-strong);
+}
+.edit-modal h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.edit-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.edit-modal-field input,
+.edit-modal-field select {
+  font-size: 13px;
+  border: 1px solid var(--cgdb-border);
+  border-radius: 4px;
+  padding: 5px 7px;
+  background: var(--cgdb-bg);
+  color: var(--cgdb-text);
+}
+.edit-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.edit-modal-actions button {
+  font-size: 12px;
+  border: 1px solid var(--cgdb-border);
+  border-radius: 4px;
+  padding: 5px 12px;
+  background: var(--cgdb-bg);
+  color: var(--cgdb-text-muted);
+  cursor: pointer;
+}
+.edit-modal-actions button:hover {
+  color: var(--cgdb-text);
+  background: var(--cgdb-bg-hover);
+}
+.edit-modal-actions button.edit-modal-save {
+  border-color: var(--cgdb-accent);
+  color: var(--cgdb-accent);
+}
+
+/* ── Coordinates ── */
+#cgdb-coords {
+  position: absolute;
+  bottom: 26px;
+  left: 8px;
+  z-index: 999;
+  background: var(--cgdb-bg-subtle);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--cgdb-text-muted);
+  box-shadow: 0 1px 3px var(--cgdb-shadow);
+  pointer-events: none;
+}
+
+/* ── Popup ── */
+.ol-popup {
+  position: absolute;
+  background: var(--cgdb-bg);
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 12px var(--cgdb-shadow-strong);
+  font-size: 13px;
+  min-width: 200px;
+  max-width: 300px;
+  transform: translate(-50%, calc(-100% - 14px));
+  pointer-events: auto;
+  color: var(--cgdb-text);
+}
+.ol-popup::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 9px solid transparent;
+  border-bottom: none;
+  border-top-color: var(--cgdb-bg);
+  filter: drop-shadow(0 2px 2px var(--cgdb-shadow));
+}
+.ol-popup-close {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  cursor: pointer;
+  color: var(--cgdb-text-faint);
+  background: none;
+  border: none;
+  padding: 2px;
+  line-height: 1;
+  display: flex;
+}
+.ol-popup-close:hover {
+  color: var(--cgdb-text);
+}
+.ol-popup-close .material-symbols-outlined {
+  font-size: 15px;
+}
+.cgdb-popup strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+.cgdb-popup a {
+  color: var(--cgdb-accent);
+  text-decoration: none;
+}
+.cgdb-popup a:hover {
+  text-decoration: underline;
+}
+.popup-row {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 3px;
+}
+.popup-label {
+  color: var(--cgdb-text-faint);
+  min-width: 64px;
+  flex-shrink: 0;
+}
+.popup-analyses {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--cgdb-divider);
+  font-size: 11px;
+  color: var(--cgdb-text-muted);
+}
+.badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 5px;
+}
+.badge-internal {
+  background: var(--cgdb-badge-internal-bg);
+  color: var(--cgdb-badge-internal-text);
+}
+.badge-literature {
+  background: var(--cgdb-badge-literature-bg);
+  color: var(--cgdb-badge-literature-text);
+}
+.cluster-list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.cluster-list li {
+  margin-bottom: 2px;
+}
+.wms-info-table {
+  font-size: 12px;
+  border-collapse: collapse;
+  width: 100%;
+}
+.wms-info-table td {
+  padding: 2px 5px;
+  border-bottom: 1px solid var(--cgdb-divider);
+}
+.wms-info-table td:first-child {
+  color: var(--cgdb-text-muted);
+  font-weight: 600;
+  min-width: 80px;
+}
+
+/* ── Fullscreen ── */
+#cgdb-gis-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+#cgdb-gis-shell:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+/* ── Responsive: sidebar becomes an overlay instead of compressing the map ── */
+@media (max-width: 768px) {
+  #cgdb-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 1000;
+    box-shadow: 2px 0 8px var(--cgdb-shadow);
+    width: 240px;
+  }
+  #cgdb-sidebar.collapsed {
+    width: 0;
+    box-shadow: none;
+  }
+  #cgdb-sidebar-toggle {
+    left: 222px; /* mobile sidebar width (240px) minus the button's own width */
+  }
+  #cgdb-search {
+    width: calc(100vw - 100px);
+    right: 46px;
+  }
+  #cgdb-measure {
+    right: 46px;
+  }
+}

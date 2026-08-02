@@ -12,6 +12,7 @@ dependencies = [
     "django-filter>=25.2",
     "django-guardian>=3.2.0",
     "django-import-export>=4.3.14",
+    "django-vite>=3.1.0",
     "djangorestframework>=3.17.1",
     "djangorestframework-gis>=1.2.1",
     "drf-spectacular>=0.28.0",
@@ -148,7 +149,7 @@ disallow_untyped_decorators = false
 exclude = ["venv/", "\\.venv/", "migrations/", "manage\\.py", "docs/"]
 
 [[tool.mypy.overrides]]
-module = ["rest_framework.*", "rest_framework_gis.*", "dagster.*", "tablib.*", "unfold.*", "guardian.*", "import_export.*"]
+module = ["rest_framework.*", "rest_framework_gis.*", "dagster.*", "tablib.*", "unfold.*", "guardian.*", "import_export.*", "django_vite.*"]
 ignore_missing_imports = true
 
 # Transitive imports from field_data with pre-existing errors — suppress so hooks stay green

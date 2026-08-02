@@ -15,6 +15,7 @@ django-filter>=25.2
 django-guardian>=3.3.2
 django-import-export>=4.4.1
 django-unfold>=0.99.0
+django-vite>=3.1.0
 djangorestframework>=3.17.1
 djangorestframework-gis>=1.2.1
 drf-spectacular>=0.29.0

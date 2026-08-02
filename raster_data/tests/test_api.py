@@ -271,6 +271,58 @@ class RasterDatasetCreateTest(_BaseApiTest):
         )
         assert resp.status_code == 403
 
+    def test_create_dataset_with_scene_from_inaccessible_project_returns_403(
+        self,
+    ) -> None:
+        """scene_ids must be scoped to projects the user can see.
+
+        Without this check, a user could attach a scene from a project they
+        have no access to into their own dataset, then read its path/crs/
+        spatial_bbox back out via the dataset's manifest action.
+        """
+        other_project = Project.objects.create(
+            title="Inaccessible Project", label="INACC01", status="ACTIVE"
+        )
+        other_scene = RasterScene.objects.create(
+            project=other_project, corpus_path="corpus/other/scene.tif"
+        )
+        resp = self.client.post(
+            "/api/v1/raster-datasets/",
+            {
+                "project": self.project.pk,
+                "name": "Leaky Dataset",
+                "slug": "leaky-dataset",
+                "scene_ids": [self.scene.pk, other_scene.pk],
+            },
+            format="json",
+        )
+        assert resp.status_code == 403
+        assert not RasterDataset.objects.filter(slug="leaky-dataset").exists()
+
+    def test_create_dataset_with_scene_from_accessible_project_succeeds(
+        self,
+    ) -> None:
+        second_project = Project.objects.create(
+            title="Second Accessible Project", label="ACC02", status="ACTIVE"
+        )
+        assign_perm("view_project", self.user, second_project)
+        second_scene = RasterScene.objects.create(
+            project=second_project, corpus_path="corpus/second/scene.tif"
+        )
+        resp = self.client.post(
+            "/api/v1/raster-datasets/",
+            {
+                "project": self.project.pk,
+                "name": "Cross Project Dataset",
+                "slug": "cross-project-dataset",
+                "scene_ids": [self.scene.pk, second_scene.pk],
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        ds = RasterDataset.objects.get(slug="cross-project-dataset")
+        assert ds.scenes.filter(pk=second_scene.pk).exists()
+
 
 class RasterSceneCreatedByAuditTest(TestCase):
     """F1 regression test: created_by/updated_by must be populated for

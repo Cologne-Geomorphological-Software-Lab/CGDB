@@ -151,7 +151,11 @@ class LayerStackedInline(StackedInline):
     )
 
 
-class CountryAdmin(ImportExportMixin, ModelAdmin):
+class CountryAdmin(
+    ImportExportMixin,
+    ModelAdmin,
+    admin.GISModelAdmin,  # type: ignore[type-arg]
+):
     """Admin interface for Country records."""
 
     change_form_show_cancel_button = True
@@ -164,7 +168,11 @@ class CountryAdmin(ImportExportMixin, ModelAdmin):
     list_filter_submit = True
 
 
-class ProvinceAdmin(ImportExportMixin, ModelAdmin):
+class ProvinceAdmin(
+    ImportExportMixin,
+    ModelAdmin,
+    admin.GISModelAdmin,  # type: ignore[type-arg]
+):
     """Admin interface for Province records."""
 
     change_form_show_cancel_button = True
@@ -176,6 +184,10 @@ class ProvinceAdmin(ImportExportMixin, ModelAdmin):
     list_filter = [("country", RelatedDropdownFilter)]
     list_filter_sheet = False
     list_filter_submit = True
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Province]:
+        """select_related('country') — list_display renders it per row."""
+        return super().get_queryset(request).select_related("country")
 
 
 class ExposureTypeAdmin(ImportExportMixin, ModelAdmin):
@@ -401,12 +413,6 @@ class LocationAdmin(
         "map_preview",
     ]
 
-    class Media:
-        """OL 10 assets for the satellite map preview widget."""
-
-        css = {"all": ["https://cdn.jsdelivr.net/npm/ol@10/ol.css"]}
-        js = ["https://cdn.jsdelivr.net/npm/ol@10/dist/ol.js"]
-
     list_display = [
         "identifier",
         "colored_data_source",
@@ -487,77 +493,24 @@ class LocationAdmin(
     def map_preview(self, obj: Location) -> str:
         """Render a satellite preview map that reacts to easting/northing changes."""
         from django.utils.safestring import mark_safe
+        from django_vite.core.asset_loader import DjangoViteAssetLoader
 
         if not obj.pk or obj.location is None:
             return "Enter easting and northing, then save to see a satellite preview."
         lon = obj.location.x
         lat = obj.location.y
-        map_id = f"loc-map-{obj.pk}"
-        html = f"""
-<div id="{map_id}" style="width:100%;height:300px;border-radius:4px;margin-top:4px;"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
-<script>
-(function() {{
-  function utmProj4(srid) {{
-    if (srid >= 32601 && srid <= 32660)
-      return '+proj=utm +zone=' + (srid - 32600) + ' +datum=WGS84 +units=m +no_defs';
-    if (srid >= 32701 && srid <= 32760)
-      return '+proj=utm +zone=' + (srid - 32700) + ' +south +datum=WGS84 +units=m +no_defs';
-    return null;
-  }}
-  function toWGS84(e, n, srid) {{
-    if (srid === 4326) return [e, n];
-    var def = utmProj4(srid);
-    return def ? proj4(def, 'WGS84', [e, n]) : null;
-  }}
-  function initLocMap() {{
-    if (typeof ol === 'undefined' || typeof proj4 === 'undefined') {{
-      setTimeout(initLocMap, 100); return;
-    }}
-    var lon = {lon}, lat = {lat};
-    var markerSrc = new ol.source.Vector({{
-      features: [new ol.Feature({{ geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])) }})]
-    }});
-    var map = new ol.Map({{
-      target: '{map_id}',
-      layers: [
-        new ol.layer.Tile({{ source: new ol.source.XYZ({{
-          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}',
-          maxZoom: 17, attributions: 'Tiles &copy; Esri'
-        }}) }}),
-        new ol.layer.Vector({{
-          source: markerSrc,
-          style: new ol.style.Style({{ image: new ol.style.Circle({{
-            radius: 8, fill: new ol.style.Fill({{ color: '#3b82f6' }}),
-            stroke: new ol.style.Stroke({{ color: '#1d4ed8', width: 2 }})
-          }}) }})
-        }}),
-      ],
-      view: new ol.View({{ center: ol.proj.fromLonLat([lon, lat]), zoom: 14 }}),
-      controls: [new ol.control.ScaleLine()],
-    }});
-    function updateMarker() {{
-      var e = parseFloat(document.getElementById('id_easting')?.value);
-      var n = parseFloat(document.getElementById('id_northing')?.value);
-      var srid = parseInt(document.getElementById('id_srid')?.value) || 4326;
-      if (!isNaN(e) && !isNaN(n)) {{
-        var wgs84 = toWGS84(e, n, srid);
-        if (wgs84) {{
-          var coord = ol.proj.fromLonLat(wgs84);
-          markerSrc.getFeatures()[0].getGeometry().setCoordinates(coord);
-          map.getView().setCenter(coord);
-        }}
-      }}
-    }}
-    ['id_easting', 'id_northing', 'id_srid'].forEach(function(id) {{
-      var el = document.getElementById(id);
-      if (el) el.addEventListener('change', updateMarker);
-    }});
-  }}
-  initLocMap();
-}})();
-</script>"""
-        return mark_safe(html)  # noqa: S308  # nosec B703 B308 — interpolates only floats (lon/lat) and integer PK; no user-controlled strings
+        # generate_vite_asset is the same call django-vite's {% vite_asset %}
+        # template tag makes internally; called directly here since this
+        # widget is built from a plain string, not a rendered template.
+        asset_tags = DjangoViteAssetLoader.instance().generate_vite_asset(
+            "src/adminLocationPreview.js"
+        )
+        html = (
+            f'<div class="cgdb-loc-preview" data-lon="{lon}" data-lat="{lat}" '
+            'style="width:100%;height:300px;border-radius:4px;margin-top:4px;">'
+            f"</div>\n{asset_tags}"
+        )
+        return mark_safe(html)  # noqa: S308  # nosec B703 B308 — interpolates only floats (lon/lat) via generate_vite_asset's own manifest-driven URLs; no user-controlled strings
 
     map_preview.short_description = "Map preview (satellite)"  # type: ignore[attr-defined]
 
@@ -633,7 +586,12 @@ class LocationAdmin(
     )
 
 
-class StudyAreaAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
+class StudyAreaAdmin(
+    ExportMixin,
+    ProjectBasedPermissionMixin,
+    ModelAdmin,
+    admin.GISModelAdmin,  # type: ignore[type-arg]
+):
     """Admin interface for StudyArea records with export and project-based permissions."""
 
     save_on_top = True
@@ -687,11 +645,15 @@ class StudyAreaAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
 
 class SiteAdmin(
     ImportExportMixin,
-    admin.options.GeoModelAdminMixin,  # pyright: ignore[reportAttributeAccessIssue]
     NestedProjectPermissionMixin,
     ModelAdmin,
 ):
-    """Admin interface for Site records with geo support and nested project permissions."""
+    """Admin interface for Site records with nested project permissions.
+
+    Site has no geometry field (label/study_area/tags only) — the GIS admin
+    mixin this class used to carry was dead weight left over from an earlier
+    iteration of the model.
+    """
 
     change_form_show_cancel_button = True
     list_fullwidth = True
@@ -1239,12 +1201,19 @@ class TagAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
         return queryset, may_have_duplicates
 
 
-class TransectAdmin(ExportMixin, NestedProjectPermissionMixin, ModelAdmin):
+class TransectAdmin(
+    ExportMixin,
+    NestedProjectPermissionMixin,
+    ModelAdmin,
+    admin.GISModelAdmin,  # type: ignore[type-arg]
+):
     """Admin interface for Transect records with nested project permissions."""
 
     change_form_show_cancel_button = True
     list_fullwidth = True
+    compressed_fields = True
     project_path = "study_area__project"  # type: ignore[assignment]
+    readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
     list_display = ["identifier", "study_area", "campaign"]
     search_fields = ["identifier", "study_area__label"]
     list_filter = [
@@ -1254,6 +1223,29 @@ class TransectAdmin(ExportMixin, NestedProjectPermissionMixin, ModelAdmin):
     list_filter_sheet = False
     list_filter_submit = True
     raw_id_fields = ["study_area", "campaign"]
+
+    fieldsets = (
+        (
+            "Transect",
+            {
+                "classes": ["tab"],
+                "fields": (
+                    "id",
+                    ("identifier", "study_area"),
+                    ("campaign", "description"),
+                    ("created_by", "created_at"),
+                    ("updated_by", "modified_at"),
+                ),
+            },
+        ),
+        (
+            "Geometry",
+            {
+                "classes": ["tab"],
+                "fields": ("multiline",),
+            },
+        ),
+    )
 
 
 admin.site.register(Country, CountryAdmin)

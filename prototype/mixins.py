@@ -110,7 +110,21 @@ class ProjectBasedPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
-        """Allow change only when the user has change_project on the object's project."""
+        """Allow change only when the user has change_project on the object's project.
+
+        KNOWN GAP: this only checks the object's project *before* the edit —
+        Django calls it with the pre-save `obj`, both to gate access to the
+        change form and again just before the POST is processed, never with
+        the form's submitted values. If a model here has a writable
+        `project` FK (or a writable FK chain leading to one) and no admin
+        class overrides formfield_for_foreignkey to restrict its choices,
+        a user with change_project on project A could reparent an object
+        into any other project via the form, bypassing that project's own
+        add/change permission entirely — the same class of bug fixed for
+        the DRF write endpoints in field_data/api_views.py's
+        StudyAreaViewSet/TransectViewSet.perform_update. Not yet verified
+        against every admin class using this mixin, and not fixed here.
+        """
         if obj is None:
             return True
         if request.user.is_superuser:
@@ -290,7 +304,14 @@ class NestedProjectPermissionMixin:
         request: HttpRequest,
         obj: object | None = None,
     ) -> bool:
-        """Allow change when the user has change_project on the nested project."""
+        """Allow change when the user has change_project on the nested project.
+
+        KNOWN GAP: same as ProjectBasedPermissionMixin.has_change_permission
+        above — only checks the pre-edit object, never the form's submitted
+        values, so a writable FK along project_path with no
+        formfield_for_foreignkey restriction could let a user reparent an
+        object into a project they have no permission on. Not fixed here.
+        """
         if obj is None:
             return True
         if request.user.is_superuser:

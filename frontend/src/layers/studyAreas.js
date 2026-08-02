@@ -1,0 +1,19 @@
+import VectorLayer from 'ol/layer/Vector.js';
+import VectorSource from 'ol/source/Vector.js';
+
+import { geojsonFormat } from '../utils/geojsonFormat.js';
+import { studyAreaStyle } from '../styles/mapStyles.js';
+
+export const studyAreaSource = new VectorSource();
+
+export const studyAreasLayer = new VectorLayer({
+  source: studyAreaSource,
+  style: studyAreaStyle,
+  zIndex: 5,
+});
+
+export async function loadStudyAreas(url) {
+  const resp = await fetch(url);
+  const data = await resp.json();
+  studyAreaSource.addFeatures(geojsonFormat.readFeatures(data));
+}

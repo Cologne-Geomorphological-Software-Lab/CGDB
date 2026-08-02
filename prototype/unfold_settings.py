@@ -219,6 +219,11 @@ UNFOLD = {
                         "link": reverse_lazy("admin:index"),
                     },
                     {
+                        "title": _("Map"),
+                        "icon": "map",
+                        "link": reverse_lazy("map_dashboard"),
+                    },
+                    {
                         "title": _("Projects"),
                         "icon": "workspaces",
                         "link": reverse_lazy(
