@@ -149,7 +149,11 @@ def _cosmogenic_link(request: HttpRequest) -> str:
 UNFOLD = {
     "SITE_HEADER": "CGDB Dashboard",
     "SITE_URL": "/",
-    "SITE_LOGO": {
+    # SITE_ICON (not SITE_LOGO): Unfold renders SITE_LOGO alone, with no
+    # header text next to it — it assumes a full logo image already has a
+    # wordmark baked in. Our icon is a plain mark with no text, so SITE_ICON
+    # is what pairs it with the SITE_HEADER text ("CGDB Dashboard") above.
+    "SITE_ICON": {
         # No separate dark-mode artwork yet — same icon for both until one exists.
         "light": lambda _: static("assets/cgdb-icon-512.png"),
         "dark": lambda _: static("assets/cgdb-icon-512.png"),
