@@ -16,6 +16,10 @@ CGDB is built with:
 - Python 3.12+
 - GeoDjango dependencies (GDAL, PROJ, GEOS)
 - SpatiaLite or PostgreSQL/PostGIS
+- Node.js + npm (for the map dashboard's frontend — see "Frontend (map
+  dashboard)" below; on a production server this is only needed as a
+  one-shot build tool during `python manage.py deploy`, nothing Node-based
+  keeps running afterward)
 
 ## Installation for local development
 To set up the framework for local development, navigate to the desired folder and clone the repository.
@@ -106,8 +110,11 @@ cross-origin/module-load error pointing at `localhost:5173` rather than an
 obvious "connection refused".
 
 In production, `VITE_DEV_MODE=false` (the default when `DEBUG=False`) skips
-the dev server entirely and serves the built bundle instead — run
-`npm run build` from `frontend/` as part of your deploy step.
+the dev server entirely and serves the built bundle instead. `python manage.py
+deploy` (see "Deploying updates" below) runs `npm ci && npm run build` for
+you as a one-shot step — it compiles to `static/dist/` and exits, the same
+way `uv sync` does; no Node process keeps running afterward. Node/npm just
+need to be installed on the server as a build tool, same as GDAL/PostGIS.
 
 ## Running the Tests
 
@@ -432,9 +439,9 @@ setup needs the following, in order:
 ### Deploying updates
 
 Once a deployment is set up, routine updates (pulling new code, syncing
-dependencies, migrating, collecting static files, and restarting `apache2`
-and `cgdb-dagster-daemon`) are wrapped in a single management command
-instead of running each step by hand:
+dependencies, building the frontend, migrating, collecting static files, and
+restarting `apache2` and `cgdb-dagster-daemon`) are wrapped in a single
+management command instead of running each step by hand:
 
 ```bash
 python manage.py deploy
@@ -442,7 +449,9 @@ python manage.py deploy
 
 It always runs, in order: a clean-working-tree check, a pre-migrate
 database backup (SQLite copy or `pg_dump`, whichever is active), `git pull
---ff-only`, `uv sync`, `migrate`/`collectstatic`, then restarts both
+--ff-only`, `uv sync`, `npm ci && npm run build` (compiles the map
+dashboard's frontend to `static/dist/` and exits — see "Frontend (map
+dashboard)" above), `migrate`/`collectstatic`, then restarts both
 services and confirms each is actually `active` afterward — not just that
 the restart command itself succeeded. On a failed migration, the error
 message names the backup's path so you can decide whether to restore it;
