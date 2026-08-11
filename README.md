@@ -438,29 +438,31 @@ setup needs the following, in order:
 
 ### Deploying updates
 
-Once a deployment is set up, routine updates (pulling new code, syncing
-dependencies, building the frontend, migrating, collecting static files, and
-restarting `apache2` and `cgdb-dagster-daemon`) are wrapped in a single
-management command instead of running each step by hand:
+`python manage.py deploy` needs `sudo` (it backs up the database and
+restarts services), and covers everything **after** getting the new code
+onto the server. `git pull` itself is a separate, manual step first, run as
+yourself with your own git credentials — not as part of this command, so
+`root` never needs git access of its own:
 
 ```bash
-python manage.py deploy
+git pull --ff-only
+sudo python manage.py deploy
 ```
 
-It always runs, in order: a clean-working-tree check, a pre-migrate
-database backup (SQLite copy or `pg_dump`, whichever is active), `git pull
---ff-only`, `uv sync`, `npm ci && npm run build` (compiles the map
-dashboard's frontend to `static/dist/` and exits — see "Frontend (map
-dashboard)" above), `migrate`/`collectstatic`, then restarts both
-services and confirms each is actually `active` afterward — not just that
-the restart command itself succeeded. On a failed migration, the error
-message names the backup's path so you can decide whether to restore it;
-nothing is rolled back automatically. It still requires a human at the
-keyboard: it asks for interactive confirmation (skip with `--yes`), and
-there is no automatic trigger of any kind — no cron, no webhook, no CI. Use
-`--dry-run` to print every step without executing anything, e.g. to review
-before the first real run on a given server. See
-`prototype/management/commands/deploy.py` for the implementation.
+`manage.py deploy` always runs, in order: a clean-working-tree check, a
+pre-migrate database backup (SQLite copy or `pg_dump`, whichever is
+active), `uv sync`, `npm ci && npm run build` (compiles the map dashboard's
+frontend to `static/dist/` and exits — see "Frontend (map dashboard)"
+above), `migrate`/`collectstatic`, then restarts both services and confirms
+each is actually `active` afterward — not just that the restart command
+itself succeeded. On a failed migration, the error message names the
+backup's path so you can decide whether to restore it; nothing is rolled
+back automatically. It still requires a human at the keyboard: it asks for
+interactive confirmation (skip with `--yes`), and there is no automatic
+trigger of any kind — no cron, no webhook, no CI. Use `--dry-run` to print
+every step without executing anything, e.g. to review before the first real
+run on a given server. See `prototype/management/commands/deploy.py` for
+the implementation.
 
 The module is intentionally minimal to avoid overhead while providing a complete reference implementation for FAIR-compliant data management workflows.
 
