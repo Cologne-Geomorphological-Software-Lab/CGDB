@@ -1,11 +1,17 @@
 """Management command: run the full deployment update sequence.
 
-Wraps the previously fully-manual sequence of `git pull`, dependency sync,
-a frontend build, `migrate`, `collectstatic`, and service restarts into one
-command, with a pre-migrate database backup and post-restart health checks
-built in. Still started by hand over SSH — no external trigger, no new
-credentials, no change to who initiates a deploy. See "Updating an existing
-deployment" in README.md for the manual step-by-step this replaces.
+Wraps the previously fully-manual sequence of dependency sync, a frontend
+build, `migrate`, `collectstatic`, and service restarts into one command,
+with a pre-migrate database backup and post-restart health checks built in.
+Still started by hand over SSH — no external trigger, no new credentials, no
+change to who initiates a deploy. See "Updating an existing deployment" in
+README.md for the manual step-by-step this replaces.
+
+`git pull` is deliberately **not** part of this command — it's run
+separately, beforehand, by whoever has git credentials for the remote. This
+command needs `sudo` (for the database backup and the service restarts),
+and `root` normally has no git credentials of its own; keeping `git pull`
+out of this command avoids needing a deploy key for `root` at all.
 
 The frontend build (`npm ci && npm run build` in frontend/) is a one-shot
 step, not a persistent process — it compiles the map dashboard's Vite app to
@@ -41,9 +47,10 @@ class Command(BaseCommand):
     """Run the deployment update sequence with a backup and health checks."""
 
     help = (
-        "Runs the full deployment update sequence (git pull, dependency "
-        "sync, frontend build, migrate, collectstatic, service restarts), "
-        "with a pre-migrate database backup and post-restart health checks."
+        "Runs the deployment update sequence (dependency sync, frontend "
+        "build, migrate, collectstatic, service restarts), with a "
+        "pre-migrate database backup and post-restart health checks. Run "
+        "`git pull` yourself beforehand — this command doesn't do it."
     )
 
     def add_arguments(self, parser: ArgumentParser) -> None:
@@ -60,7 +67,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args: object, **options: object) -> None:
-        """Run the deploy sequence: backup, pull, sync, migrate, restart, verify."""
+        """Run the deploy sequence: backup, sync, build, migrate, restart, verify."""
         dry_run: bool = options["dry_run"]  # type: ignore[assignment]
 
         if not dry_run and not options["yes"] and not self._confirm():
@@ -70,7 +77,6 @@ class Command(BaseCommand):
         self._check_clean_working_tree()
         backup_path = self._backup_database(dry_run=dry_run)
 
-        self._run(["git", "pull", "--ff-only"], dry_run=dry_run)
         self._run(["uv", "sync"], dry_run=dry_run)
 
         # See module docstring: one-shot build, not a running server.
@@ -114,14 +120,13 @@ class Command(BaseCommand):
     def _confirm(self) -> bool:
         """Ask for interactive confirmation before any effectful step runs."""
         answer = input(
-            "This will pull new code, back up the database, build the "
-            f"frontend, migrate, and restart {', '.join(_SERVICES)}. "
-            "Continue? [y/N] "
+            "This will back up the database, build the frontend, migrate, "
+            f"and restart {', '.join(_SERVICES)}. Continue? [y/N] "
         )
         return answer.strip().lower() == "y"
 
     def _check_clean_working_tree(self) -> None:
-        """Abort if local changes exist that `git pull --ff-only` could collide with."""
+        """Abort if the working tree has uncommitted changes (e.g. an interrupted git pull)."""
         cmd = ["git", "status", "--porcelain"]
         result = subprocess.run(  # noqa: S603 — fixed args, no user input
             cmd,
@@ -132,9 +137,8 @@ class Command(BaseCommand):
         )
         if result.stdout.strip():
             msg = (
-                "Working tree has uncommitted changes — aborting before "
-                f"`git pull`. Commit, stash, or discard them first:\n"
-                f"{result.stdout}"
+                "Working tree has uncommitted changes — aborting deploy. "
+                f"Commit, stash, or discard them first:\n{result.stdout}"
             )
             raise CommandError(msg)
 
