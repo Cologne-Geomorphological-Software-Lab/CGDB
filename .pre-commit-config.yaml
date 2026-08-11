@@ -5,14 +5,14 @@ repos:
         name: ruff
         entry: ruff check --fix
         language: python
-        additional_dependencies: [ruff]
+        additional_dependencies: [ruff==0.15.20]  # pin to match .venv/pyproject.toml — an unpinned hook silently picks up new ruff releases (and any new rules they enable under select = ["ALL"]), independent of what the project actually uses
         types: [python]
 
       - id: ruff-format
         name: ruff-format
         entry: ruff format
         language: python
-        additional_dependencies: [ruff]
+        additional_dependencies: [ruff==0.15.20]  # pin to match .venv/pyproject.toml — an unpinned hook silently picks up new ruff releases (and any new rules they enable under select = ["ALL"]), independent of what the project actually uses
         types: [python]
 
       - id: mypy

@@ -1,11 +1,17 @@
 """Management command: run the full deployment update sequence.
 
 Wraps the previously fully-manual sequence of `git pull`, dependency sync,
-`migrate`, `collectstatic`, and service restarts into one command, with a
-pre-migrate database backup and post-restart health checks built in. Still
-started by hand over SSH — no external trigger, no new credentials, no
-change to who initiates a deploy. See "Updating an existing deployment" in
-README.md for the manual step-by-step this replaces.
+a frontend build, `migrate`, `collectstatic`, and service restarts into one
+command, with a pre-migrate database backup and post-restart health checks
+built in. Still started by hand over SSH — no external trigger, no new
+credentials, no change to who initiates a deploy. See "Updating an existing
+deployment" in README.md for the manual step-by-step this replaces.
+
+The frontend build (`npm ci && npm run build` in frontend/) is a one-shot
+step, not a persistent process — it compiles the map dashboard's Vite app to
+static/dist/ and exits, the same shape as `uv sync` just before it. Node/npm
+only need to be installed on the server as a build tool (like GDAL/PostGIS
+already are); nothing Node-based keeps running afterward.
 
 Usage:
     python manage.py deploy [--yes] [--dry-run]
@@ -36,8 +42,8 @@ class Command(BaseCommand):
 
     help = (
         "Runs the full deployment update sequence (git pull, dependency "
-        "sync, migrate, collectstatic, service restarts), with a "
-        "pre-migrate database backup and post-restart health checks."
+        "sync, frontend build, migrate, collectstatic, service restarts), "
+        "with a pre-migrate database backup and post-restart health checks."
     )
 
     def add_arguments(self, parser: ArgumentParser) -> None:
@@ -66,6 +72,13 @@ class Command(BaseCommand):
 
         self._run(["git", "pull", "--ff-only"], dry_run=dry_run)
         self._run(["uv", "sync"], dry_run=dry_run)
+
+        # See module docstring: one-shot build, not a running server.
+        # collectstatic below needs this to have already run so it has
+        # something fresh to collect.
+        frontend_dir = Path(settings.BASE_DIR) / "frontend"
+        self._run(["npm", "ci"], dry_run=dry_run, cwd=frontend_dir)
+        self._run(["npm", "run", "build"], dry_run=dry_run, cwd=frontend_dir)
 
         try:
             if dry_run:
@@ -101,8 +114,9 @@ class Command(BaseCommand):
     def _confirm(self) -> bool:
         """Ask for interactive confirmation before any effectful step runs."""
         answer = input(
-            "This will pull new code, back up the database, migrate, and "
-            f"restart {', '.join(_SERVICES)}. Continue? [y/N] "
+            "This will pull new code, back up the database, build the "
+            f"frontend, migrate, and restart {', '.join(_SERVICES)}. "
+            "Continue? [y/N] "
         )
         return answer.strip().lower() == "y"
 
@@ -161,7 +175,13 @@ class Command(BaseCommand):
         self.stdout.write(f"Backup written to {output_path}")
         return str(output_path)
 
-    def _run(self, cmd: list[str], *, dry_run: bool) -> None:
+    def _run(
+        self,
+        cmd: list[str],
+        *,
+        dry_run: bool,
+        cwd: Path | str | None = None,
+    ) -> None:
         """Print, and unless dry_run, execute an OS-level deploy step."""
         printable = " ".join(cmd)
         if dry_run:
@@ -169,7 +189,7 @@ class Command(BaseCommand):
             return
         self.stdout.write(f"==> {printable}")
         subprocess.run(  # noqa: S603 — fixed, code-defined argv; no user input
-            cmd, check=True, cwd=settings.BASE_DIR
+            cmd, check=True, cwd=cwd if cwd is not None else settings.BASE_DIR
         )
 
     def _health_check(self, service: str, *, dry_run: bool) -> None:
