@@ -105,12 +105,22 @@ class Command(BaseCommand):
             )
             raise
 
-        for service in _SERVICES:
+        services = [s for s in _SERVICES if self._service_exists(s)]
+        skipped = [s for s in _SERVICES if s not in services]
+        if skipped:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Skipping {', '.join(skipped)} — no systemd unit found "
+                    "for it on this host (not installed/enabled here)."
+                )
+            )
+
+        for service in services:
             self._run(
                 ["sudo", "systemctl", "restart", service], dry_run=dry_run
             )
 
-        for service in _SERVICES:
+        for service in services:
             self._health_check(service, dry_run=dry_run)
 
         self.stdout.write(
@@ -195,6 +205,23 @@ class Command(BaseCommand):
         subprocess.run(  # noqa: S603 — fixed, code-defined argv; no user input
             cmd, check=True, cwd=cwd if cwd is not None else settings.BASE_DIR
         )
+
+    def _service_exists(self, service: str) -> bool:
+        """Check whether a systemd unit is actually defined on this host.
+
+        `_SERVICES` is a fixed list, but not every optional component (e.g.
+        the Dagster daemon — see README's "Data Orchestration (Optional)")
+        is set up on every deployment. Restarting/health-checking a unit
+        that was never installed here should be skipped, not a hard failure.
+        """
+        cmd = ["systemctl", "show", service, "--property=LoadState", "--value"]
+        result = subprocess.run(  # noqa: S603 — fixed args, no user input
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.stdout.strip() == "loaded"
 
     def _health_check(self, service: str, *, dry_run: bool) -> None:
         """Confirm a service is actually active after being restarted.

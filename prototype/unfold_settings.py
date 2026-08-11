@@ -150,16 +150,41 @@ UNFOLD = {
     "SITE_HEADER": "CGDB Dashboard",
     "SITE_URL": "/",
     "SITE_LOGO": {
-        "light": lambda _: static("logo/logo-light.png"),  # light mode
-        "dark": lambda _: static("logo/logo-dark.png"),  # dark mode
+        # No separate dark-mode artwork yet — same icon for both until one exists.
+        "light": lambda _: static("assets/cgdb-icon-512.png"),
+        "dark": lambda _: static("assets/cgdb-icon-512.png"),
     },
     "DASHBOARD_CALLBACK": "prototype.views.dashboard_callback",
     "SITE_FAVICONS": [
         {
             "rel": "icon",
+            "sizes": "16x16",
+            "type": "image/png",
+            "href": lambda _: static("assets/cgdb-icon-16.png"),
+        },
+        {
+            "rel": "icon",
             "sizes": "32x32",
-            "type": "image/svg+xml",
-            "href": lambda _: static("site/img/favicon-32x32.png"),
+            "type": "image/png",
+            "href": lambda _: static("assets/cgdb-icon-32.png"),
+        },
+        {
+            "rel": "icon",
+            "sizes": "48x48",
+            "type": "image/png",
+            "href": lambda _: static("assets/cgdb-icon-48.png"),
+        },
+        {
+            "rel": "apple-touch-icon",
+            "sizes": "180x180",
+            "type": "image/png",
+            "href": lambda _: static("assets/cgdb-icon-180.png"),
+        },
+        {
+            "rel": "icon",
+            "sizes": "512x512",
+            "type": "image/png",
+            "href": lambda _: static("assets/cgdb-icon-512.png"),
         },
     ],
     "SHOW_HISTORY": True,  # show/hide "History" button, default: True
