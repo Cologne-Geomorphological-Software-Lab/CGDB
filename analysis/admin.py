@@ -285,6 +285,14 @@ class RawMeasurementAdmin(
         ),
     ]
 
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return queryset with device, accessories, and researcher pre-fetched."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("device", "accessories", "researcher")
+        )
+
 
 class RawProcessingAdmin(
     ExportMixin,
@@ -300,6 +308,10 @@ class RawProcessingAdmin(
     list_display = [
         "raw_measurement",
     ]
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return queryset with raw_measurement pre-fetched."""
+        return super().get_queryset(request).select_related("raw_measurement")
 
 
 # ======================
@@ -1151,6 +1163,10 @@ class MicroXRFAdmin(
     list_display = ["measurement_date", "method"]
     raw_id_fields = ["sample"]
     inlines = [MicroXRFElementInline]
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet:
+        """Return queryset with method pre-fetched."""
+        return super().get_queryset(request).select_related("method")
 
 
 class MeasurementSeriesAdmin(ModelAdmin):

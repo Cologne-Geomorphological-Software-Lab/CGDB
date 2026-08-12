@@ -76,6 +76,7 @@ class IntegrityIssue(models.Model):
 
         verbose_name = "Integrity Issue"
         verbose_name_plural = "Integrity Issues"
+        ordering = ["run", "id"]
 
     def __str__(self) -> str:
         """Return a human-readable representation of this issue."""

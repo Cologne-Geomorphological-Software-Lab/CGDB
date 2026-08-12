@@ -413,12 +413,47 @@ admin.site.unregister(TokenProxy)
 
 @admin.register(TokenProxy)
 class AuthTokenAdmin(ModelAdmin):
-    """Unfold-styled admin for DRF auth tokens."""
+    """Unfold-styled admin for DRF auth tokens.
+
+    Superuser-only: this admin displays every user's plaintext bearer token
+    in the changelist. The sidebar already hides it from non-superusers
+    (see UNFOLD["SIDEBAR"] in unfold_settings.py), but that's UI-only --
+    without these overrides, any staff user granted view/change permission
+    on TokenProxy (e.g. accidentally, via Django's standard per-app user
+    permissions widget) would get full API-impersonation access to every
+    user's token.
+    """
 
     list_fullwidth = True
     list_display = ("key", "user", "created")
     fields = ("user",)
     ordering = ("-created",)
+
+    def has_module_perms(self, request: HttpRequest) -> bool:
+        """Grant module-level access to superusers only."""
+        return request.user.is_superuser
+
+    def has_view_permission(
+        self, request: HttpRequest, _obj: object = None
+    ) -> bool:
+        """Grant view permission to superusers only."""
+        return request.user.is_superuser
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        """Grant add permission to superusers only."""
+        return request.user.is_superuser
+
+    def has_change_permission(
+        self, request: HttpRequest, _obj: object = None
+    ) -> bool:
+        """Grant change permission to superusers only."""
+        return request.user.is_superuser
+
+    def has_delete_permission(
+        self, request: HttpRequest, _obj: object = None
+    ) -> bool:
+        """Grant delete permission to superusers only."""
+        return request.user.is_superuser
 
 
 # ---------------------------------------------------------------------------

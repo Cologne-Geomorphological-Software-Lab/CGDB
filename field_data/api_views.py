@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING, Any, cast
 from django.db.models import Count, IntegerField, OuterRef, Q, Subquery
 from django.db.models.functions import Coalesce
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.mixins import CreateModelMixin, UpdateModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework_gis.pagination import GeoJsonPagination
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
     from prototype.models import Project
 
-from analysis.models import GrainSize, LuminescenceDating
+from analysis.selectors import LOCATION_MEASUREMENT_COUNTS
 from prototype.api_permissions import IsProjectMember
 from prototype.mixins import _accessible_projects
 
@@ -40,7 +41,6 @@ from .serializers import (
     CampaignSerializer,
     ExposureTypeSerializer,
     LayerSerializer,
-    LocationFlatSerializer,
     LocationGeoSerializer,
     LocationMapSerializer,
     LocationWriteSerializer,
@@ -63,6 +63,37 @@ def _project_qs(
         return qs
     project_ids = _accessible_projects(user).values_list("id", flat=True)
     return qs.filter(project_id__in=project_ids)
+
+
+_MAX_MAP_FEATURES = 5000
+
+
+def _capped_list(qs: QuerySet, *, limit: int | None = None) -> list:
+    """Evaluate *qs* into a list, guarding against an unbounded response.
+
+    The map-dashboard `.map()` actions intentionally return everything at
+    once (a map wants every marker in view, not a page at a time) rather
+    than being paginated like the standard list endpoints — but with no
+    upper bound at all, a project with enough records returns one
+    arbitrarily large response. Raise instead of silently truncating:
+    silently dropping markers would misrepresent the data on a scientific
+    dashboard, and the map UI already has project/campaign/type filters to
+    narrow scope instead. One extra row is fetched (limit + 1) so this is a
+    single LIMIT query, not a separate COUNT.
+
+    *limit* defaults to the module-level _MAX_MAP_FEATURES, read at call
+    time (not as a default-argument value) so tests can patch it.
+    """
+    if limit is None:
+        limit = _MAX_MAP_FEATURES
+    capped = list(qs[: limit + 1])
+    if len(capped) > limit:
+        msg = (
+            f"This request would return more than {limit} features. "
+            "Narrow the result with a project/campaign/type filter."
+        )
+        raise ValidationError(msg)
+    return capped
 
 
 def _location_count_subquery(qs: QuerySet, location_lookup: str) -> Subquery:
@@ -146,6 +177,10 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
     """
 
     permission_classes = [IsAuthenticated]
+    # GeoJsonPagination wraps the page in a proper FeatureCollection shape
+    # instead of DRF's generic {"results": [...]} — required since the
+    # default read serializer (LocationGeoSerializer) is GeoJSON.
+    pagination_class = GeoJsonPagination
     filterset_fields = [
         "project",
         "campaign",
@@ -178,14 +213,19 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
         )
 
     def get_serializer_class(self) -> type[BaseSerializer]:
-        """Return the write serializer for updates; GeoJSON/flat JSON for reads."""
+        """Return the write serializer for updates; GeoJSON for reads.
+
+        Architecture-review fix: this used to branch on
+        `request.accepted_renderer.format` to pick between a flat
+        lon/lat serializer and this GeoJSON one — but with no custom
+        renderer registered, every real `application/json` client always
+        got the flat shape, and GeoJSON was only reachable via the HTML
+        browsable API. Standardized on GeoJSON always, matching
+        StudyAreaViewSet's convention — this is GIS data, and a client
+        wanting flat lon/lat can read `location.coordinates` itself.
+        """
         if self.action in ("update", "partial_update"):
             return LocationWriteSerializer
-        if (
-            getattr(self.request, "accepted_renderer", None)
-            and self.request.accepted_renderer.format == "json"
-        ):
-            return LocationFlatSerializer
         return LocationGeoSerializer
 
     def perform_update(self, serializer: BaseSerializer) -> None:
@@ -218,22 +258,20 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
                     _location_count_subquery(Sample.objects.all(), "location"),
                     0,
                 ),
-                luminescence_count=Coalesce(
-                    _location_count_subquery(
-                        LuminescenceDating.objects.all(), "sample__location"
-                    ),
-                    0,
-                ),
-                grain_size_count=Coalesce(
-                    _location_count_subquery(
-                        GrainSize.objects.all(), "sample__location"
-                    ),
-                    0,
-                ),
+                **{
+                    name: Coalesce(
+                        _location_count_subquery(model.objects.all(), lookup),
+                        0,
+                    )
+                    for name, (
+                        model,
+                        lookup,
+                    ) in LOCATION_MEASUREMENT_COUNTS.items()
+                },
             )
         )
         serializer = LocationMapSerializer(
-            qs, many=True, context={"request": request}
+            _capped_list(qs), many=True, context={"request": request}
         )
         return Response(serializer.data)
 
@@ -267,8 +305,10 @@ class StudyAreaViewSet(
 
     serializer_class = StudyAreaGeoSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = GeoJsonPagination
     filterset_fields = ["project"]
     search_fields = ["label"]
+    ordering_fields = ["label"]
     ordering = ["label"]
 
     def get_queryset(self) -> QuerySet[StudyArea]:
@@ -311,7 +351,7 @@ class StudyAreaViewSet(
         """Return a GeoJSON FeatureCollection for the map dashboard's study areas overlay."""
         qs = self.get_queryset().exclude(geometry__isnull=True)
         serializer = StudyAreaMapSerializer(
-            qs, many=True, context={"request": request}
+            _capped_list(qs), many=True, context={"request": request}
         )
         return Response(serializer.data)
 
@@ -329,6 +369,7 @@ class TransectViewSet(
     permission_classes = [IsAuthenticated]
     filterset_fields = ["study_area", "campaign"]
     search_fields = ["identifier"]
+    ordering_fields = ["identifier"]
     ordering = ["identifier"]
 
     def get_queryset(self) -> QuerySet[Transect]:
@@ -371,7 +412,7 @@ class TransectViewSet(
         """Return a GeoJSON FeatureCollection for the map dashboard's transects overlay."""
         qs = self.get_queryset().exclude(multiline__isnull=True)
         serializer = TransectMapSerializer(
-            qs, many=True, context={"request": request}
+            _capped_list(qs), many=True, context={"request": request}
         )
         return Response(serializer.data)
 
@@ -382,6 +423,7 @@ class LayerViewSet(ReadOnlyModelViewSet):
     serializer_class = LayerSerializer
     permission_classes = [IsProjectMember]
     filterset_fields = ["location"]
+    ordering_fields = ["location", "depth_top"]
     ordering = ["location", "depth_top"]
 
     def get_queryset(self) -> QuerySet[Layer]:
@@ -427,6 +469,7 @@ class ExposureTypeViewSet(ReadOnlyModelViewSet):
 
     queryset = ExposureType.objects.all()
     serializer_class = ExposureTypeSerializer
+    ordering_fields = ["name_en"]
     ordering = ["name_en"]
 
 
@@ -435,4 +478,5 @@ class SampleTypeViewSet(ReadOnlyModelViewSet):
 
     queryset = SampleType.objects.all()
     serializer_class = SampleTypeSerializer
+    ordering_fields = ["word"]
     ordering = ["word"]

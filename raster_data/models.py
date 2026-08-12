@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from django.conf import settings
 from django.contrib.gis.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 
 from prototype.models import BaseModel
@@ -142,6 +145,46 @@ class RasterScene(BaseModel):
     def effective_path(self) -> str:
         """Return corpus_path if set, else the FileField name."""
         return self.corpus_path or self.file.name or ""
+
+    def clean(self) -> None:
+        """Reject a corpus_path outside settings.RASTER_CORPUS_ROOT.
+
+        Without this, a user with only add_project/change_project on their
+        own project could point corpus_path at an arbitrary server
+        filesystem path, then use the "Recompute metadata from file" admin
+        action (which they also have access to, scoped to their own
+        project's scenes) to probe whether that path exists and read back
+        its CRS/bbox/band-count — a project-boundary bypass.
+
+        Relative values are resolved against RASTER_CORPUS_ROOT itself, not
+        the server process's working directory: a relative value with
+        enough leading ".." segments (e.g. "../../../../etc/passwd") walks
+        past any anchor and clamps at the filesystem root the same way an
+        absolute path would, so it must be checked too, not just rooted
+        values.
+        """
+        if self.corpus_path:
+            root = Path(settings.RASTER_CORPUS_ROOT).resolve()
+            candidate = Path(self.corpus_path)
+            # Checked via .root, not Path.is_absolute()/os.path.isabs(): both
+            # of those require an explicit drive letter on Windows, so a
+            # rooted POSIX-style value like "/etc/passwd" (drive='',
+            # root='\\') counts as neither "absolute" there, even though
+            # .resolve() anchors it to the current drive regardless (e.g.
+            # "C:\etc\passwd"). A genuinely relative value has root == "".
+            resolved = (
+                candidate.resolve()
+                if candidate.root
+                else (root / candidate).resolve()
+            )
+            if not resolved.is_relative_to(root):
+                msg = f"corpus_path must be under {root}."
+                raise ValidationError({"corpus_path": msg})
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Validate corpus_path before saving (see clean())."""
+        self.clean()
+        super().save(*args, **kwargs)
 
 
 class RasterDataset(BaseModel):

@@ -82,6 +82,7 @@ class AlgorithmViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ["programming_language"]
     search_fields = ["name", "description"]
+    ordering_fields = ["name", "version"]
     ordering = ["name"]
 
 
@@ -143,6 +144,7 @@ class PollenViewSet(ReadOnlyModelViewSet):
     serializer_class = PollenSerializer
     permission_classes = [IsAuthenticated]
     search_fields = ["name", "name_en", "name_german", "name_nor", "token"]
+    ordering_fields = ["name", "token"]
     ordering = ["name"]
 
 
@@ -152,6 +154,7 @@ class PollenCountViewSet(ReadOnlyModelViewSet):
     serializer_class = PollenCountSerializer
     permission_classes = [CountingScopedPermission]
     filterset_fields = ["counting", "pollen"]
+    ordering_fields = ["created_at"]
     ordering = ["-created_at"]
 
     def get_queryset(self) -> QuerySet[PollenCount]:
@@ -220,6 +223,7 @@ class ParameterViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ["unit"]
     search_fields = ["name", "token"]
+    ordering_fields = ["name", "token"]
     ordering = ["name"]
 
 
@@ -288,6 +292,7 @@ class MicroXRFElementMapViewSet(ReadOnlyModelViewSet):
     serializer_class = MicroXRFElementMapSerializer
     permission_classes = [MeasurementScopedPermission]
     filterset_fields = ["measurement", "element"]
+    ordering_fields = ["created_at"]
     ordering = ["-created_at"]
 
     def get_queryset(self) -> QuerySet[MicroXRFElementMap]:

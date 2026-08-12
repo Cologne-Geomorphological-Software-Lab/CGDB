@@ -31,6 +31,7 @@ from analysis.models import (
     RadiocarbonDating,
 )
 from field_data.models import Location, Sample
+from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
 logger = logging.getLogger(__name__)
@@ -134,7 +135,9 @@ def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
     if period_days not in {p["days"] for p in _PERIOD_OPTIONS}:
         period_days = 30
 
-    context.update(stat_data(period_days))
+    context.update(
+        stat_data(period_days, user=request.user if request else None)
+    )
     context["filters"] = [
         {
             "title": _(p["label"]),
@@ -146,11 +149,34 @@ def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
     return context
 
 
-def stat_data(period_days: int = 30) -> dict:
-    """Compute dashboard statistics for the given time window in days."""
+def stat_data(period_days: int = 30, user: object = None) -> dict:
+    """Compute dashboard statistics for the given time window in days.
+
+    Architecture-review fix (F14): previously ran every query unfiltered,
+    so any staff user (even one with zero project permissions) could infer
+    the existence/scale of projects and data they can't otherwise see. When
+    *user* is set and isn't a superuser, every query below is scoped to
+    that user's accessible projects, matching the scoping already applied
+    everywhere else in the admin/API (see prototype.mixins._accessible_projects).
+    *user=None* (e.g. dashboard_callback's request=None case) is treated
+    like a superuser — unscoped — since there's no user to scope against.
+    """
     now = timezone.now()
     since = now - timedelta(days=period_days)
     logger.debug("stat_data called at %s (period=%d days)", now, period_days)
+
+    scoped = user is not None and not getattr(user, "is_superuser", False)
+    project_ids = (
+        _accessible_projects(user).values_list("id", flat=True)
+        if scoped
+        else None
+    )
+
+    def _scope(queryset: QuerySet, project_lookup: str) -> QuerySet:
+        """Restrict *queryset* to accessible projects, unless unscoped."""
+        if project_ids is None:
+            return queryset
+        return queryset.filter(**{f"{project_lookup}__in": project_ids})
 
     def _pct(count: int, total: int) -> float:
         return round(count / total * 100, 2) if total > 0 else 0
@@ -187,17 +213,27 @@ def stat_data(period_days: int = 30) -> dict:
 
     # Projects
     project_total, project_period_count = _total_and_period(
-        Project.objects.all()
+        _scope(Project.objects.all(), "id")
     )
     logger.debug("Project total: %s", project_total)
 
-    # Locations
-    location_total, location_period_count = _total_and_period(
-        Location.objects.all()
-    )
+    # Locations — literature-sourced locations have no owning project, and
+    # (like everywhere else this pattern appears) stay visible regardless.
+    location_qs = Location.objects.all()
+    if project_ids is not None:
+        location_qs = location_qs.filter(
+            Q(project_id__in=project_ids) | Q(data_source="literature")
+        )
+    location_total, location_period_count = _total_and_period(location_qs)
 
-    # Samples
-    sample_total, sample_period_count = _total_and_period(Sample.objects.all())
+    # Samples — same literature exception as Location.
+    sample_qs = Sample.objects.all()
+    if project_ids is not None:
+        sample_qs = sample_qs.filter(
+            Q(project_id__in=project_ids)
+            | Q(location__data_source="literature")
+        )
+    sample_total, sample_period_count = _total_and_period(sample_qs)
 
     # Measurements
     measurement_models = [
@@ -207,7 +243,8 @@ def stat_data(period_days: int = 30) -> dict:
         RadiocarbonDating,
     ]
     measurement_totals = [
-        _total_and_period(m.objects.all()) for m in measurement_models
+        _total_and_period(_scope(m.objects.all(), "sample__location__project"))
+        for m in measurement_models
     ]
     measurements_total = sum(total for total, _period in measurement_totals)
     measurements_period_count = sum(
@@ -219,7 +256,7 @@ def stat_data(period_days: int = 30) -> dict:
 
     # Location type breakdown
     location_by_type_rows = list(
-        Location.objects.values("location_type")
+        location_qs.values("location_type")
         .annotate(n=Count("id"))
         .order_by("-n")
     )
@@ -235,10 +272,15 @@ def stat_data(period_days: int = 30) -> dict:
         }
         for row in location_by_type_rows
     ]
+    # Literature locations are visible to all staff regardless of project
+    # scoping (see location_qs above) — literature_count intentionally
+    # stays unscoped; only internal_count (project-owned data) is.
     literature_count = Location.objects.filter(
         data_source="literature"
     ).count()
-    internal_count = Location.objects.filter(data_source="internal").count()
+    internal_count = _scope(
+        Location.objects.filter(data_source="internal"), "project"
+    ).count()
 
     return {
         "project": [
@@ -278,6 +320,8 @@ def stat_data(period_days: int = 30) -> dict:
                             {
                                 "data": _build_monthly_performance(
                                     [GenericMeasurement, GrainSize],
+                                    "sample__location__project",
+                                    project_ids,
                                 ),
                                 "borderColor": "var(--color-primary-700)",
                             },
@@ -294,6 +338,8 @@ def stat_data(period_days: int = 30) -> dict:
                             {
                                 "data": _build_monthly_performance(
                                     [LuminescenceDating, RadiocarbonDating],
+                                    "sample__location__project",
+                                    project_ids,
                                 ),
                                 "borderColor": "var(--color-primary-300)",
                             },
@@ -308,7 +354,9 @@ def stat_data(period_days: int = 30) -> dict:
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance([Sample]),
+                                "data": _build_monthly_performance(
+                                    [Sample], "project", project_ids
+                                ),
                                 "borderColor": "var(--color-primary-500)",
                             },
                         ],
@@ -335,11 +383,19 @@ MONTH_NAMES = [
 ]
 
 
-def _build_monthly_performance(model_classes: list) -> list:
+def _build_monthly_performance(
+    model_classes: list,
+    project_lookup: str | None = None,
+    project_ids: QuerySet | None = None,
+) -> list:
     """Return a list of [month_label, count] pairs for the last 12 months.
 
     Uses one TruncMonth-grouped query per model instead of one .count() per
-    month, so N models cost N queries total instead of 12*N.
+    month, so N models cost N queries total instead of 12*N. If
+    *project_ids* is set, every model's queryset is additionally filtered
+    via *project_lookup* (the field path from that model back to Project,
+    e.g. "project" for Sample, "sample__location__project" for
+    measurement models) — see stat_data's F14 fix.
     """
     today = now()
     months = [
@@ -353,9 +409,11 @@ def _build_monthly_performance(model_classes: list) -> list:
     range_start = make_aware(datetime(months[0][0], months[0][1], 1))
 
     for model in model_classes:
+        qs = model.objects.filter(created_at__gte=range_start)
+        if project_ids is not None:
+            qs = qs.filter(**{f"{project_lookup}__in": project_ids})
         rows = (
-            model.objects.filter(created_at__gte=range_start)
-            .annotate(month=TruncMonth("created_at"))
+            qs.annotate(month=TruncMonth("created_at"))
             .values("month")
             .annotate(n=Count("id"))
         )

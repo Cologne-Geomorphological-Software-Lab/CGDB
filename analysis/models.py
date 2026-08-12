@@ -52,6 +52,11 @@ class Algorithm(models.Model):
         choices=CHOICES,
     )
 
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["name", "version"]
+
     def __str__(self) -> str:
         """Return the algorithm name."""
         return self.name

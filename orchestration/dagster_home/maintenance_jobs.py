@@ -199,22 +199,53 @@ def _coerce_df_columns(df) -> None:
             )
 
 
+_EXPORT_CHUNK_SIZE = 10_000
+
+
 def _export_model_table(conn, cfg, model, context) -> None:
-    """Export one model's queryset to a DuckDB table; log and swallow errors."""
+    """Export one model's queryset to a DuckDB table, in chunks; log and swallow errors.
+
+    Iterates via .iterator(chunk_size=...) and writes one DataFrame chunk
+    at a time (CREATE TABLE on the first non-empty chunk, INSERT for the
+    rest) instead of materializing list(qs) + one giant DataFrame — memory
+    use is bounded by chunk size, not total row count, for any "fact"-role
+    table (see DuckDBTableConfig.ROLES) that grows large.
+    """
     import pandas as pd
+
+    table_name = f"{cfg.app_label}__{cfg.model_name.lower()}"
+    table_created = False
+
+    def _write_chunk(rows: list) -> None:
+        nonlocal table_created
+        df = pd.DataFrame.from_records(rows)
+        _coerce_df_columns(df)
+        if not table_created:
+            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")  # noqa: S608  # nosec B608 — table_name derived from Django model metadata (app_label/model_name), not user input
+            table_created = True
+        else:
+            conn.execute(f"INSERT INTO {table_name} SELECT * FROM df")  # noqa: S608  # nosec B608 — see above
 
     try:
         qs = _get_queryset(model, cfg)
-        df = pd.DataFrame.from_records(list(qs))
-        table_name = f"{cfg.app_label}__{cfg.model_name.lower()}"
+        total_rows = 0
+        chunk: list = []
+        for row in qs.iterator(chunk_size=_EXPORT_CHUNK_SIZE):
+            chunk.append(row)
+            if len(chunk) >= _EXPORT_CHUNK_SIZE:
+                _write_chunk(chunk)
+                total_rows += len(chunk)
+                chunk = []
+        if chunk:
+            _write_chunk(chunk)
+            total_rows += len(chunk)
 
-        if df.empty:
+        if not table_created:
             context.log.info("Table %s is empty, skipping", table_name)
             return
-
-        _coerce_df_columns(df)
-        conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")  # noqa: S608  # nosec B608 — table_name derived from Django model metadata (app_label/model_name), not user input
-        context.log.info("Exported %d rows to table %s", len(df), table_name)
+        context.log.info(
+            "Exported %d rows to table %s", total_rows, table_name
+        )
     except Exception:  # noqa: BLE001
         context.log.error(
             "Failed to export %s.%s:\n%s",

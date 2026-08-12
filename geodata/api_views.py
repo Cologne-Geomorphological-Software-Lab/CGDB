@@ -2,7 +2,6 @@
 
 import json
 
-from django.contrib.auth.decorators import login_required
 from django.contrib.gis.db.models.functions import AsGeoJSON
 from django.contrib.gis.geos import Polygon
 from django.db import connection
@@ -126,9 +125,7 @@ class LandformViewSet(ReadOnlyModelViewSet):
                 status=400,
             )
 
-        from django.http import JsonResponse
-
-        return JsonResponse(self._geojson_for_bbox(bbox), safe=False)  # type: ignore[return-value]
+        return Response(self._geojson_for_bbox(bbox))
 
     def _geojson_for_bbox(
         self, bbox: tuple[float, float, float, float]
@@ -184,15 +181,21 @@ class LandformViewSet(ReadOnlyModelViewSet):
         return {"type": "FeatureCollection", "features": features}
 
 
-@login_required
 @require_GET
 def landform_tile(
-    request: HttpRequest,  # noqa: ARG001 — required by Django's URL dispatch signature
+    request: HttpRequest,
     z: int,
     x: int,
     y: int,
 ) -> HttpResponse:
     """Serve a Mapbox Vector Tile (MVT) of landform polygons for tile {z}/{x}/{y}.
+
+    Authentication is checked explicitly (403) rather than via Django's
+    @login_required — that decorator redirects to LOGIN_URL on failure,
+    which is the right behavior for a browser navigating pages but not for
+    a binary tile endpoint consumed by a map library; every other
+    authenticated endpoint in this API returns a plain 401/403, and this
+    one now matches instead of silently 302-redirecting a tile request.
 
     PostGIS-only: ST_AsMVT/ST_AsMVTGeom have no SpatiaLite equivalent, so this
     returns 501 on other backends rather than letting the raw SQL fail with a
@@ -216,6 +219,9 @@ def landform_tile(
     transforming the one tile envelope instead lets `geometry`'s GiST index
     do the filtering.
     """
+    if not request.user.is_authenticated:
+        return HttpResponse(status=403)
+
     if connection.vendor != "postgresql":
         return HttpResponse(status=501)
 

@@ -37,10 +37,16 @@ class Country(models.Model):
         help_text="ISO 3166-1 alpha-3 code",
     )
     geometry = models.MultiPolygonField(
+        srid=4326,
         blank=True,
         null=True,
         help_text="Country borders",
     )
+
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["name"]
 
     def __str__(self) -> str:
         """Return the country name or a fallback string."""
@@ -64,10 +70,16 @@ class Province(models.Model):
         help_text="Country this province belongs to",
     )
     geometry = models.MultiPolygonField(
+        srid=4326,
         blank=True,
         null=True,
         help_text="Province borders",
     )
+
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["name"]
 
     def __str__(self) -> str:
         """Return the province name or a fallback string."""
@@ -192,6 +204,7 @@ class StudyArea(BaseModel):
         null=True,
     )
     geometry = models.PolygonField(
+        srid=4326,
         blank=True,
         null=True,
     )
@@ -443,6 +456,7 @@ class Transect(BaseModel):
     )
     description = models.CharField(max_length=250)
     multiline = models.MultiLineStringField(
+        srid=4326,
         blank=True,
         null=True,
     )

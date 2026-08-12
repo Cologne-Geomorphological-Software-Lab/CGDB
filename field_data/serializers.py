@@ -77,6 +77,7 @@ class StudyAreaGeoSerializer(GeoFeatureModelSerializer):
             "id",
             "label",
             "project",
+            "province",
             "climate_koeppen",
             "ecozone_schultz",
         ]
@@ -275,50 +276,6 @@ class LocationGeoSerializer(GeoFeatureModelSerializer):
             "date_of_record",
             "easting",
             "northing",
-            "altitude",
-            "gps_accuracy",
-            "positioning_method",
-            "sampling",
-            "liner",
-            "gradient_upslope",
-            "gradient_downslope",
-            "slope_aspect",
-            "exposure_type",
-            "project",
-            "campaign",
-            "study_site",
-            "transect",
-            "created_at",
-            "modified_at",
-        ]
-
-
-class LocationFlatSerializer(serializers.ModelSerializer):
-    """Flat JSON serializer for Location — longitude/latitude as plain floats."""
-
-    longitude = serializers.SerializerMethodField()
-    latitude = serializers.SerializerMethodField()
-
-    def get_longitude(self, obj: Location) -> float | None:
-        """Return the WGS-84 longitude of the location point."""
-        return obj.location.x if obj.location else None
-
-    def get_latitude(self, obj: Location) -> float | None:
-        """Return the WGS-84 latitude of the location point."""
-        return obj.location.y if obj.location else None
-
-    class Meta:
-        """Serializer metadata."""
-
-        model = Location
-        fields = [
-            "id",
-            "identifier",
-            "data_source",
-            "location_type",
-            "date_of_record",
-            "longitude",
-            "latitude",
             "altitude",
             "gps_accuracy",
             "positioning_method",

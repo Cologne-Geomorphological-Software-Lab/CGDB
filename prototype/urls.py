@@ -21,10 +21,10 @@ from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from rest_framework.authtoken.views import obtain_auth_token
 
 from geodata.api_views import landform_tile
 from prototype.api_router import router
+from prototype.api_views import ThrottledObtainAuthToken
 from prototype.views import map_dashboard, wms_proxy
 
 urlpatterns = [
@@ -47,7 +47,11 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
-    path("api/v1/token-auth/", obtain_auth_token, name="api_token_auth"),
+    path(
+        "api/v1/token-auth/",
+        ThrottledObtainAuthToken.as_view(),
+        name="api_token_auth",
+    ),
     path("", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
 ]

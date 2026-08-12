@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 
 from django.contrib import admin, messages
 from django.db.models import Count
-from django.urls import reverse
+from django.http import FileResponse, Http404
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
@@ -27,7 +28,7 @@ from .models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
 if TYPE_CHECKING:
     from django.db.models import QuerySet
     from django.forms import ModelForm
-    from django.http import HttpRequest
+    from django.http import HttpRequest, HttpResponse
 
 _OP_NAME_BY_JOB_TYPE = {
     "backup": "run_pg_dump",
@@ -270,12 +271,52 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
 
     @display(description="Download")
     def download_link(self, obj: MaintenanceRun) -> str:
-        """Return an HTML download link when a result file is attached."""
+        """Return an HTML download link when a result file is attached.
+
+        Routed through `download_result` rather than `obj.result_file.url`
+        directly — in production Django doesn't serve MEDIA_URL at all (see
+        prototype/urls.py), so a raw `.url` link relies entirely on the
+        reverse proxy happening to gate /media/, which nothing enforces.
+        Result files are full database backups; this must stay superuser-only
+        regardless of how the proxy is configured.
+        """
         if obj.result_file:
-            return format_html(
-                '<a href="{}" download>Download</a>', obj.result_file.url
+            url = reverse(
+                "admin:orchestration_maintenancerun_download", args=[obj.pk]
             )
+            return format_html('<a href="{}" download>Download</a>', url)
         return "—"
+
+    def get_urls(self) -> list[object]:
+        """Add a superuser-gated download route alongside the default admin URLs."""
+        custom_urls = [
+            path(
+                "<int:object_id>/download/",
+                self.admin_site.admin_view(self.download_result),
+                name="orchestration_maintenancerun_download",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def download_result(
+        self, request: HttpRequest, object_id: int
+    ) -> HttpResponse:
+        """Stream a maintenance run's result file, superuser-only.
+
+        `admin_view()` already enforces staff-login; `has_view_permission`
+        above restricts the changelist/changeform to superusers, but that
+        check must be repeated here explicitly since this is a separate
+        view, not covered by ModelAdmin's own permission plumbing.
+        """
+        if not request.user.is_superuser:
+            raise Http404
+        run = self.get_object(request, str(object_id))
+        if run is None or not run.result_file:
+            raise Http404
+        filename = run.result_file.name.rsplit("/", 1)[-1]
+        return FileResponse(
+            run.result_file.open("rb"), as_attachment=True, filename=filename
+        )
 
     # ------------------------------------------------------------------
     # Admin action

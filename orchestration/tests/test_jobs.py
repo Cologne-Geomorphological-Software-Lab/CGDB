@@ -474,3 +474,36 @@ class TestExportModelTable:
         _export_model_table(conn, cfg, Project, context)  # must not raise
 
         context.log.error.assert_called_once()
+
+    def test_export_spanning_multiple_chunks_uses_create_then_insert(self):
+        """Architecture-review fix (F13): rows beyond the first chunk must
+        use INSERT INTO (not another CREATE TABLE, which would fail on the
+        second call), and every row must still be exported -- proving the
+        chunked rewrite doesn't drop or duplicate rows at a chunk boundary."""
+        from unittest.mock import patch
+
+        from orchestration.dagster_home.maintenance_jobs import _export_model_table
+        from prototype.models import Project
+
+        for i in range(5):
+            Project.objects.create(
+                title=f"ChunkT{i}", label=f"CT{i:02d}", status="ACTIVE"
+            )
+        cfg = self._make_cfg()
+        conn = MagicMock()
+        context = MagicMock()
+
+        with patch(
+            "orchestration.dagster_home.maintenance_jobs._EXPORT_CHUNK_SIZE", 2
+        ):
+            _export_model_table(conn, cfg, Project, context)
+
+        # 5 rows at chunk size 2 -> chunks of [2, 2, 1] -> 3 conn.execute calls.
+        assert conn.execute.call_count == 3
+        sqls = [call.args[0] for call in conn.execute.call_args_list]
+        assert sqls[0].startswith("CREATE TABLE prototype__project")
+        assert sqls[1].startswith("INSERT INTO prototype__project")
+        assert sqls[2].startswith("INSERT INTO prototype__project")
+        context.log.info.assert_called_with(
+            "Exported %d rows to table %s", 5, "prototype__project"
+        )

@@ -203,6 +203,28 @@ class MaintenanceRunAdminActionTests(TestCase):
         result = self.admin.download_link(run)
         self.assertEqual(result, "—")
 
+    def test_download_link_points_at_admin_view_not_raw_media_url(self):
+        """Architecture-review fix: the link must route through the
+        superuser-gated admin download view, not obj.result_file.url
+        directly -- Django doesn't serve MEDIA_URL at all in production
+        (see prototype/urls.py), so a raw .url link relies entirely on the
+        reverse proxy happening to gate /media/, which nothing enforces."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        run = MaintenanceRun.objects.create(job_type="backup")
+        run.result_file.save(
+            "backup.sql.gz", SimpleUploadedFile("backup.sql.gz", b"dump-bytes")
+        )
+        try:
+            result = self.admin.download_link(run)
+            expected_url = reverse(
+                "admin:orchestration_maintenancerun_download", args=[run.pk]
+            )
+            self.assertIn(expected_url, result)
+            self.assertNotIn(run.result_file.url, result)
+        finally:
+            run.result_file.delete(save=False)
+
     def test_status_display_returns_status_value(self):
         run = MaintenanceRun(job_type="backup", status="success")
         self.assertEqual(self.admin.status_display(run), "success")
@@ -355,6 +377,69 @@ class AdminChangelistAccessTests(TestCase):
         url = reverse("admin:orchestration_duckdbtableconfig_changelist")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
+
+
+class MaintenanceRunDownloadViewTests(TestCase):
+    """Integration tests for the F1 architecture-review fix: the result-file
+    download route must be reachable only by superusers, regardless of how
+    the reverse proxy is configured for /media/ in production."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.superuser = User.objects.create_superuser(
+            username="dl_super", password="pw", email="dls@test.com"
+        )
+        # Staff (not superuser) -- the realistic threat model: someone with
+        # *some* admin access, granted (even accidentally, per F4) view
+        # permission on the wrong model, but not full superuser rights.
+        cls.regular_user = User.objects.create_user(
+            username="dl_regular", password="pw", email="dlr@test.com",
+            is_staff=True,
+        )
+
+    def setUp(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.run = MaintenanceRun.objects.create(job_type="backup")
+        self.run.result_file.save(
+            "backup.sql.gz", SimpleUploadedFile("backup.sql.gz", b"dump-bytes")
+        )
+        self.addCleanup(lambda: self.run.result_file.delete(save=False))
+        self.url = reverse(
+            "admin:orchestration_maintenancerun_download", args=[self.run.pk]
+        )
+
+    def test_superuser_can_download(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b"".join(response.streaming_content), b"dump-bytes")
+
+    def test_regular_user_gets_404_not_the_file(self):
+        self.client.force_login(self.regular_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_anonymous_user_cannot_download(self):
+        response = self.client.get(self.url)
+        self.assertIn(response.status_code, (302, 403, 404))
+
+    def test_superuser_gets_404_when_run_has_no_file(self):
+        run = MaintenanceRun.objects.create(job_type="integrity")
+        url = reverse(
+            "admin:orchestration_maintenancerun_download", args=[run.pk]
+        )
+        self.client.force_login(self.superuser)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_superuser_gets_404_for_nonexistent_run(self):
+        url = reverse(
+            "admin:orchestration_maintenancerun_download", args=[999999]
+        )
+        self.client.force_login(self.superuser)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
 
 
 class IntegrityIssueInlineTests(TestCase):

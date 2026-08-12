@@ -4,8 +4,11 @@ Uses an empty DB so all counts start at zero – avoids ZeroDivisionError path
 being masked by leftover data.
 """
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
+
+from guardian.shortcuts import assign_perm
 
 from analysis.models import GrainSize
 from field_data.models import Location, Sample
@@ -142,6 +145,104 @@ class BuildMonthlyPerformanceTest(_ViewSetup):
         )
         result = _build_monthly_performance([Location, Sample])
         self.assertGreaterEqual(result[-1][1], 2)
+
+
+# ===========================================================================
+# stat_data() project scoping (architecture-review fix F14)
+# ===========================================================================
+
+
+class StatDataProjectScopingTest(_ViewSetup):
+    """A staff user with view_project on only one of two projects must not
+    see the other project's data reflected in the dashboard's aggregate
+    counts -- previously every query here ran unfiltered."""
+
+    def setUp(self):
+        self.visible_project = Project.objects.create(
+            title="Visible Project", label="VIS01", status="ACTIVE"
+        )
+        self.hidden_project = Project.objects.create(
+            title="Hidden Project", label="HID01", status="ACTIVE"
+        )
+        self.staff_user = User.objects.create_user(
+            username="dash_staff", password="pw", is_staff=True
+        )
+        assign_perm("view_project", self.staff_user, self.visible_project)
+
+        self.visible_location = Location.objects.create(
+            identifier="VIS_LOC",
+            project=self.visible_project,
+            data_source="internal",
+        )
+        Location.objects.create(
+            identifier="HID_LOC",
+            project=self.hidden_project,
+            data_source="internal",
+        )
+
+    def _project_metric(self, result, title):
+        tile = next(t for t in result["project"] if t["title"] == title)
+        return int(tile["metric"])
+
+    def test_superuser_sees_all_projects(self):
+        superuser = User.objects.create_superuser(
+            username="dash_super", password="pw"
+        )
+        result = stat_data(user=superuser)
+        self.assertEqual(self._project_metric(result, "Projects"), 2)
+        self.assertEqual(self._project_metric(result, "Locations"), 2)
+
+    def test_none_user_is_unscoped_like_before(self):
+        """dashboard_callback's request=None case must keep the pre-fix
+        (unscoped) behavior, not silently show zero data."""
+        result = stat_data(user=None)
+        self.assertEqual(self._project_metric(result, "Projects"), 2)
+
+    def test_scoped_staff_user_sees_only_accessible_project(self):
+        result = stat_data(user=self.staff_user)
+        self.assertEqual(self._project_metric(result, "Projects"), 1)
+        self.assertEqual(self._project_metric(result, "Locations"), 1)
+
+    def test_scoped_staff_user_with_no_permissions_sees_zero(self):
+        no_access_user = User.objects.create_user(
+            username="dash_noaccess", password="pw", is_staff=True
+        )
+        result = stat_data(user=no_access_user)
+        self.assertEqual(self._project_metric(result, "Projects"), 0)
+        self.assertEqual(self._project_metric(result, "Locations"), 0)
+
+    def test_location_breakdown_excludes_inaccessible_project(self):
+        result = stat_data(user=self.staff_user)
+        total_in_breakdown = sum(
+            row["n"] for row in result["location_breakdown"]
+        )
+        self.assertEqual(total_in_breakdown, 1)
+
+    def test_literature_locations_stay_visible_when_scoped(self):
+        """Literature-sourced data has no owning project and stays visible
+        to all staff, matching the same exception used elsewhere (API
+        querysets, admin get_queryset overrides)."""
+        from bibliography.models import Author, Reference
+
+        author = Author.objects.create(last_name="Geo", first_name="Test")
+        reference = Reference.objects.create(
+            title="Lit Ref", lead_author=author, abstract="x", type="Paper"
+        )
+        Location.objects.create(
+            identifier="LIT_LOC", data_source="literature", reference=reference
+        )
+        result = stat_data(user=self.staff_user)
+        # 1 accessible internal location + 1 literature location.
+        self.assertEqual(self._project_metric(result, "Locations"), 2)
+
+    def test_dashboard_callback_scopes_by_request_user(self):
+        from django.test import RequestFactory
+
+        request = RequestFactory().get("/")
+        request.user = self.staff_user
+        context = {}
+        dashboard_callback(request=request, context=context)
+        self.assertEqual(self._project_metric(context, "Projects"), 1)
 
 
 # ===========================================================================

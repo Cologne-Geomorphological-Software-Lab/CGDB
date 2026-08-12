@@ -90,7 +90,16 @@ class RasterDatasetSerializer(serializers.ModelSerializer):
         ]
 
     def get_scene_count(self, obj: RasterDataset) -> int:
-        """Return the number of scenes in this dataset."""
+        """Return the number of scenes in this dataset.
+
+        Reads the `scene_count` annotation RasterDatasetViewSet.get_queryset()
+        adds (Count("scenes")) — avoids one extra COUNT query per row on
+        every list page. Falls back to a direct count() if the annotation
+        is missing (e.g. this serializer used outside that viewset).
+        """
+        annotated: int | None = getattr(obj, "scene_count", None)
+        if annotated is not None:
+            return annotated
         return obj.scenes.count()
 
 

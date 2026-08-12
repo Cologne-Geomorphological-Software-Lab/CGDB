@@ -286,6 +286,19 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "prototype.exceptions.exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "user": "1000/hour",
+        # Deliberately much tighter than "anon" — this scope is used only by
+        # ThrottledObtainAuthToken (prototype/api_views.py) to slow down
+        # credential-stuffing against the login endpoint specifically.
+        "login": "10/hour",
+    },
 }
 
 SPECTACULAR_SETTINGS = {
@@ -329,6 +342,11 @@ UNFOLD["STYLES"] = [
 DEBUG = False
 ALLOWED_HOSTS: list[str] = []
 
+# Base directory raster_data.RasterScene.corpus_path must resolve under
+# (absolute values only — see RasterScene.clean()). Override in
+# local_settings.py if the server's actual raster corpus lives elsewhere.
+RASTER_CORPUS_ROOT = Path("/corpus")
+
 try:
     from .local_settings import *  # noqa: F401, F403
 except ImportError:
@@ -340,6 +358,32 @@ if not globals().get("SECRET_KEY"):
     raise ImproperlyConfigured(
         "SECRET_KEY is not set. Add it to prototype/local_settings.py."
     )
+
+# Unlike SECRET_KEY, Django's own defaults for these are all insecure
+# (SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False,
+# CSRF_COOKIE_SECURE=False, SECURE_HSTS_SECONDS=0) — a local_settings.py
+# that copies local_settings_TEMPLATE.py but skips or deletes this block
+# would silently fall back to them with no warning at all in production.
+# Only checked when DEBUG=False, so local development (no HTTPS) isn't
+# blocked by this.
+if not DEBUG:
+    _missing_security_settings = [
+        name
+        for name in (
+            "SECURE_SSL_REDIRECT",
+            "SESSION_COOKIE_SECURE",
+            "CSRF_COOKIE_SECURE",
+            "SECURE_HSTS_SECONDS",
+        )
+        if not globals().get(name)
+    ]
+    if _missing_security_settings:
+        raise ImproperlyConfigured(
+            "The following production security settings are missing or "
+            f"falsy: {', '.join(_missing_security_settings)}. Set them in "
+            "prototype/local_settings.py — see "
+            "local_settings_TEMPLATE.py for the expected values."
+        )
 
 # ==============================================================================
 # FRONTEND BUILD (Vite)

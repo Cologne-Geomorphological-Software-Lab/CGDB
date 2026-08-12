@@ -63,11 +63,6 @@ class LandformTileTest(_BaseTileTest):
         assert resp.status_code == 200
         assert resp["Content-Type"] == "application/x-protobuf"
 
-    def test_unauthenticated_redirects_to_login(self) -> None:
-        anon = cast("_TestClient", Client())
-        resp = anon.get(_TILE_URL)
-        assert resp.status_code == 302
-
     def test_cache_control_header_present(self) -> None:
         resp = self.client.get(_TILE_URL)
         assert "max-age" in resp["Cache-Control"]
@@ -79,3 +74,15 @@ class LandformTileSpatialiteGuardTest(_BaseTileTest):
     def test_non_postgres_backend_returns_501(self) -> None:
         resp = self.client.get(_TILE_URL)
         assert resp.status_code == 501
+
+    def test_unauthenticated_returns_403_not_a_login_redirect(self) -> None:
+        """Architecture-review fix (F18): landform_tile used to rely on
+        Django's @login_required, which redirects (302) to LOGIN_URL on
+        failure -- the wrong shape for a binary tile endpoint consumed by a
+        map library, and inconsistent with every other authenticated
+        endpoint in this API returning a plain 401/403. The auth check now
+        runs (and returns 403) before the PostGIS-vendor check, so this is
+        verifiable without a real PostGIS backend."""
+        anon = cast("_TestClient", Client())
+        resp = anon.get(_TILE_URL)
+        assert resp.status_code == 403

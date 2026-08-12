@@ -4,12 +4,14 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 from guardian.shortcuts import assign_perm
 
+from field_data.models import Location
 from prototype.api_permissions import (
     CountingScopedPermission,
     IsProjectMember,
     MeasurementScopedPermission,
     ProjectPathPermission,
     SampleScopedPermission,
+    _is_literature_object,
 )
 from prototype.models import Project
 
@@ -22,6 +24,30 @@ def _make_request(user):
     r = RequestFactory().get("/")
     r.user = user
     return r
+
+
+class IsLiteratureObjectTest(TestCase):
+    """Architecture-review fix (F22): _is_literature_object() replaced the
+    old getattr(obj, "data_source", None) == "literature" fallback with an
+    explicit allowlist (_LITERATURE_ELIGIBLE_MODELS), so an object merely
+    *presenting* a matching data_source attribute isn't enough on its own —
+    it must also be a model the exception is actually meant to cover."""
+
+    def test_location_with_literature_data_source_is_eligible(self):
+        loc = Location(data_source="literature")
+        self.assertTrue(_is_literature_object(loc))
+
+    def test_location_with_internal_data_source_is_not_eligible(self):
+        loc = Location(data_source="internal")
+        self.assertFalse(_is_literature_object(loc))
+
+    def test_non_location_object_is_never_eligible_even_if_it_looks_like_one(self):
+        obj = _Obj()
+        obj.data_source = "literature"
+        self.assertFalse(_is_literature_object(obj))
+
+    def test_object_with_no_data_source_attribute_is_not_eligible(self):
+        self.assertFalse(_is_literature_object(_Obj()))
 
 
 class IsProjectMemberTest(TestCase):
@@ -104,10 +130,27 @@ class IsProjectMemberTest(TestCase):
 
     # --- has_object_permission: no project ---
 
-    def test_literature_object_allowed_without_project(self):
+    def test_literature_location_allowed_without_project(self):
+        """A real Location (the only model on the literature allowlist —
+        see F22) with no project is still allowed, matching the pre-fix
+        behavior for the one model this exception actually exists for."""
+        obj = Location(data_source="literature")
+        self.assertTrue(
+            self.perm.has_object_permission(
+                _make_request(self.user), None, obj
+            )
+        )
+
+    def test_non_location_literature_lookalike_without_project_denied(self):
+        """Architecture-review fix (F22) regression: before the explicit
+        allowlist, any object with no resolvable project fell through to
+        getattr(obj, "data_source", None) == "literature" — which any
+        object presenting that attribute could satisfy, whether or not it
+        was actually a model this exception was meant to cover. Must now
+        be denied since _Obj isn't Location."""
         obj = _Obj()
         obj.data_source = "literature"
-        self.assertTrue(
+        self.assertFalse(
             self.perm.has_object_permission(
                 _make_request(self.user), None, obj
             )
@@ -235,11 +278,15 @@ class ProjectPathPermissionTest(TestCase):
             )
         )
 
-    def test_broken_chain_falls_back_to_literature_check(self):
+    def test_broken_chain_non_location_literature_lookalike_denied(self):
+        """Architecture-review fix (F22) regression: same as
+        IsProjectMemberTest's — a broken traversal chain landing on an
+        object that merely presents data_source="literature" must be
+        denied unless that object is actually Location."""
         obj = _Obj()
         obj.data_source = "literature"
         perm = SampleScopedPermission()
-        self.assertTrue(
+        self.assertFalse(
             perm.has_object_permission(_make_request(self.user), None, obj)
         )
 

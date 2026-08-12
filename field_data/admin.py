@@ -235,6 +235,37 @@ class BulkTagActionMixin:
 
     actions = ["add_tags_to_selected", "remove_tags_from_selected"]
 
+    def _bulk_write_tags(
+        self, queryset: QuerySet[Any], tags: list[Tag], verb: str
+    ) -> None:
+        """Add/remove *tags* on every object in *queryset* in bulk.
+
+        Writes directly through the "tags" M2M's auto-generated through
+        model instead of looping `obj.tags.add(*tags)`/`.remove(*tags)`
+        once per selected object — the loop issued one M2M query (or more)
+        per object, O(N) round-trips for an N-object admin selection.
+        Field names (self_field/tag_field) are derived from the M2M field
+        itself so this works for every model that includes this mixin
+        (Location/Sample/Site/Layer all define their own "tags" field).
+        """
+        m2m_field = self.model._meta.get_field("tags")  # type: ignore[attr-defined]
+        through = m2m_field.remote_field.through
+        self_field = m2m_field.m2m_field_name()
+        tag_field = m2m_field.m2m_reverse_field_name()
+        if verb == "add":
+            through.objects.bulk_create(
+                [
+                    through(**{self_field: obj, tag_field: tag})
+                    for obj in queryset
+                    for tag in tags
+                ],
+                ignore_conflicts=True,
+            )
+        else:
+            through.objects.filter(
+                **{f"{self_field}__in": queryset, f"{tag_field}__in": tags}
+            ).delete()
+
     def _bulk_tag_action(
         self,
         request: HttpRequest,
@@ -253,12 +284,7 @@ class BulkTagActionMixin:
             if form.is_valid():
                 selected_tags = list(form.cleaned_data["tags"])
                 count = queryset.count()
-                if verb == "add":
-                    for obj in queryset:
-                        obj.tags.add(*selected_tags)
-                else:
-                    for obj in queryset:
-                        obj.tags.remove(*selected_tags)
+                self._bulk_write_tags(queryset, selected_tags, verb)
                 past = "added to" if verb == "add" else "removed from"
                 self.message_user(  # type: ignore[attr-defined]
                     request,
@@ -619,6 +645,16 @@ class StudyAreaAdmin(
     list_filter_submit = True
     inlines = [SiteStackedInline]
 
+    def get_queryset(self, request: HttpRequest) -> QuerySet[StudyArea]:
+        """Return queryset with related project and province pre-fetched.
+
+        Avoids one extra query per FK column per row on the changelist —
+        list_display includes both.
+        """
+        return (
+            super().get_queryset(request).select_related("project", "province")
+        )
+
     fieldsets = (
         (
             "Study Area",
@@ -670,6 +706,11 @@ class SiteAdmin(
     ]
     list_filter_sheet = False
     list_filter_submit = True
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Site]:
+        """Return queryset with related study_area pre-fetched."""
+        return super().get_queryset(request).select_related("study_area")
+
     fieldsets = (
         (
             "Data",
@@ -712,6 +753,14 @@ class CampaignAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
     ]
     list_filter_sheet = False
     list_filter_submit = True
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Campaign]:
+        """Return queryset with related project and destination_country pre-fetched."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("project", "destination_country")
+        )
 
     @display(
         label={
@@ -1165,6 +1214,14 @@ class TagAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
     list_filter_sheet = False
     list_filter_submit = True
 
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Tag]:
+        """Return queryset with related content_type and project pre-fetched."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("content_type", "project")
+        )
+
     def get_search_results(
         self,
         request: HttpRequest,
@@ -1237,6 +1294,14 @@ class TransectAdmin(
     list_filter_sheet = False
     list_filter_submit = True
     raw_id_fields = ["study_area", "campaign"]
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Transect]:
+        """Return queryset with related study_area and campaign pre-fetched."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("study_area", "campaign")
+        )
 
     fieldsets = (
         (
