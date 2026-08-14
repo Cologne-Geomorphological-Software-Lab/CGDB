@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.sites import AdminSite
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from django.test import RequestFactory, TestCase
 
 from guardian.shortcuts import assign_perm
@@ -708,3 +708,103 @@ class HybridPermissionMethodsTest(_MixinSetup):
         qs = self.sample_admin.get_queryset(request)
         self.assertIn(self.sample_via_loc, qs)
         self.assertIn(self.sample_no_proj, qs)
+
+
+# ===========================================================================
+# Null-project fallback (tech debt P11)
+#
+# When the resolved project is None and the object isn't a recognized
+# literature record, ProjectBasedPermissionMixin/NestedProjectPermissionMixin/
+# HybridProjectPermissionMixin all fall through to Django's default
+# has_*_permission, which IGNORES obj entirely and grants access on the
+# blanket per-model Django permission alone -- the same fail-open shape the
+# DRF layer's _is_literature_object allowlist (prototype/api_permissions.py)
+# was written to close. These admin mixins were never updated to match.
+#
+# In the normal changelist/change_view flow this branch is hard to reach:
+# get_object() is filtered through get_queryset(), which excludes any object
+# whose resolved project can't be verified, so a direct request for such an
+# object 404s before has_change_permission is ever called with it. These
+# tests call the mixin methods directly instead (same technique
+# test_admin_project_scoping.py already uses) to characterize what the code
+# actually does *if* this branch is reached -- e.g. via Django's
+# get_deleted_objects() cascade-delete confirmation, which walks related
+# objects independently of any single admin's get_queryset.
+# ===========================================================================
+
+
+class NullProjectFallbackTest(_MixinSetup):
+    def setUp(self):
+        super().setUp()
+        self.loc_admin = _LocationAdmin(Location, self.site)
+        self.blanket_user = User.objects.create_user(
+            username="mixin_blanket_perm_only", password="pw"
+        )
+
+    def _grant_blanket_change_permission(
+        self, user: User, app_label: str, model_name: str
+    ) -> None:
+        perm = Permission.objects.get(
+            content_type__app_label=app_label,
+            codename=f"change_{model_name}",
+        )
+        user.user_permissions.add(perm)
+
+    def test_project_based_mixin_fails_open_on_null_project(self):
+        """A null-project, non-literature Location: has_change_permission
+        falls through to Django's default check, which ignores obj and
+        grants access on the blanket permission alone."""
+        self._grant_blanket_change_permission(
+            self.blanket_user, "field_data", "location"
+        )
+        orphan = Location(
+            identifier="ORPHAN", data_source="internal", project=None
+        )
+        request = _make_request(self.blanket_user)
+        self.assertTrue(
+            self.project_admin.has_change_permission(request, obj=orphan)
+        )
+
+    def test_project_based_mixin_literature_object_still_denied(self):
+        """The one carve-out that IS handled: a data_source='literature'
+        object is explicitly denied even with the blanket permission --
+        confirms the gap is specific to non-literature null-project
+        objects, not a wholesale failure of the mixin."""
+        self._grant_blanket_change_permission(
+            self.blanket_user, "field_data", "location"
+        )
+        lit = Location(
+            identifier="LIT", data_source="literature", project=None
+        )
+        request = _make_request(self.blanket_user)
+        self.assertFalse(
+            self.project_admin.has_change_permission(request, obj=lit)
+        )
+
+    def test_nested_mixin_fails_open_on_null_project(self):
+        """NestedProjectPermissionMixin has no literature carve-out at all --
+        any object whose project_path resolves to None falls straight
+        through to the blanket-permission check."""
+        self._grant_blanket_change_permission(
+            self.blanket_user, "field_data", "location"
+        )
+        orphan = Location(
+            identifier="ORPHAN2", data_source="internal", project=None
+        )
+        request = _make_request(self.blanket_user)
+        self.assertTrue(
+            self.loc_admin.has_change_permission(request, obj=orphan)
+        )
+
+    def test_hybrid_mixin_fails_open_on_null_project(self):
+        """HybridProjectPermissionMixin has no literature carve-out either --
+        a Sample with neither a direct project nor a location falls through
+        to the blanket-permission check."""
+        self._grant_blanket_change_permission(
+            self.blanket_user, "field_data", "sample"
+        )
+        orphan = Sample(identifier="ORPHAN3", project=None, location=None)
+        request = _make_request(self.blanket_user)
+        self.assertTrue(
+            self.sample_admin.has_change_permission(request, obj=orphan)
+        )
