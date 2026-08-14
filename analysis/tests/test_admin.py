@@ -8,14 +8,15 @@ Sample URL hierarchy:
 - get_changeform_initial_data: pre-fills sample FK from preserved_filters
 """
 
+from django.contrib import admin as django_admin
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from analysis.models import GenericMeasurement, Parameter
 from field_data.models import Location, Sample
 from laboratory.models import Method
-from prototype.models import Project
+from prototype.models import Project, Researcher
 
 
 class _AdminSetup(TestCase):
@@ -190,3 +191,73 @@ class InitialDataTest(_AdminSetup):
         self.assertEqual(response.status_code, 200)
         form = response.context_data["adminform"].form
         self.assertIn("sample", form.initial)
+
+
+# ===========================================================================
+# RawMeasurementAdmin — M2M ordering must not duplicate changelist rows
+# (tech debt A5)
+# ===========================================================================
+
+
+class RawMeasurementAdminOrderingTest(TestCase):
+    """RawMeasurementAdmin.ordering traverses the `sample` ManyToManyField
+    (sample__location__project, sample__location) - a record linked to 2+
+    samples must still appear exactly once in the changelist queryset."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from analysis.models import RawMeasurement
+        from laboratory.models import Device
+
+        cls.superuser = User.objects.create_superuser(
+            "rma_admin", "rma@test.com", "pw"
+        )
+        cls.project = Project.objects.create(
+            title="RMA Test Project", label="RMA01", status="ACTIVE"
+        )
+        cls.location = Location.objects.create(
+            identifier="RMA_LOC", data_source="internal", project=cls.project
+        )
+        cls.sample_a = Sample.objects.create(
+            identifier="RMA_S_A", project=cls.project, location=cls.location
+        )
+        cls.sample_b = Sample.objects.create(
+            identifier="RMA_S_B", project=cls.project, location=cls.location
+        )
+        cls.device = Device.objects.create(name="RMA Device")
+        cls.researcher = Researcher.objects.create(
+            user=User.objects.create_user(username="rma_researcher"),
+            academic_rank="D",
+            position="WiMa",
+        )
+        cls.multi_sample_measurement = RawMeasurement.objects.create(
+            project=cls.project,
+            device=cls.device,
+            researcher=cls.researcher,
+            file=SimpleUploadedFile("rma_test.txt", b"data"),
+        )
+        cls.multi_sample_measurement.sample.set([cls.sample_a, cls.sample_b])
+
+    def setUp(self):
+        self.client.force_login(self.superuser)
+
+    def test_changelist_queryset_has_no_duplicate_rows(self):
+        from analysis.admin import RawMeasurementAdmin
+        from analysis.models import RawMeasurement
+
+        admin_instance = RawMeasurementAdmin(RawMeasurement, django_admin.site)
+        request = RequestFactory().get("/")
+        request.user = self.superuser
+        qs = admin_instance.get_queryset(request)
+        matches = list(qs.filter(pk=self.multi_sample_measurement.pk))
+        self.assertEqual(len(matches), 1)
+
+    def test_changelist_view_lists_measurement_once(self):
+        url = reverse("admin:analysis_rawmeasurement_changelist")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context_data["cl"].result_count, 1
+        )

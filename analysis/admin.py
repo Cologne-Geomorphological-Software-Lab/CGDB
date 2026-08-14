@@ -259,7 +259,15 @@ class RawMeasurementAdmin(
         "file",
         "description",
     ]
-    ordering = ["sample__location__project", "sample__location", "sample"]
+    # No custom `ordering`: RawMeasurement.sample is a ManyToManyField, and
+    # Django's base ModelAdmin.get_queryset() applies `ordering` via
+    # .order_by() *before* any .distinct() an override could add. Ordering
+    # through sample__location__project/sample__location/sample forces
+    # those join columns into the SELECT list (required to support the
+    # ORDER BY on a DISTINCT query), which defeats distinct()'s
+    # deduplication - any record linked to 2+ samples renders as one
+    # changelist row per linked sample. Falls back to BaseModel.Meta's
+    # -modified_at/-created_at instead, which doesn't have this problem.
 
     search_fields = ["description", "sample__identifier"]
     raw_id_fields = ["device", "accessories", "researcher"]

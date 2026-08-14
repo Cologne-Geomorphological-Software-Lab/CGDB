@@ -214,7 +214,7 @@ class Counting(BaseModel):
     ]
     type = models.CharField(choices=COUNTING_CHOICES, max_length=50)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for Counting."""
 
         verbose_name = "Counting"
@@ -257,7 +257,7 @@ class Pollen(BaseModel):
         blank=True,
     )
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for Pollen."""
 
         verbose_name = "Pollen"
@@ -289,7 +289,7 @@ class PollenCount(BaseModel):
     )
     number = models.IntegerField()
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for PollenCount."""
 
         verbose_name = "Pollen Count"
@@ -492,10 +492,7 @@ class LuminescenceDating(BaseModel):
 
     year_of_publication = models.PositiveIntegerField(
         default=current_year,
-        validators=[
-            MinValueValidator(1984),
-            MaxValueValidator(current_year()),
-        ],
+        validators=[MinValueValidator(1984), max_value_current_year],
         blank=True,
         null=True,
     )
@@ -1162,7 +1159,7 @@ class CosmogenicNuclideDating(BaseModel):
         nuclide_str = self.nuclide or "Unknown"
         return f"{lab_id} ({nuclide_str})"
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for CosmogenicNuclideDating."""
 
         verbose_name = "Cosmogenic Nuclide Dating"
@@ -1689,7 +1686,7 @@ class GrainSize(BaseModel):
         """Return a label combining sample identifier and measurement method."""
         return str(self.sample) + ", " + str(self.method)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for GrainSize."""
 
         verbose_name_plural = "Grain size"
@@ -1756,7 +1753,7 @@ class MicroXRFMeasurement(BaseModel):
         """Return a label with sample and measurement date."""
         return f"MicroXRF {self.sample} ({self.measurement_date})"
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for MicroXRFMeasurement."""
 
         verbose_name = "MicroXRF"
