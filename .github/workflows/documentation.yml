@@ -10,25 +10,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
       - uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
       - name: Install system packages (GDAL etc.)
         run: |
           sudo apt-get update
           sudo apt-get install -y binutils libproj-dev gdal-bin
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: uv sync
       - name: Sphinx build
         run: |
           cd docs
-          sphinx-apidoc -o ./source ../analysis -f
-          make html
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        with:
-          publish_branch: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/build/html
-          force_orphan: true
+          uv run sphinx-apidoc -o ./source ../analysis -f
+          uv run make html
+      # Deploy to GitHub Pages is intentionally disabled: docs/source only
+      # documents the analysis app today (see TECH_DEBT_AUDIT.md X10) -
+      # auto-publishing a near-empty site as if it were the project's real
+      # docs would be misleading. The build step above still runs on every
+      # push, so breakage is caught; re-enable this step once index.rst
+      # covers all apps.
+      # - name: Deploy to GitHub Pages
+      #   uses: peaceiris/actions-gh-pages@v3
+      #   if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      #   with:
+      #     publish_branch: gh-pages
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     publish_dir: docs/build/html
+      #     force_orphan: true

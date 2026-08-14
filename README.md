@@ -34,12 +34,12 @@ git clone git@github.com:Cologne-Geomorphological-Software-Lab/CGDB.git
 cd CGDB
 ```
 
-Set up a virtual environment, activate it and install the project's dependencies:
+Set up a virtual environment, activate it, and install the project's dependencies with [uv](https://docs.astral.sh/uv/):
 
 ```
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 Create a copy of prototype *local_settings_TEMPLATE.py* as *local_settings.py*:
@@ -313,10 +313,9 @@ Django itself. To inspect run history/logs without a UI, use the `dagster`
 CLI (e.g. `dagster run list`, `dagster run logs <run-id>`) against the same
 `DAGSTER_HOME`, or read `MaintenanceRun.log`/`result_file` in the admin.
 
-1. Uncomment Dagster dependencies in `requirements.txt` and install:
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. Dagster's dependencies are already part of the project's dependency set
+   (`uv sync`, see "Installation for local development" above) — nothing to
+   uncomment or install separately.
 
 2. Set the Dagster home directory:
    ```bash

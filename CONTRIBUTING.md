@@ -56,7 +56,7 @@ When filing a feature request:
    python -m venv .venv
    .venv\Scripts\activate      # Windows
    source .venv/bin/activate   # Linux/macOS
-   pip install -r requirements.txt
+   uv sync
    ```
 
 2. Create `CGDB/prototype/local_settings.py` with your database credentials, `SECRET_KEY`, `DEBUG = True`, and `ALLOWED_HOSTS`. Use `prototype/local_settings.example.py` as a template.
