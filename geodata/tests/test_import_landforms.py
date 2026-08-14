@@ -124,6 +124,30 @@ def test_import_custom_source_value_propagates(tmp_path: Path) -> None:
 
 
 @pytest.mark.django_db
+def test_import_reads_process_and_notes_in_pascal_case(tmp_path: Path) -> None:
+    """tech debt LBG16: process/notes must read the source's PascalCase keys
+    (Process/Notes), matching every other property in this file -- the old
+    lowercase lookups left both columns empty on every import. process is a
+    PositiveSmallIntegerField (a process code), like its Structure/MoistDry/
+    Topog siblings -- not free text."""
+    geojson = _write_geojson(
+        tmp_path,
+        [
+            _feature(
+                _POLY_A,
+                BridNam="Region A",
+                Process=3,
+                Notes="Field-verified 2022",
+            ),
+        ],
+    )
+    call_command("import_landforms", str(geojson))
+    landform = Landform.objects.get()
+    assert landform.process == 3
+    assert landform.notes == "Field-verified 2022"
+
+
+@pytest.mark.django_db
 def test_import_missing_file_raises_command_error(tmp_path: Path) -> None:
     """A nonexistent geojson path raises CommandError, not a raw exception."""
     from django.core.management.base import CommandError
