@@ -15,6 +15,7 @@ import { wirePopupClose, wireClickHandler } from './ui/popup.js';
 import { initSearch } from './ui/search.js';
 import { wireSidebarTabs, wireSidebarToggle } from './ui/sidebar.js';
 import { initToolbar } from './ui/toolbar.js';
+import { showValidationError } from './edit/validationErrors.js';
 
 const configEl = document.getElementById('cgdb-map-config');
 const config = JSON.parse(configEl.textContent);
@@ -56,13 +57,24 @@ const trackedFetchLocations = trackLoading('locations', setLayerLoading, fetchLo
 const trackedLoadStudyAreas = trackLoading('study_areas', setLayerLoading, loadStudyAreas);
 const trackedLoadTransects = trackLoading('transects', setLayerLoading, loadTransects);
 
+// A failed layer load must never fail silently — the spinner already
+// clears (trackLoading's finally), but without this the map just shows
+// nothing with no indication why. Reuses the edit flow's existing toast
+// rather than a separate error-UI pattern.
+function reportLoadError(err) {
+  console.error(err);
+  showValidationError(err.message || 'Failed to load map data.');
+}
+
 let allLocationFeatures = [];
-trackedFetchLocations(geojsonUrls.locations).then((features) => {
-  allLocationFeatures = features;
-  applyFilter(allLocationFeatures);
-  populateFilterDropdowns(allLocationFeatures);
-});
+trackedFetchLocations(geojsonUrls.locations)
+  .then((features) => {
+    allLocationFeatures = features;
+    applyFilter(allLocationFeatures);
+    populateFilterDropdowns(allLocationFeatures);
+  })
+  .catch(reportLoadError);
 wireFilterControls(() => applyFilter(allLocationFeatures));
 
-trackedLoadStudyAreas(geojsonUrls.study_areas);
-trackedLoadTransects(geojsonUrls.transects);
+trackedLoadStudyAreas(geojsonUrls.study_areas).catch(reportLoadError);
+trackedLoadTransects(geojsonUrls.transects).catch(reportLoadError);

@@ -14,6 +14,7 @@ export const transectsLayer = new VectorLayer({
 
 export async function loadTransects(url) {
   const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to load transects (HTTP ${resp.status})`);
   const data = await resp.json();
   transectSource.addFeatures(geojsonFormat.readFeatures(data));
 }

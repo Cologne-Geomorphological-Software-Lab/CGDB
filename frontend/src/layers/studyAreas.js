@@ -14,6 +14,7 @@ export const studyAreasLayer = new VectorLayer({
 
 export async function loadStudyAreas(url) {
   const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to load study areas (HTTP ${resp.status})`);
   const data = await resp.json();
   studyAreaSource.addFeatures(geojsonFormat.readFeatures(data));
 }

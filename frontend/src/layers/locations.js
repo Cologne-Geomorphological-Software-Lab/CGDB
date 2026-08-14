@@ -23,6 +23,7 @@ export const locationsLayer = new VectorLayer({
 // ui/filters.js's client-side filtering.
 export async function fetchLocations(url) {
   const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to load locations (HTTP ${resp.status})`);
   const data = await resp.json();
   return geojsonFormat.readFeatures(data);
 }
