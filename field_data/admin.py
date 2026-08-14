@@ -11,8 +11,10 @@ from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
+from django.db.models import FileField
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-from django.urls import path
+from django.urls import path, reverse
 from import_export.admin import ExportMixin, ImportExportMixin
 from unfold.admin import (
     GenericTabularInline,
@@ -64,10 +66,63 @@ from .resources import (
 )
 
 if TYPE_CHECKING:
+    from django.contrib.auth.models import User
     from django.db.models import Field as DBField
     from django.db.models import QuerySet
     from django.forms import Field, ModelChoiceField
     from django.http import HttpRequest, HttpResponse
+
+    from prototype.models import Project
+
+
+def _project_for_field_photo_target(obj: object) -> Project | None:
+    """Resolve the owning Project for a FieldPhoto's content_object.
+
+    FieldPhoto attaches via a GenericForeignKey to Location or Layer today
+    (see FieldPhoto's own docstring) - Location has a direct project FK,
+    Layer reaches it via location.project. Returns None (fail closed) for
+    any content_object type this doesn't recognize, rather than guessing.
+    """
+    if isinstance(obj, Location):
+        return obj.project
+    if isinstance(obj, Layer):
+        # Layer.location is a required (non-nullable) FK - always set.
+        return obj.location.project
+    return None
+
+
+class _ProtectedFieldFileProxy:
+    """Wraps a bound FieldFile so the admin file widget links to a URL.
+
+    Points at the permission-gated download view instead of the raw (in
+    production, unauthenticated) media URL - see FieldPhotoAdmin.download_file.
+    """
+
+    def __init__(self, field_file: object, protected_url: str) -> None:
+        self._field_file = field_file
+        self.url = protected_url
+
+    def __str__(self) -> str:
+        return str(self._field_file)
+
+
+class _ProtectedClearableFileInput(django_forms.ClearableFileInput):
+    """ClearableFileInput whose "Currently: <link>" points elsewhere.
+
+    Uses the protected download view instead of the FieldFile's raw .url.
+    """
+
+    def format_value(self, value: object) -> object:  # type: ignore[override]
+        formatted = super().format_value(value)
+        if formatted is None:
+            return None
+        instance = getattr(formatted, "instance", None)
+        if instance is not None and instance.pk:
+            protected_url = reverse(
+                "admin:field_data_fieldphoto_download", args=[instance.pk]
+            )
+            return _ProtectedFieldFileProxy(formatted, protected_url)
+        return formatted
 
 
 class FieldPhotoTabularInline(GenericTabularInline):
@@ -81,6 +136,59 @@ class FieldPhotoTabularInline(GenericTabularInline):
         "caption",
         "taken_at",
     ]
+    formfield_overrides = {
+        FileField: {"widget": _ProtectedClearableFileInput},
+    }
+
+
+@admin.register(FieldPhoto)
+class FieldPhotoAdmin(ModelAdmin):
+    """Admin for FieldPhoto - exists to host the protected download route.
+
+    The real editing interface is FieldPhotoTabularInline; this class is
+    hidden from the admin index since it's not meant to be browsed directly.
+    """
+
+    def has_module_permission(self, _request: HttpRequest) -> bool:
+        """Hide from the admin index nav - edited via the inline instead."""
+        return False
+
+    def get_urls(self) -> list[object]:
+        """Add a project-scoped download route alongside the default admin URLs."""
+        custom_urls = [
+            path(
+                "<int:object_id>/download/",
+                self.admin_site.admin_view(self.download_file),
+                name="field_data_fieldphoto_download",
+            ),
+        ]
+        return custom_urls + super().get_urls()  # type: ignore[no-any-return]
+
+    def download_file(
+        self, request: HttpRequest, object_id: int
+    ) -> FileResponse:
+        """Stream a field photo's file to users who can view its owning project.
+
+        In production Django doesn't serve MEDIA_URL at all (see
+        prototype/urls.py) - a raw FieldFile.url relies entirely on the
+        reverse proxy happening to gate /media/, which nothing enforces.
+        Routing through this view instead ties access to the same
+        view_project permission used everywhere else in this app.
+        """
+        photo = get_object_or_404(FieldPhoto, pk=object_id)
+        if not photo.file:
+            raise Http404
+        user = cast("User", request.user)
+        if not user.is_superuser:
+            project = _project_for_field_photo_target(photo.content_object)
+            if project is None or not user.has_perm(
+                "prototype.view_project", project
+            ):
+                raise Http404
+        filename = (photo.file.name or "").rsplit("/", 1)[-1]
+        return FileResponse(
+            photo.file.open("rb"), as_attachment=True, filename=filename
+        )
 
 
 class SampleTabularInline(TabularInline):
