@@ -27,10 +27,31 @@ django.setup()
 _MAINTENANCE_RUN_TAG = "maintenance_run_id"
 
 
+_LOG_CHAR_LIMIT = 20_000
+
+
+def _summarize_events(context: RunStatusSensorContext) -> str:
+    """Build a MaintenanceRun.log-style summary from Dagster's event log.
+
+    Mirrors the "LEVEL: message" format the retired run_maintenance_job
+    command produced from result.all_events, so admins see the same shape
+    of log regardless of whether the daemon or the manual fallback command
+    executed the job.
+    """
+    entries = context.instance.all_logs(context.dagster_run.run_id)
+    log_lines = [
+        f"{entry.level}: {entry.message}" for entry in entries if entry.message
+    ]
+    summary = "\n".join(log_lines)
+    if len(summary) > _LOG_CHAR_LIMIT:
+        summary = summary[-_LOG_CHAR_LIMIT:]
+    return summary
+
+
 def _sync_maintenance_run(
     context: RunStatusSensorContext, status: str
 ) -> None:
-    """Write the given status onto the MaintenanceRun tagged on this Dagster run."""
+    """Write the given status and a log summary onto the tagged MaintenanceRun."""
     run_id = context.dagster_run.tags.get(_MAINTENANCE_RUN_TAG)
     if run_id is None:
         return
@@ -38,7 +59,9 @@ def _sync_maintenance_run(
     from orchestration.models import MaintenanceRun
 
     updated = MaintenanceRun.objects.filter(pk=run_id).update(
-        status=status, finished_at=datetime.now(UTC)
+        status=status,
+        finished_at=datetime.now(UTC),
+        log=_summarize_events(context),
     )
     if not updated:
         context.log.warning(

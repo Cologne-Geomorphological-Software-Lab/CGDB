@@ -12,10 +12,18 @@ from orchestration.dagster_home.sensors import (
 from orchestration.models import MaintenanceRun
 
 
-def _make_context(tags: dict) -> MagicMock:
+def _make_log_entry(level: str, message: str) -> MagicMock:
+    entry = MagicMock()
+    entry.level = level
+    entry.message = message
+    return entry
+
+
+def _make_context(tags: dict, log_entries: list | None = None) -> MagicMock:
     context = MagicMock()
     context.dagster_run.tags = tags
     context.dagster_run.run_id = "fake-dagster-run-id"
+    context.instance.all_logs.return_value = log_entries or []
     return context
 
 
@@ -50,6 +58,41 @@ class TestSyncMaintenanceRun:
         context = _make_context({"maintenance_run_id": "999999"})
         _sync_maintenance_run(context, status="success")  # must not raise
         context.log.warning.assert_called_once()
+
+    def test_populates_log_from_dagster_event_log(self):
+        """tech debt O1: MaintenanceRun.log used to stay empty on the primary
+        daemon-triggered path -- only submission failures wrote it. The
+        sensor must now pull a summary from Dagster's own event log."""
+        run = MaintenanceRun.objects.create(job_type="duckdb", status="running")
+        entries = [
+            _make_log_entry("INFO", "Table project is empty, skipping"),
+            _make_log_entry("INFO", "DuckDB export written to /tmp/cgdb.duckdb"),
+        ]
+        context = _make_context(
+            {"maintenance_run_id": str(run.pk)}, log_entries=entries
+        )
+
+        _sync_maintenance_run(context, status="success")
+
+        run.refresh_from_db()
+        assert "INFO: Table project is empty, skipping" in run.log
+        assert "INFO: DuckDB export written to /tmp/cgdb.duckdb" in run.log
+
+    def test_log_omits_entries_with_no_message(self):
+        run = MaintenanceRun.objects.create(job_type="backup", status="running")
+        entries = [
+            _make_log_entry("INFO", "Backup written to /tmp/backup.dump"),
+            _make_log_entry("DEBUG", ""),
+        ]
+        context = _make_context(
+            {"maintenance_run_id": str(run.pk)}, log_entries=entries
+        )
+
+        _sync_maintenance_run(context, status="success")
+
+        run.refresh_from_db()
+        assert run.log.count("\n") == 0
+        assert "Backup written to /tmp/backup.dump" in run.log
 
 
 class TestRunStatusSensorRegistration:
