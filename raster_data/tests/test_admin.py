@@ -7,10 +7,11 @@ import tempfile
 from typing import TYPE_CHECKING, ClassVar
 
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from django.contrib.gis.gdal import GDALRaster
 from django.test import TestCase
 from django.urls import reverse
+from guardian.shortcuts import assign_perm
 
 from prototype.models import Project
 from raster_data.models import RasterScene
@@ -132,3 +133,44 @@ class RecomputeMetadataActionTest(TestCase):
         bad_scene.refresh_from_db()
         self.assertEqual(good_scene.crs, "EPSG:4326")
         self.assertEqual(bad_scene.crs, "")
+
+
+class RasterSceneAdminNonSuperuserAccessTest(TestCase):
+    """Regression test for a field-name collision in ProjectBasedPermissionMixin.
+
+    RasterScene.data_source is a ForeignKey, but the mixin's literature-
+    detection heuristic used to treat any field literally named
+    "data_source" as the literature-marker CharField convention, filtering
+    with Q(data_source="literature") — a ValueError against a ForeignKey.
+    Every non-superuser hit this on the plain changelist, with no need for
+    any data_source value to be set on a scene.
+    """
+
+    project: ClassVar[Project]
+    staff_user: ClassVar[User]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.project = Project.objects.create(
+            title="Scoped Raster Project", label="SRP01", status="ACTIVE"
+        )
+        cls.staff_user = User.objects.create_user(
+            username="raster_scoped_staff",
+            password="pw",
+            email="rss@test.com",
+            is_staff=True,
+        )
+        cls.staff_user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="raster_data",
+                codename="view_rasterscene",
+            )
+        )
+        assign_perm("view_project", cls.staff_user, cls.project)
+
+    def test_project_scoped_staff_user_can_load_changelist(self) -> None:
+        RasterScene.objects.create(project=self.project)
+        self.client.force_login(self.staff_user)
+        url = reverse("admin:raster_data_rasterscene_changelist")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from django.core.exceptions import FieldDoesNotExist, PermissionDenied
-from django.db.models import Q, QuerySet
+from django.db.models import CharField, Q, QuerySet
 from guardian.shortcuts import get_objects_for_user
 
 from prototype.models import Project
@@ -17,13 +17,20 @@ if TYPE_CHECKING:
 
 
 def _has_data_source_field(model: type) -> bool:
-    """Return True only when the model has a real database field named data_source."""
+    """Return True only when the model has a data_source CharField.
+
+    Must check the field type, not just presence: a model can have an
+    unrelated field literally named "data_source" that isn't the
+    literature-marker convention this check exists for (e.g.
+    RasterScene.data_source, a ForeignKey to DataSource) — filtering with
+    Q(data_source="literature") against a ForeignKey raises ValueError.
+    """
     try:
-        model._meta.get_field("data_source")
+        field = model._meta.get_field("data_source")
     except FieldDoesNotExist:
         return False
     else:
-        return True
+        return isinstance(field, CharField)
 
 
 def _accessible_projects(user: object) -> QuerySet:
