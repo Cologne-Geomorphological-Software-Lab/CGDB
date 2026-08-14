@@ -202,7 +202,7 @@ def _coerce_df_columns(df) -> None:
 _EXPORT_CHUNK_SIZE = 10_000
 
 
-def _export_model_table(conn, cfg, model, context) -> None:
+def _export_model_table(conn, cfg, model, context) -> bool:
     """Export one model's queryset to a DuckDB table, in chunks; log and swallow errors.
 
     Iterates via .iterator(chunk_size=...) and writes one DataFrame chunk
@@ -210,6 +210,12 @@ def _export_model_table(conn, cfg, model, context) -> None:
     rest) instead of materializing list(qs) + one giant DataFrame — memory
     use is bounded by chunk size, not total row count, for any "fact"-role
     table (see DuckDBTableConfig.ROLES) that grows large.
+
+    Returns True on success (including an intentionally-empty table),
+    False if the export raised - the caller uses this to track how many
+    configured tables actually made it into the export, since a per-table
+    error here would otherwise be silently invisible in the job's overall
+    "success" status.
     """
     import pandas as pd
 
@@ -242,7 +248,7 @@ def _export_model_table(conn, cfg, model, context) -> None:
 
         if not table_created:
             context.log.info("Table %s is empty, skipping", table_name)
-            return
+            return True
         context.log.info(
             "Exported %d rows to table %s", total_rows, table_name
         )
@@ -253,6 +259,35 @@ def _export_model_table(conn, cfg, model, context) -> None:
             cfg.model_name,
             traceback.format_exc(),
         )
+        return False
+    return True
+
+
+def _check_export_failures(
+    context, attempted: int, failed_tables: list[str]
+) -> None:
+    """Log and, if every configured table failed, raise.
+
+    Extracted from export_to_duckdb as a plain function (same pattern as
+    _export_model_table/_get_queryset/_coerce_df_columns) so this logic is
+    directly unit-testable without going through Dagster's op-invocation
+    machinery, which doesn't pass a real context.log/context.op_config
+    through to a bare direct-invocation mock.
+    """
+    if failed_tables:
+        context.log.error(
+            "DuckDB export: %d of %d configured table(s) failed: %s",
+            len(failed_tables),
+            attempted,
+            ", ".join(failed_tables),
+        )
+    if attempted and len(failed_tables) == attempted:
+        # Every configured table failed - the file this op returns would be
+        # an empty/near-empty DuckDB database with no export actually
+        # having succeeded. Raise so the run reports failure instead of a
+        # misleading "success".
+        msg = f"DuckDB export failed for all {attempted} configured table(s); see log for per-table errors."
+        raise RuntimeError(msg)
 
 
 @op(config_schema=_BASE_CONFIG_SCHEMA)
@@ -269,6 +304,8 @@ def export_to_duckdb(context) -> str:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = duckdb.connect(str(output_path))
+    attempted = 0
+    failed_tables: list[str] = []
     for cfg in DuckDBTableConfig.objects.exclude(role="exclude"):
         try:
             model = apps.get_model(cfg.app_label, cfg.model_name)
@@ -279,9 +316,13 @@ def export_to_duckdb(context) -> str:
                 cfg.model_name,
             )
             continue
-        _export_model_table(conn, cfg, model, context)
+        attempted += 1
+        if not _export_model_table(conn, cfg, model, context):
+            failed_tables.append(f"{cfg.app_label}.{cfg.model_name}")
 
     conn.close()
+    _check_export_failures(context, attempted, failed_tables)
+
     context.log.info("DuckDB export written to %s", output_path)
     _record_result_file(context.op_config["run_id"], output_path)
     return str(output_path)

@@ -439,8 +439,9 @@ class TestExportModelTable:
         conn = MagicMock()
         context = MagicMock()
 
-        _export_model_table(conn, cfg, Project, context)
+        result = _export_model_table(conn, cfg, Project, context)
 
+        assert result is True
         conn.execute.assert_called_once()
         sql = conn.execute.call_args[0][0]
         assert "CREATE TABLE prototype__project" in sql
@@ -454,14 +455,18 @@ class TestExportModelTable:
         conn = MagicMock()
         context = MagicMock()
 
-        _export_model_table(conn, cfg, Project, context)
+        result = _export_model_table(conn, cfg, Project, context)
 
+        assert result is True
         conn.execute.assert_not_called()
         context.log.info.assert_called_with(
             "Table %s is empty, skipping", "prototype__project"
         )
 
     def test_exception_logged_not_raised(self):
+        """tech debt O2: a per-table failure must be reported to the caller
+        (return False) rather than silently swallowed as if it succeeded,
+        so export_to_duckdb can track and surface it."""
         from orchestration.dagster_home.maintenance_jobs import _export_model_table
         from prototype.models import Project
 
@@ -471,8 +476,9 @@ class TestExportModelTable:
         conn.execute.side_effect = RuntimeError("db error")
         context = MagicMock()
 
-        _export_model_table(conn, cfg, Project, context)  # must not raise
+        result = _export_model_table(conn, cfg, Project, context)  # must not raise
 
+        assert result is False
         context.log.error.assert_called_once()
 
     def test_export_spanning_multiple_chunks_uses_create_then_insert(self):
@@ -507,3 +513,72 @@ class TestExportModelTable:
         context.log.info.assert_called_with(
             "Exported %d rows to table %s", 5, "prototype__project"
         )
+
+
+# ===========================================================================
+# export_to_duckdb — per-table failure tracking (tech debt O2)
+# ===========================================================================
+
+
+class TestCheckExportFailures:
+    """Before this fix, a per-table export failure was only ever logged
+    inside _export_model_table - export_to_duckdb had no way to know how
+    many tables actually succeeded, so a run where every table failed
+    still reported overall "success" with a near-empty DuckDB file.
+
+    _check_export_failures is a plain function (same extraction pattern as
+    _export_model_table/_get_queryset/_coerce_df_columns) precisely so it
+    can be unit-tested directly, without going through Dagster's
+    op-invocation machinery - which doesn't pass context.log/context.op_config
+    through to a bare direct-invocation mock the way a real run does.
+    """
+
+    def test_all_tables_failing_raises(self):
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        with pytest.raises(RuntimeError, match="all 2 configured table"):
+            _check_export_failures(
+                context, attempted=2, failed_tables=["a.A", "b.B"]
+            )
+        context.log.error.assert_called_once()
+
+    def test_partial_failure_logs_but_does_not_raise(self):
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        _check_export_failures(
+            context, attempted=2, failed_tables=["b.B"]
+        )  # must not raise
+
+        context.log.error.assert_called_once()
+        error_args = context.log.error.call_args[0]
+        assert error_args[1:3] == (1, 2)  # 1 of 2 tables failed
+
+    def test_all_tables_succeeding_does_not_log_error(self):
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        _check_export_failures(context, attempted=2, failed_tables=[])
+
+        context.log.error.assert_not_called()
+
+    def test_zero_tables_attempted_does_not_raise(self):
+        """No configured tables at all (e.g. all excluded/not found) is not
+        the same failure mode as "every attempted table failed" - must not
+        raise."""
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        _check_export_failures(
+            context, attempted=0, failed_tables=[]
+        )  # must not raise
+        context.log.error.assert_not_called()
