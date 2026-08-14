@@ -1389,7 +1389,7 @@ class GenericMeasurement(BaseModel):
     sample = models.ForeignKey(
         Sample,
         related_name="generic_measurements",
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
     )
     raw_data = models.ForeignKey(
         RawMeasurement,
@@ -1495,7 +1495,7 @@ class GrainSize(BaseModel):
 
     sample = models.ForeignKey(
         Sample,
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
         related_name="grain_sizes",
     )
     raw_data = models.ForeignKey(
@@ -1734,7 +1734,7 @@ class MicroXRFMeasurement(BaseModel):
 
     sample = models.ForeignKey(
         Sample,
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
         related_name="microxrf_measurements",
     )
     measurement_date = models.DateField(
