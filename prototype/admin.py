@@ -403,10 +403,7 @@ admin.site.register(Group, GroupAdmin)
 # API Token admin (unfold design)
 # ---------------------------------------------------------------------------
 
-from rest_framework.authtoken.admin import TokenAdmin  # noqa: E402
 from rest_framework.authtoken.models import TokenProxy  # noqa: E402
-
-TokenAdmin.raw_id_fields = ("user",)
 
 admin.site.unregister(TokenProxy)
 

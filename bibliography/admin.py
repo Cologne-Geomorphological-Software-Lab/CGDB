@@ -204,10 +204,6 @@ class ReferenceAdmin(ExportMixin, ModelAdmin):
         """Return the reference type value used to render a coloured badge."""
         return obj.type
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
-        """Return the default queryset for the Reference changelist."""
-        return super().get_queryset(request)
-
     def has_view_permission(
         self,
         _request: HttpRequest,

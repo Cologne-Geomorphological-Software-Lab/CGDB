@@ -60,7 +60,6 @@ class LandformViewSet(ReadOnlyModelViewSet):
     Morphogrid usage: GET /api/v1/landforms/?bbox=6.0,50.0,8.0,52.0
     """
 
-    queryset = Landform.objects.all().defer("geometry")
     permission_classes = [IsAuthenticated]
     pagination_class = _LandformPagination
     filterset_fields = ["continent", "murphy_code"]

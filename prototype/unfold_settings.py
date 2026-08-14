@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, cast
 
-from django.conf import settings
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
@@ -548,29 +547,3 @@ UNFOLD = {
 CRISPY_TEMPLATE_PACK = "unfold_crispy"
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
-
-
-def environment_callback(_request: HttpRequest) -> list:
-    """Return the environment label and colour for the Unfold top-right badge.
-
-    Returns a two-element list: [label_text, colour_type].
-    """
-    label = getattr(settings, "UNFOLD_ENVIRONMENT_LABEL", "Production")
-    color = getattr(settings, "UNFOLD_ENVIRONMENT_COLOR", "danger")
-    return [label, color]
-
-
-def badge_callback(request: HttpRequest) -> int:
-    """Return an integer badge value based on the current user.
-
-    Currently this returns the number of permissions for authenticated users, or 0 for anonymous users.
-    """
-    user = getattr(request, "user", None)
-    if user is None or not user.is_authenticated:
-        return 0
-    return len(user.get_all_permissions())
-
-
-def permission_callback(request: HttpRequest) -> bool:
-    """Return True if the user has change permission on Project."""
-    return cast("Any", request.user).has_perm("prototype.change_project")

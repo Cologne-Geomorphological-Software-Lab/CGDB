@@ -1,21 +1,18 @@
-"""Views for the prototype app: documentation, dashboard, map, and GeoJSON endpoints."""
+"""Views for the prototype app: dashboard, map, and GeoJSON endpoints."""
 
 import json
 import logging
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
-from pathlib import Path
 from urllib.parse import urlparse
 
 from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db.models import Count, Q, QuerySet
 from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
@@ -35,24 +32,6 @@ from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
 logger = logging.getLogger(__name__)
-
-
-def documentation(request: HttpRequest, filepath: str) -> HttpResponse:
-    """Serve a static documentation file, or 404 if it does not exist."""
-    doc_path = Path(settings.BASE_DIR) / "static" / "docs" / filepath
-    if not doc_path.exists():
-        return render(request, "404.html", status=404)
-    return render(
-        request,
-        "documentation.html",
-        {"filepath": f"/static/docs/{filepath}"},
-    )
-
-
-def logout_view(request: HttpRequest) -> HttpResponse:
-    """Log out the current user and redirect to the site root."""
-    logout(request)
-    return redirect("/")
 
 
 _PERIOD_OPTIONS = [

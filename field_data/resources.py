@@ -3,17 +3,13 @@
 from import_export import fields, resources
 from import_export.widgets import ForeignKeyWidget
 
-from prototype.models import Researcher
-
 from .models import (
     Campaign,
     Country,
     ExposureType,
-    Layer,
     Location,
     Project,
     Province,
-    Sample,
     SampleType,
     Site,
     StudyArea,
@@ -67,102 +63,6 @@ class LocationResource(resources.ModelResource):
             "srid",
             "study_site",
             "transect",
-        )
-
-
-class StudyAreaResource(resources.ModelResource):
-    """Import/export resource for the StudyArea model."""
-
-    project = fields.Field(
-        column_name="project",
-        attribute="project",
-        widget=ForeignKeyWidget(
-            Project,
-            field="label",
-        ),
-    )
-
-    province = fields.Field(
-        column_name="province",
-        attribute="province",
-        widget=ForeignKeyWidget(
-            Province,
-            field="name",
-        ),
-    )
-
-    class Meta:
-        """Resource metadata for StudyAreaResource."""
-
-        model = StudyArea
-        skip_unchanged = True
-        report_skipped = True
-
-
-class CampaignResource(resources.ModelResource):
-    """Import/export resource for the Campaign model."""
-
-    project = fields.Field(
-        column_name="project",
-        attribute="project",
-        widget=ForeignKeyWidget(
-            Project,
-            field="label",
-        ),
-    )
-
-    destination_country = fields.Field(
-        column_name="destination_country",
-        attribute="destination_country",
-        widget=ForeignKeyWidget(
-            Country,
-            field="name",
-        ),
-    )
-
-    class Meta:
-        """Resource metadata for CampaignResource."""
-
-        model = Campaign
-        skip_unchanged = True
-        report_skipped = True
-
-
-class SampleResource(resources.ModelResource):
-    """Import/export resource for the Sample model."""
-
-    location = fields.Field(
-        column_name="location",
-        attribute="location",
-        widget=ForeignKeyWidget(
-            Location,
-            field="identifier",
-        ),
-    )
-
-    processor = fields.Field(
-        column_name="processor",
-        attribute="processor",
-        widget=ForeignKeyWidget(Researcher, field="user__last_name"),
-    )
-
-    class Meta:
-        """Resource metadata for SampleResource."""
-
-        model = Sample
-        skip_unchanged = True
-        report_skipped = True
-        fields = (
-            "identifier",
-            "id",
-            "location",
-            "processor",
-            "depth_top",
-            "depth_bottom",
-            "parent",
-            "layer",
-            "description",
-            "material",
         )
 
 
@@ -236,29 +136,3 @@ class SiteResource(resources.ModelResource):
         skip_unchanged = True
         report_skipped = True
         fields = ("id", "label", "study_area")
-
-
-class LayerResource(resources.ModelResource):
-    """Import/export resource for the Layer model."""
-
-    location = fields.Field(
-        column_name="location",
-        attribute="location",
-        widget=ForeignKeyWidget(
-            Location,
-            field="identifier",
-        ),
-    )
-
-    processor = fields.Field(
-        column_name="processor",
-        attribute="processor",
-        widget=ForeignKeyWidget(Researcher, field="user__last_name"),
-    )
-
-    class Meta:
-        """Resource metadata for LayerResource."""
-
-        model = Layer
-        skip_unchanged = True
-        report_skipped = True
