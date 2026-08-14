@@ -223,6 +223,24 @@ class ReferenceAdmin(ExportMixin, ModelAdmin):
         change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
         return request.user.has_perm(change_perm, obj)
 
+    def has_delete_permission(
+        self,
+        request: HttpRequest,
+        obj: Reference | None = None,
+    ) -> bool:
+        """Allow delete only when the user holds the per-object delete permission.
+
+        Without this override, delete fell back to Django's default (a
+        blanket model-level check) while change was already object-scoped
+        above - a user granted only the blanket `delete_reference`
+        permission (e.g. scoped for one department's editing workflow)
+        could delete any Reference row, not just ones they can change.
+        """
+        if obj is None:
+            return True
+        delete_perm = f"{self.opts.app_label}.delete_{self.opts.model_name}"
+        return request.user.has_perm(delete_perm, obj)
+
 
 class LeadAuthorReferenceInline(TabularInline):
     """Inline showing references where this author is the lead author."""
