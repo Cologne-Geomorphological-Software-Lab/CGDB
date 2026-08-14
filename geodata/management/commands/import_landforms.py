@@ -6,8 +6,11 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from django.contrib.gis.gdal.error import GDALException
 from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos.error import GEOSException
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
 from geodata.models import Landform
 
@@ -72,75 +75,93 @@ class Command(BaseCommand):
         total = len(features)
         self.stdout.write(f"  {total:,} features found.")
 
-        if not options["no_clear"]:
-            deleted, _ = Landform.objects.all().delete()
-            self.stdout.write(f"  Cleared {deleted:,} existing rows.")
-
         source: str = options["source"]  # type: ignore[assignment]
         batch_size: int = options["batch_size"]  # type: ignore[assignment]
+        no_clear: bool = options["no_clear"]  # type: ignore[assignment]
         batch: list[Landform] = []
         created = 0
         skipped = 0
 
-        for _i, feat in enumerate(features):
-            props = feat.get("properties") or {}
-            geom_json = feat.get("geometry")
+        # Wrapped in one transaction so a failure partway through (a clear
+        # + partial reimport) can't leave the table cleared or only
+        # partially repopulated - either the whole import lands, or none of
+        # it does and the previous data is untouched.
+        with transaction.atomic():
+            if not no_clear:
+                deleted, _ = Landform.objects.all().delete()
+                self.stdout.write(f"  Cleared {deleted:,} existing rows.")
 
-            if geom_json is None:
-                skipped += 1
-                continue
+            for i, feat in enumerate(features):
+                props = feat.get("properties") or {}
+                geom_json = feat.get("geometry")
+                label = props.get("BridNam") or f"index {i}"
 
-            try:
-                geometry = GEOSGeometry(json.dumps(geom_json), srid=4326)
-            except Exception:  # noqa: BLE001
-                skipped += 1
-                continue
+                if geom_json is None:
+                    skipped += 1
+                    self.stderr.write(
+                        f"  Skipped feature {label}: no geometry"
+                    )
+                    continue
 
-            batch.append(
-                Landform(
-                    geometry=geometry,
-                    brid_nam=_str(props.get("BridNam"), 500),
-                    name_str=_str(props.get("NameStr")),
-                    division=_str(props.get("Division")),
-                    province=_str(props.get("Province")),
-                    section=_str(props.get("Section")),
-                    continent=_str(props.get("Continent"), 100),
-                    murphy_code=_str(props.get("MurphyCode"), 10),
-                    structure=props.get("Structure"),
-                    moist_dry=props.get("MoistDry"),
-                    topog=props.get("Topog"),
-                    process=props.get("Process"),
-                    glaciate=_str(props.get("Glaciate"), 100),
-                    volcanism=_str(props.get("Volcanism")),
-                    volc_name=_str(props.get("VolcName")) or None,
-                    si_vol_num=_str(props.get("SI_Vol_Num"), 50) or None,
-                    vol_reg=_str(props.get("Vol_Reg")) or None,
-                    vol_prov=_str(props.get("Vol_Prov")) or None,
-                    plate_1=_str(props.get("Plate_1"), 100),
-                    plate_2=_str(props.get("Plate_2"), 100),
-                    plate_3=_str(props.get("Plate_3"), 100),
-                    plate_4=_str(props.get("Plate_4"), 100),
-                    plate_5=_str(props.get("Plate_5"), 100),
-                    notes=_str(props.get("Notes"), 10000),
-                    area_geo=props.get("AREA_GEO"),
-                    shape_length=props.get("Shape_Length"),
-                    shape_area=props.get("Shape_Area"),
-                    source=source,
+                try:
+                    geometry = GEOSGeometry(json.dumps(geom_json), srid=4326)
+                except (
+                    GEOSException,
+                    GDALException,
+                    ValueError,
+                    TypeError,
+                ) as exc:
+                    skipped += 1
+                    self.stderr.write(
+                        f"  Skipped feature {label}: invalid geometry ({exc})"
+                    )
+                    continue
+
+                batch.append(
+                    Landform(
+                        geometry=geometry,
+                        brid_nam=_str(props.get("BridNam"), 500),
+                        name_str=_str(props.get("NameStr")),
+                        division=_str(props.get("Division")),
+                        province=_str(props.get("Province")),
+                        section=_str(props.get("Section")),
+                        continent=_str(props.get("Continent"), 100),
+                        murphy_code=_str(props.get("MurphyCode"), 10),
+                        structure=props.get("Structure"),
+                        moist_dry=props.get("MoistDry"),
+                        topog=props.get("Topog"),
+                        process=props.get("Process"),
+                        glaciate=_str(props.get("Glaciate"), 100),
+                        volcanism=_str(props.get("Volcanism")),
+                        volc_name=_str(props.get("VolcName")) or None,
+                        si_vol_num=_str(props.get("SI_Vol_Num"), 50) or None,
+                        vol_reg=_str(props.get("Vol_Reg")) or None,
+                        vol_prov=_str(props.get("Vol_Prov")) or None,
+                        plate_1=_str(props.get("Plate_1"), 100),
+                        plate_2=_str(props.get("Plate_2"), 100),
+                        plate_3=_str(props.get("Plate_3"), 100),
+                        plate_4=_str(props.get("Plate_4"), 100),
+                        plate_5=_str(props.get("Plate_5"), 100),
+                        notes=_str(props.get("Notes"), 10000),
+                        area_geo=props.get("AREA_GEO"),
+                        shape_length=props.get("Shape_Length"),
+                        shape_area=props.get("Shape_Area"),
+                        source=source,
+                    )
                 )
-            )
 
-            if len(batch) >= batch_size:
+                if len(batch) >= batch_size:
+                    Landform.objects.bulk_create(batch)
+                    created += len(batch)
+                    batch = []
+                    self.stdout.write(
+                        f"  {created:,}/{total:,} imported …", ending="\r"
+                    )
+                    self.stdout.flush()
+
+            if batch:
                 Landform.objects.bulk_create(batch)
                 created += len(batch)
-                batch = []
-                self.stdout.write(
-                    f"  {created:,}/{total:,} imported …", ending="\r"
-                )
-                self.stdout.flush()
-
-        if batch:
-            Landform.objects.bulk_create(batch)
-            created += len(batch)
 
         self.stdout.write("")
         self.stdout.write(

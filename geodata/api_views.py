@@ -136,11 +136,17 @@ class LandformViewSet(ReadOnlyModelViewSet):
         cheap bbox pre-filter, __intersects refines it, and AsGeoJSON()
         serialises geometry inside the database (no Python GEOS
         deserialisation of the full geometry).
+
+        Routes through self.filter_queryset(self.get_queryset()) first so
+        ?continent=/?murphy_code=/search/ordering apply here too - this
+        path used to build its queryset from scratch, silently ignoring
+        those params whenever bbox was also supplied.
         """
         bbox_poly = Polygon.from_bbox(bbox)
         bbox_poly.srid = 4326
         rows = (
-            Landform.objects.filter(
+            self.filter_queryset(self.get_queryset())
+            .filter(
                 geometry__isnull=False,
                 geometry__bboverlaps=bbox_poly,
                 geometry__intersects=bbox_poly,
