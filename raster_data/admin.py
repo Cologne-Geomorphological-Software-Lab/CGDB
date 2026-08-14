@@ -148,17 +148,13 @@ class RasterSceneAdmin(ProjectBasedPermissionMixin, RasterDataModelAdmin):
     def _local_path_for(
         self, request: HttpRequest, scene: RasterScene
     ) -> str | None:
-        """Return a locally readable path for scene's file, or None (with a message)."""
-        if scene.file:
-            try:
-                return scene.file.path
-            except NotImplementedError:
-                self.message_user(
-                    request,
-                    f"{scene}: file storage backend has no local path — skipped.",
-                    messages.WARNING,
-                )
-                return None
+        """Return a locally readable path for scene's file, or None (with a message).
+
+        Checks corpus_path before file, matching RasterScene.effective_path's
+        precedence - for a scene with both set, this must resolve to the
+        same physical file the rest of the app treats as authoritative,
+        not silently read a different one.
+        """
         if scene.corpus_path:
             if not Path(scene.corpus_path).exists():
                 self.message_user(
@@ -169,6 +165,16 @@ class RasterSceneAdmin(ProjectBasedPermissionMixin, RasterDataModelAdmin):
                 )
                 return None
             return scene.corpus_path
+        if scene.file:
+            try:
+                return scene.file.path
+            except NotImplementedError:
+                self.message_user(
+                    request,
+                    f"{scene}: file storage backend has no local path — skipped.",
+                    messages.WARNING,
+                )
+                return None
         self.message_user(
             request,
             f"{scene}: no file or corpus_path set — skipped.",

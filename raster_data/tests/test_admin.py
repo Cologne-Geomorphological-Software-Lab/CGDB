@@ -20,7 +20,12 @@ if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
 
 
-def _make_geotiff(path: str) -> None:
+def _remove_if_exists(path: str) -> None:
+    if os.path.exists(path):  # noqa: PTH110
+        os.remove(path)  # noqa: PTH107
+
+
+def _make_geotiff(path: str, *, nr_of_bands: int = 2) -> None:
     """Write a tiny synthetic 4326 GeoTIFF with a known extent to *path*."""
     raster = GDALRaster(
         {
@@ -31,7 +36,7 @@ def _make_geotiff(path: str) -> None:
             "srid": 4326,
             "origin": [6.0, 52.0],
             "scale": [0.5, -0.5],
-            "nr_of_bands": 2,
+            "nr_of_bands": nr_of_bands,
         }
     )
     del raster
@@ -174,3 +179,62 @@ class RasterSceneAdminNonSuperuserAccessTest(TestCase):
         url = reverse("admin:raster_data_rasterscene_changelist")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+
+class LocalPathPrecedenceTest(TestCase):
+    """tech debt R2: for a scene with both corpus_path and file set,
+    _local_path_for (used by "Recompute metadata from file") must read the
+    same physical file RasterScene.effective_path treats as authoritative
+    (corpus_path first) - not silently read the other one."""
+
+    project: ClassVar[Project]
+    superuser: ClassVar[User]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.project = Project.objects.create(
+            title="Precedence Test Project", label="RPT01", status="ACTIVE"
+        )
+        cls.superuser = User.objects.create_superuser(
+            "precedence_admin", "pa@test.com", "pw"
+        )
+
+    def setUp(self) -> None:
+        self.client.force_login(self.superuser)
+
+    def test_recompute_reads_corpus_path_not_file_when_both_set(self) -> None:
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        fd, corpus_tif_path = tempfile.mkstemp(suffix=".tif")
+        os.close(fd)
+        self.addCleanup(lambda: _remove_if_exists(corpus_tif_path))
+        _make_geotiff(corpus_tif_path, nr_of_bands=2)
+
+        fd2, file_field_tif_path = tempfile.mkstemp(suffix=".tif")
+        os.close(fd2)
+        self.addCleanup(lambda: _remove_if_exists(file_field_tif_path))
+        _make_geotiff(file_field_tif_path, nr_of_bands=5)
+
+        with open(file_field_tif_path, "rb") as fh:  # noqa: PTH123
+            scene = RasterScene.objects.create(
+                project=self.project,
+                corpus_path=corpus_tif_path,
+                file=SimpleUploadedFile("file_field.tif", fh.read()),
+            )
+        self.addCleanup(lambda: scene.file.delete(save=False))
+
+        url = reverse("admin:raster_data_rasterscene_changelist")
+        data = {
+            "action": "recompute_metadata_from_file",
+            ACTION_CHECKBOX_NAME: [str(scene.pk)],
+        }
+        response = self.client.post(url, data, follow=True)
+        self.assertEqual(response.status_code, 200)
+
+        scene.refresh_from_db()
+        self.assertEqual(
+            scene.n_bands,
+            2,
+            "recompute read file (5 bands) instead of corpus_path (2 bands) "
+            "- effective_path prefers corpus_path, _local_path_for must too.",
+        )
