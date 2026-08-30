@@ -87,6 +87,8 @@ class LuminescenceDatingResource(resources.ModelResource):
             "year_of_publication",
             "thesis",
             "comments",
+            "data_quality",
+            "quality_note",
         )
         export_order = (
             "id",
@@ -143,6 +145,8 @@ class LuminescenceDatingResource(resources.ModelResource):
             "year_of_publication",
             "thesis",
             "comments",
+            "data_quality",
+            "quality_note",
         )
 
 
@@ -159,8 +163,24 @@ class RadiocarbonDatingResource(resources.ModelResource):
         """Resource metadata."""
 
         model = RadiocarbonDating
-        fields = ("id", "sample", "lab", "lab_id", "age")
-        export_order = ("id", "sample", "lab", "lab_id", "age")
+        fields = (
+            "id",
+            "sample",
+            "lab",
+            "lab_id",
+            "age",
+            "data_quality",
+            "quality_note",
+        )
+        export_order = (
+            "id",
+            "sample",
+            "lab",
+            "lab_id",
+            "age",
+            "data_quality",
+            "quality_note",
+        )
 
 
 class GrainSizeResource(resources.ModelResource):

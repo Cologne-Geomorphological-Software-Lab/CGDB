@@ -593,6 +593,7 @@ class LuminescenceDatingAdmin(
                     ("published", "year_of_publication"),
                     "thesis",
                     "comments",
+                    ("data_quality", "quality_note"),
                 ),
             },
         ),
@@ -620,7 +621,7 @@ class RadiocarbonDatingAdmin(
     project_path = "sample__location__project"
     raw_id_fields = ["sample"]
     list_fullwidth = True
-    list_display = ["lab_id", "lab", "age"]
+    list_display = ["lab_id", "lab", "age", "data_quality"]
     ordering = ["-id"]
 
 

@@ -317,6 +317,14 @@ def max_value_current_year(value: int) -> None:
     return MaxValueValidator(current_year())(value)
 
 
+QUALITY_CHOICES = [
+    ("accepted", "Accepted"),
+    ("questionable", "Questionable"),
+    ("rejected", "Rejected"),
+    ("pending", "Pending review"),
+]
+
+
 class LuminescenceDating(BaseModel):
     """Model representing luminescence dating information for a sample.
 
@@ -339,6 +347,8 @@ class LuminescenceDating(BaseModel):
         year_of_publication (PositiveIntegerField): Year of publication.
         thesis (CharField): Thesis type.
         comments (TextField): Additional comments.
+        data_quality (CharField): Internal data quality assessment.
+        quality_note (TextField): Notes explaining the quality assessment.
         grain_size_min (IntegerField): Minimum grain size.
         grain_size_max (IntegerField): Maximum grain size.
         aliquot_size (CharField): Aliquot size.
@@ -513,6 +523,13 @@ class LuminescenceDating(BaseModel):
     )
 
     comments = models.TextField(blank=True)
+
+    data_quality = models.CharField(
+        max_length=15,
+        choices=QUALITY_CHOICES,
+        default="pending",
+    )
+    quality_note = models.TextField(blank=True)
 
     grain_size_min = models.IntegerField(
         verbose_name="Min. grain size [µm]",
@@ -821,6 +838,8 @@ class RadiocarbonDating(BaseModel):
         lab (CharField): Laboratory name.
         lab_id (CharField): Laboratory identifier for the sample.
         age (DecimalField): Age in kiloannum.
+        data_quality (CharField): Internal data quality assessment.
+        quality_note (TextField): Notes explaining the quality assessment.
     """
 
     LAB_CHOICES = [
@@ -849,6 +868,12 @@ class RadiocarbonDating(BaseModel):
         blank=True,
         null=True,
     )
+    data_quality = models.CharField(
+        max_length=15,
+        choices=QUALITY_CHOICES,
+        default="pending",
+    )
+    quality_note = models.TextField(blank=True)
 
     def __str__(self) -> str:
         """Return a label with lab ID and age."""
