@@ -94,6 +94,27 @@ class RadiocarbonDatingStrTest(_AnalysisExtSetup):
         self.assertIn("undated", result)
 
 
+class RadiocarbonDatingQualityTest(_AnalysisExtSetup):
+
+    def test_default_data_quality_is_pending(self):
+        dating = RadiocarbonDating.objects.create(
+            sample=self.sample, lab="Poznań", lab_id="Poz-00001"
+        )
+        self.assertEqual(dating.data_quality, "pending")
+
+    def test_data_quality_and_quality_note_can_be_set(self):
+        dating = RadiocarbonDating.objects.create(
+            sample=self.sample,
+            lab="Poznań",
+            lab_id="Poz-00002",
+            data_quality="rejected",
+            quality_note="Contamination suspected.",
+        )
+        dating.refresh_from_db()
+        self.assertEqual(dating.data_quality, "rejected")
+        self.assertEqual(dating.quality_note, "Contamination suspected.")
+
+
 # ===========================================================================
 # Counting.__str__
 # ===========================================================================

@@ -26,7 +26,7 @@ class AllFieldsSerializerCountTest(SimpleTestCase):
         fields = serializer.fields
         self.assertEqual(
             len(fields),
-            59,
+            61,
             "LuminescenceDatingSerializer's field count changed - a model "
             "field was added/removed. Update this count deliberately "
             f"(current fields: {sorted(fields)}).",
