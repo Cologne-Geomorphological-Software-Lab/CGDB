@@ -20,6 +20,15 @@ jobs:
         run: uv run ruff check .
       - name: ruff format --check
         run: uv run ruff format --check .
+      - name: Write throwaway local_settings.py
+        # Gitignored, never committed — mypy's django-stubs plugin loads
+        # prototype.test_settings, which chains through prototype.settings,
+        # which requires a local_settings.py to exist (SECRET_KEY etc.).
+        # test_settings.py overrides SECRET_KEY/DEBUG itself; these values
+        # only need to satisfy settings.py's own load-time checks.
+        run: |
+          echo 'SECRET_KEY = "ci-test-key-not-for-production"' > prototype/local_settings.py
+          echo 'DEBUG = True' >> prototype/local_settings.py
       - name: mypy
         run: uv run mypy .
       # basedpyright is intentionally not run here yet: unlike mypy/ruff, it
@@ -43,6 +52,15 @@ jobs:
           sudo apt-get install -y binutils libproj-dev gdal-bin libsqlite3-mod-spatialite
       - name: Install dependencies
         run: uv sync
+      - name: Write throwaway local_settings.py
+        # Gitignored, never committed — prototype.test_settings chains
+        # through prototype.settings, which requires a local_settings.py to
+        # exist. test_settings.py overrides SECRET_KEY/DEBUG/DATABASES
+        # itself; these values only need to satisfy settings.py's own
+        # load-time checks.
+        run: |
+          echo 'SECRET_KEY = "ci-test-key-not-for-production"' > prototype/local_settings.py
+          echo 'DEBUG = True' >> prototype/local_settings.py
       - name: Run test suite (SpatiaLite)
         run: uv run pytest -m "not postgis_only" --cov=. --cov-report=term-missing
 
@@ -74,6 +92,15 @@ jobs:
           sudo apt-get install -y binutils libproj-dev gdal-bin
       - name: Install dependencies
         run: uv sync
+      - name: Write throwaway local_settings.py
+        # Gitignored, never committed — prototype.test_settings_postgis
+        # chains through prototype.test_settings and prototype.settings,
+        # which requires a local_settings.py to exist. Downstream settings
+        # modules override SECRET_KEY/DEBUG/DATABASES themselves; these
+        # values only need to satisfy settings.py's own load-time checks.
+        run: |
+          echo 'SECRET_KEY = "ci-test-key-not-for-production"' > prototype/local_settings.py
+          echo 'DEBUG = True' >> prototype/local_settings.py
       - name: Run GIS-marked tests against PostGIS
         env:
           DJANGO_SETTINGS_MODULE: prototype.test_settings_postgis
