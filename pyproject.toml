@@ -4,25 +4,24 @@ requires-python = ">=3.13"
 version = "1"
 dependencies = [
     "django[argon2]>=6.0.6",
-    "django-unfold>=0.75.0",
-    "psycopg>=3.3.2",
-    "python-decouple>=3.8",
+    "django-unfold>=0.99.0",
+    "psycopg>=3.3.4",
     "argon2-cffi>=25.1.0",
-    "django-crispy-forms>=2.5",
+    "django-crispy-forms>=2.6",
     "django-filter>=25.2",
-    "django-guardian>=3.2.0",
-    "django-import-export>=4.3.14",
+    "django-guardian>=3.3.2",
+    "django-import-export>=4.4.1",
     "django-vite>=3.1.0",
     "djangorestframework>=3.17.1",
     "djangorestframework-gis>=1.2.1",
-    "drf-spectacular>=0.28.0",
-    "matplotlib>=3.10.8",
-    "numpy>=2.4.1",
+    "drf-spectacular>=0.29.0",
+    "matplotlib>=3.11.0",
+    "numpy>=2.5.0",
     "pillow>=12.3.0",
     "dagster>=1.13.16",
     "dagster-webserver>=1.13.11",
     "dagster-postgres>=0.29.11",
-    "duckdb>=1.4.3",
+    "duckdb>=1.5.4",
     "pandas>=2.0",
     "honcho>=2.0.0",
     "django-docs>=0.3.3",
@@ -78,11 +77,13 @@ ignore = [
 # a compatible override, not a case of avoidable dynamic typing.
 "analysis/admin.py" = ["BLE001", "TRY301", "ANN401"]
 # Dagster workspace: namespace packages intentional; context.log has no .exception(); broad catch is asset contract
-"orchestration/dagster_home/assets.py" = ["INP001", "BLE001", "TRY300", "TRY400"]
-"orchestration/dagster_home/jobs.py" = ["INP001"]
-"orchestration/dagster_home/repository.py" = ["INP001", "ERA001"]
-# maintenance_jobs: ANN001 — Dagster 1.12.8 errors if context param is type-annotated; TRY400 — context.log has no .exception()
-"orchestration/dagster_home/maintenance_jobs.py" = ["INP001", "ANN001", "TRY400"]
+"orchestration/dagster_home/repository.py" = ["INP001"]
+# maintenance_jobs: TRY400 — context.log has no .exception(). ANN001 is NOT
+# file-wide — only the 3 @op-decorated functions' `context` param can't be
+# annotated (Dagster 1.12.8 errors if it is); those get an inline noqa
+# instead, so plain internal helpers (_get_queryset, _coerce_df_columns,
+# _export_model_table, etc.) still get real ANN001 checking (tech debt O8).
+"orchestration/dagster_home/maintenance_jobs.py" = ["INP001", "TRY400"]
 "orchestration/dagster_home/sensors.py" = ["INP001"]
 # run_maintenance_job: ARG/ANN — Django management command signature (*args, **options) cannot be changed
 "orchestration/management/commands/run_maintenance_job.py" = ["ARG001", "ARG002", "ANN003", "BLE001"]
@@ -102,9 +103,12 @@ convention = "google"
 
 [tool.bandit]
 exclude_dirs = ["venv"]
-# B105/B106: all instances are settings templates or test fixture passwords — intentional
+# B105/B106/B107: all instances are settings templates or test fixture passwords — intentional
 # B101: assert statements are legitimate in non-test production code here
-skips = ["B101", "B105", "B106"]
+# B404/B603: subprocess use is already reviewed per call site via ruff's flake8-bandit
+# (S404/S603) rules with documented `# noqa: S603` — bandit would just re-flag the same,
+# already-accepted call sites with no `# nosec` equivalent mechanism as convenient
+skips = ["B101", "B105", "B106", "B107", "B404", "B603"]
 
 [tool.coverage.run]
 branch = true
@@ -174,32 +178,45 @@ ignore_errors = true
 [tool.django-stubs]
 django_settings_module = "prototype.test_settings"
 
+[tool.pylint.main]
+# Only duplicate-code (R0801) is enabled — see .pre-commit-config.yaml. Migrations
+# duplicate models.py's field definitions by design; not a real code-quality issue.
+ignore-paths = ['.*[\\/]migrations[\\/].*']
+
+[tool.pylint."messages control"]
+disable = ["all"]
+enable = ["duplicate-code"]
+
+[tool.pylint.similarities]
+# Default (4 lines) flags short, incidental overlaps that are extremely common
+# in this codebase — the same handful of Django model field names repeated
+# across independent admin/serializer/resource Meta.fields declarations. 12
+# lines still catches real duplication (a copy-pasted block of logic) without
+# that noise.
+min-similarity-lines = 12
+ignore-imports = true
+
 [dependency-groups]
 dev = [
     # Linting / formatting
     "ruff",
-    "pyupgrade",
-    "black",
-    "isort",
-    "docformatter",
     "pre-commit",
     # Type checking
     "mypy>=1.13,<2",
     "basedpyright",
-    "ty",
     "django-stubs[compatible-mypy]",
     "django-stubs-ext",
     # Testing
     "pytest",
     "pytest-django",
     "pytest-cov",
-    # Static analysis / metrics
+    # Static analysis / metrics — bandit, vulture, xenon, pylint wired into
+    # pre-commit (see .pre-commit-config.yaml); radon and lizard stay ad-hoc
+    # local use only.
     "radon",
     "vulture",
-    "pylint",
     "bandit",
     "lizard",
-    "mutmut",
-    "wily",
     "xenon",
+    "pylint",
 ]

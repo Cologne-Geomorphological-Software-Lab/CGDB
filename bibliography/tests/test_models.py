@@ -4,10 +4,15 @@ Covers: Author.__str__, ReferenceKeyword.__str__, Reference.__str__,
 ordering, parent_publication self-reference, M2M relations.
 """
 
+from typing import TYPE_CHECKING, cast
+
 from django.db.models import RestrictedError
 from django.test import TestCase
 
 from bibliography.models import Author, Reference, ReferenceKeyword
+
+if TYPE_CHECKING:
+    from django.db.models import Field
 
 
 class _BibliographySetup(TestCase):
@@ -137,6 +142,41 @@ class ReferenceOrderingTest(_BibliographySetup):
 
 
 # ===========================================================================
+# Reference – issn
+# ===========================================================================
+
+
+class ReferenceIssnTest(_BibliographySetup):
+    """tech debt LBG10: issn is a CharField, not IntegerField - values with
+    a leading zero or an 'X' check digit are valid ISSNs that an
+    IntegerField could never have represented."""
+
+    def test_leading_zero_is_preserved(self):
+        ref = Reference.objects.create(
+            title="Leading Zero ISSN",
+            year=2020,
+            lead_author=self.author,
+            abstract="x",
+            type="Paper",
+            issn="0378-5955",
+        )
+        ref.refresh_from_db()
+        self.assertEqual(ref.issn, "0378-5955")
+
+    def test_x_check_digit_is_valid(self):
+        ref = Reference.objects.create(
+            title="X Check Digit ISSN",
+            year=2020,
+            lead_author=self.author,
+            abstract="x",
+            type="Paper",
+            issn="1234-567X",
+        )
+        ref.refresh_from_db()
+        self.assertEqual(ref.issn, "1234-567X")
+
+
+# ===========================================================================
 # Reference – parent_publication & M2M
 # ===========================================================================
 
@@ -181,7 +221,9 @@ class ReferenceRelationsTest(_BibliographySetup):
             book.delete()
 
     def test_choices_contain_all_types(self):
-        choice_keys = [c[0] for c in Reference._meta.get_field("type").choices]
+        field = cast("Field", Reference._meta.get_field("type"))
+        assert field.choices is not None
+        choice_keys = [c[0] for c in field.choices]
         for expected in (
             "Paper",
             "Chapter",

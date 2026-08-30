@@ -16,9 +16,14 @@ Usage:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 from django.core.management.base import BaseCommand
 
 from prototype.permissions import create_permission_groups
+
+if TYPE_CHECKING:
+    from django.core.management.base import CommandParser
 
 
 class Command(BaseCommand):
@@ -26,7 +31,7 @@ class Command(BaseCommand):
 
     help = "Create predefined permission groups for CGDB."
 
-    def add_arguments(self, parser: object) -> None:
+    def add_arguments(self, parser: CommandParser) -> None:
         """Register the --reset flag on the argument parser."""
         parser.add_argument(
             "--reset",
@@ -37,6 +42,6 @@ class Command(BaseCommand):
     def handle(self, *_args: object, **options: object) -> None:
         """Execute the command, optionally resetting groups before rebuilding."""
         create_permission_groups(
-            reset=options["reset"],
+            reset=cast("bool", options["reset"]),
             stdout=self.stdout,
         )

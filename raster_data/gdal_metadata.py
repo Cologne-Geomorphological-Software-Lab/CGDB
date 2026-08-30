@@ -37,29 +37,39 @@ def read_raster_metadata(path: str) -> RasterMetadata:
 
     Raises RasterMetadataError if the file can't be opened as a raster, or
     has no identifiable coordinate reference system.
+
+    tech debt R3: GDALException/OSError used to be caught only around the
+    initial GDALRaster(path) open. GDAL can raise those same exception
+    types from later attribute reads too (.srs, .extent, .bands) - an
+    admin-action caller expecting only RasterMetadataError (its documented
+    "one bad file doesn't fail the batch" guarantee) would see the batch
+    abort on an uncaught GDALException instead. The whole read is wrapped
+    now, not just the open.
     """
     try:
         raster = GDALRaster(path)
+
+        srs = raster.srs
+        if srs is None or srs.srid is None:
+            msg = f"{path!r} has no identifiable coordinate reference system."
+            raise RasterMetadataError(msg)
+
+        bbox = Polygon.from_bbox(raster.extent)
+        bbox.srid = srs.srid
+        if srs.srid != _SRID_WGS84:
+            try:
+                bbox.transform(_SRID_WGS84)
+            except GEOSException as exc:
+                msg = f"Could not reproject {path!r}'s extent to WGS-84: {exc}"
+                raise RasterMetadataError(msg) from exc
+
+        n_bands = len(raster.bands)
     except (GDALException, OSError) as exc:
         msg = f"Could not open {path!r} as a raster: {exc}"
         raise RasterMetadataError(msg) from exc
 
-    srs = raster.srs
-    if srs is None or srs.srid is None:
-        msg = f"{path!r} has no identifiable coordinate reference system."
-        raise RasterMetadataError(msg)
-
-    bbox = Polygon.from_bbox(raster.extent)
-    bbox.srid = srs.srid
-    if srs.srid != _SRID_WGS84:
-        try:
-            bbox.transform(_SRID_WGS84)
-        except GEOSException as exc:
-            msg = f"Could not reproject {path!r}'s extent to WGS-84: {exc}"
-            raise RasterMetadataError(msg) from exc
-
     return RasterMetadata(
         crs=f"EPSG:{srs.srid}",
         spatial_bbox=bbox,
-        n_bands=len(raster.bands),
+        n_bands=n_bands,
     )

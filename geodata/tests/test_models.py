@@ -16,7 +16,9 @@ _OVERLAPPING_WKT = (
 
 
 def _landform(**kwargs: object) -> Landform:
-    defaults = {"geometry": GEOSGeometry(_MULTIPOLYGON_WKT, srid=4326)}
+    defaults: dict[str, object] = {
+        "geometry": GEOSGeometry(_MULTIPOLYGON_WKT, srid=4326)
+    }
     defaults.update(kwargs)
     return Landform.objects.create(**defaults)
 

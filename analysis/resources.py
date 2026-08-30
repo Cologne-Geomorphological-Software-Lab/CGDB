@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from import_export import fields, resources
-from import_export.widgets import ForeignKeyWidget
+from import_export.widgets import ForeignKeyWidget, JSONWidget
 
 from field_data.models import Sample
 
-from .models import GrainSize, LuminescenceDating, RadiocarbonDating
+from .models import (
+    GRAIN_SIZE_INPUT_FIELDS,
+    GRAIN_SIZE_STATS_FIELDS,
+    GrainSize,
+    LuminescenceDating,
+    RadiocarbonDating,
+    RawMeasurement,
+)
 
 
 class LuminescenceDatingResource(resources.ModelResource):
@@ -155,67 +164,50 @@ class RadiocarbonDatingResource(resources.ModelResource):
 
 
 class GrainSizeResource(resources.ModelResource):
-    """Import/export resource for GrainSize."""
+    """Import/export resource for GrainSize.
+
+    tech debt A7: originally omitted raw_data/classes/measured_data, so a
+    CSV-imported record lost the provenance the single-record admin upload
+    path (GrainSizeAdmin.process_file) captures. `source` is deliberately
+    NOT a CSV column - it's an editable=False, system-managed field on the
+    model (see GrainSize.source), so before_save_instance() forces it to
+    "file" for every imported row instead of trusting a CSV column.
+    """
 
     sample = fields.Field(
         column_name="sample",
         attribute="sample",
         widget=ForeignKeyWidget(Sample, field="identifier"),
     )
+    raw_data = fields.Field(
+        column_name="raw_data",
+        attribute="raw_data",
+        widget=ForeignKeyWidget(RawMeasurement, field="pk"),
+    )
+    classes = fields.Field(
+        column_name="classes",
+        attribute="classes",
+        widget=JSONWidget(),
+    )
+    measured_data = fields.Field(
+        column_name="measured_data",
+        attribute="measured_data",
+        widget=JSONWidget(),
+    )
 
     class Meta:
         """Resource metadata."""
 
         model = GrainSize
-        fields = (
-            "id",
-            "sample",
-            "sample_weight",
-            "sample_concentration",
-            "method",
-            "clay",
-            "fine_silt",
-            "medium_silt",
-            "coarse_silt",
-            "fine_sand",
-            "medium_sand",
-            "coarse_sand",
-            "gravel",
-            "mean",
-            "mode",
-            "median",
-            "std",
-            "skew",
-            "kurtosis",
-            "fwmean",
-            "fwmedian",
-            "fwsd",
-            "fwskew",
-            "fwkurt",
-        )
-        export_order = (
-            "id",
-            "sample",
-            "sample_weight",
-            "sample_concentration",
-            "method",
-            "clay",
-            "fine_silt",
-            "medium_silt",
-            "coarse_silt",
-            "fine_sand",
-            "medium_sand",
-            "coarse_sand",
-            "gravel",
-            "mean",
-            "mode",
-            "median",
-            "std",
-            "skew",
-            "kurtosis",
-            "fwmean",
-            "fwmedian",
-            "fwsd",
-            "fwskew",
-            "fwkurt",
-        )
+        fields = ("id", *GRAIN_SIZE_INPUT_FIELDS, *GRAIN_SIZE_STATS_FIELDS)
+        export_order = fields
+
+    def before_save_instance(
+        self,
+        instance: GrainSize,
+        row: dict[str, Any],
+        **kwargs: object,
+    ) -> None:
+        """Mark every CSV-imported row as file-sourced, like the admin upload path."""
+        instance.source = "file"
+        super().before_save_instance(instance, row, **kwargs)

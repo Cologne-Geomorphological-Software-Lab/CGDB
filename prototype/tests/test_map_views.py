@@ -196,7 +196,7 @@ class LocationsMapStructureTest(TestCase):
             for f in data["features"]
             if f["properties"]["identifier"] == "GJ_LOC1"
         )
-        self.assertIn(str(self.loc.id), feature["properties"]["admin_url"])
+        self.assertIn(str(self.loc.pk), feature["properties"]["admin_url"])
         self.assertIn("change", feature["properties"]["admin_url"])
 
 
@@ -242,12 +242,12 @@ class LocationsMapPermissionTest(TestCase):
     def setUp(self):
         assign_perm("prototype.view_project", self.user_a, self.project_a)
 
-    def _fetch(self, user: object):
+    def _fetch(self, user: User) -> list:
         c = Client()
         c.login(username=user.username, password="pw")
         return json.loads(c.get(_LOCATIONS_MAP_URL).content)["features"]
 
-    def _ids(self, features: object):
+    def _ids(self, features: list):
         return {f["properties"]["identifier"] for f in features}
 
     def test_superuser_sees_all_locations(self):

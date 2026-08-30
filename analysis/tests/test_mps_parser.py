@@ -3,29 +3,9 @@
 from __future__ import annotations
 
 from analysis.mps_parser import STATS_KEY_MAP, parse_block_line, parse_mps_lines
+from analysis.tests._mps_fixtures import MINIMAL_AV
 
-MINIMAL_LINES = """\
-[#Bindiam]
-10.0
-20.0
-[#Binheight]
-50.0
-50.0
-[Size0]
-Obs=150.5
-[SizeStats]
-Mean=15.0
-Mode=12.0
-Median=14.0
-SD=3.5
-Skew=0.2
-Kurtosis=2.8
-FWMean=15.1
-FWMedian=14.2
-FWSD=3.6
-FWSkew=0.3
-FWKurt=2.9
-""".splitlines()
+MINIMAL_LINES = MINIMAL_AV.splitlines()
 
 
 def test_parse_mps_lines_extracts_classes_and_measured_data() -> None:

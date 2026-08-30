@@ -5,6 +5,7 @@ required/optional fields, choices, defaults, FK protect-on-delete.
 """
 
 import datetime
+from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -18,6 +19,9 @@ from analysis.models import (
 )
 from field_data.models import Location, Sample
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from django.db.models import Field
 
 # ===========================================================================
 # Shared fixture
@@ -113,6 +117,18 @@ class MaxValueCurrentYearFunctionTest(SimpleTestCase):
 
     def test_current_year_matches_today(self):
         self.assertEqual(current_year(), datetime.date.today().year)
+
+    def test_field_uses_late_bound_validator_not_frozen_max_value(self):
+        """tech debt A6: year_of_publication used to pass
+        MaxValueValidator(current_year()) - evaluated once at class-
+        definition (import) time, freezing the ceiling at whatever year the
+        process started. Must use the unbound max_value_current_year
+        function instead, which recomputes the year on every call -- same
+        pattern CosmogenicNuclideDating already used correctly."""
+        field = LuminescenceDating._meta.get_field("year_of_publication")
+        self.assertIn(
+            max_value_current_year, cast("Field", field).validators
+        )
 
 
 class LuminescenceDatingYearValidatorTest(_LuminescenceSetup):

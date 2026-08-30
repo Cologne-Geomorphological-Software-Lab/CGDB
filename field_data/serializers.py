@@ -77,6 +77,7 @@ class StudyAreaGeoSerializer(GeoFeatureModelSerializer):
             "id",
             "label",
             "project",
+            "province",
             "climate_koeppen",
             "ecozone_schultz",
         ]
@@ -112,11 +113,11 @@ class StudyAreaMapSerializer(GeoFeatureModelSerializer):
 
     def get_climate_koeppen_display(self, obj: StudyArea) -> str:
         """Return the human-readable Köppen climate label."""
-        return obj.get_climate_koeppen_display()
+        return obj.get_climate_koeppen_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     def get_ecozone_schultz_display(self, obj: StudyArea) -> str:
         """Return the human-readable Schultz ecozone label."""
-        return obj.get_ecozone_schultz_display()
+        return obj.get_ecozone_schultz_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     def get_admin_url(self, obj: StudyArea) -> str:
         """Return the admin change-form URL for this study area."""
@@ -293,50 +294,6 @@ class LocationGeoSerializer(GeoFeatureModelSerializer):
         ]
 
 
-class LocationFlatSerializer(serializers.ModelSerializer):
-    """Flat JSON serializer for Location — longitude/latitude as plain floats."""
-
-    longitude = serializers.SerializerMethodField()
-    latitude = serializers.SerializerMethodField()
-
-    def get_longitude(self, obj: Location) -> float | None:
-        """Return the WGS-84 longitude of the location point."""
-        return obj.location.x if obj.location else None
-
-    def get_latitude(self, obj: Location) -> float | None:
-        """Return the WGS-84 latitude of the location point."""
-        return obj.location.y if obj.location else None
-
-    class Meta:
-        """Serializer metadata."""
-
-        model = Location
-        fields = [
-            "id",
-            "identifier",
-            "data_source",
-            "location_type",
-            "date_of_record",
-            "longitude",
-            "latitude",
-            "altitude",
-            "gps_accuracy",
-            "positioning_method",
-            "sampling",
-            "liner",
-            "gradient_upslope",
-            "gradient_downslope",
-            "slope_aspect",
-            "exposure_type",
-            "project",
-            "campaign",
-            "study_site",
-            "transect",
-            "created_at",
-            "modified_at",
-        ]
-
-
 class LocationMapSerializer(GeoFeatureModelSerializer):
     """GeoJSON serializer for the map dashboard's Location overlay.
 
@@ -388,7 +345,7 @@ class LocationMapSerializer(GeoFeatureModelSerializer):
 
     def get_location_type_display(self, obj: Location) -> str:
         """Return the human-readable location type label."""
-        return obj.get_location_type_display()
+        return obj.get_location_type_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     def get_admin_url(self, obj: Location) -> str:
         """Return the admin change-form URL for this location."""

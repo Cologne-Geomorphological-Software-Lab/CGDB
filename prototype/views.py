@@ -1,21 +1,21 @@
-"""Views for the prototype app: documentation, dashboard, map, and GeoJSON endpoints."""
+"""Views for the prototype app: dashboard, map, and GeoJSON endpoints."""
+
+from __future__ import annotations
 
 import json
 import logging
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
-from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from dateutil.relativedelta import relativedelta
-from django.conf import settings
-from django.contrib.auth import logout
 from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db.models import Count, Q, QuerySet
 from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
@@ -31,27 +31,13 @@ from analysis.models import (
     RadiocarbonDating,
 )
 from field_data.models import Location, Sample
+from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
+if TYPE_CHECKING:
+    from prototype.mixins import AuthenticatedHttpRequest
+
 logger = logging.getLogger(__name__)
-
-
-def documentation(request: HttpRequest, filepath: str) -> HttpResponse:
-    """Serve a static documentation file, or 404 if it does not exist."""
-    doc_path = Path(settings.BASE_DIR) / "static" / "docs" / filepath
-    if not doc_path.exists():
-        return render(request, "404.html", status=404)
-    return render(
-        request,
-        "documentation.html",
-        {"filepath": f"/static/docs/{filepath}"},
-    )
-
-
-def logout_view(request: HttpRequest) -> HttpResponse:
-    """Log out the current user and redirect to the site root."""
-    logout(request)
-    return redirect("/")
 
 
 _PERIOD_OPTIONS = [
@@ -72,7 +58,7 @@ _LOCATION_TYPE_LABELS = {
 }
 
 
-def map_dashboard(request: HttpRequest) -> HttpResponse:
+def map_dashboard(request: AuthenticatedHttpRequest) -> HttpResponse:
     """Render the full-screen map dashboard page."""
     from django.contrib import admin as _admin
 
@@ -134,7 +120,9 @@ def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
     if period_days not in {p["days"] for p in _PERIOD_OPTIONS}:
         period_days = 30
 
-    context.update(stat_data(period_days))
+    context.update(
+        stat_data(period_days, user=request.user if request else None)
+    )
     context["filters"] = [
         {
             "title": _(p["label"]),
@@ -146,58 +134,117 @@ def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
     return context
 
 
-def stat_data(period_days: int = 30) -> dict:
-    """Compute dashboard statistics for the given time window in days."""
+def _scope(
+    queryset: QuerySet, project_lookup: str, project_ids: QuerySet | None
+) -> QuerySet:
+    """Restrict *queryset* to accessible projects, unless *project_ids* is None (unscoped)."""
+    if project_ids is None:
+        return queryset
+    return queryset.filter(**{f"{project_lookup}__in": project_ids})
+
+
+def _pct(count: int, total: int) -> float:
+    """Return count as a percentage of total, or 0 when total is empty."""
+    return round(count / total * 100, 2) if total > 0 else 0
+
+
+def _footer(count: int, total: int, period_days: int) -> str:
+    """Return the "+N% last M days" (or "No new entries") footer HTML for a stat tile."""
+    if count == 0:
+        return mark_safe(  # nosec B308 — pure static literal, no user input
+            '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
+        )
+    pct = _pct(count, total)
+    color = (
+        "text-green-700 dark:text-green-400"
+        if pct > 0
+        else "text-red-600 dark:text-red-400"
+    )
+    sign = "+" if pct > 0 else ""
+    return format_html(
+        '<strong class="{} font-semibold">{}{}</strong>&nbsp; last {} days',
+        color,
+        sign,
+        intcomma(pct),
+        period_days,
+    )
+
+
+def _total_and_period(
+    queryset: QuerySet, since: datetime, now: datetime
+) -> tuple[int, int]:
+    """Return (total count, count in [since, now)) in a single query."""
+    result = queryset.aggregate(
+        total=Count("id"),
+        period=Count(
+            "id", filter=Q(created_at__gte=since, created_at__lt=now)
+        ),
+    )
+    return result["total"], result["period"]
+
+
+def _scoped_location_qs(project_ids: QuerySet | None) -> QuerySet:
+    """Locations restricted to accessible projects; literature locations always visible."""
+    qs = Location.objects.all()
+    if project_ids is not None:
+        qs = qs.filter(
+            Q(project_id__in=project_ids) | Q(data_source="literature")
+        )
+    return qs
+
+
+def _scoped_sample_qs(project_ids: QuerySet | None) -> QuerySet:
+    """Samples restricted to accessible projects; literature-location samples always visible."""
+    qs = Sample.objects.all()
+    if project_ids is not None:
+        qs = qs.filter(
+            Q(project_id__in=project_ids)
+            | Q(location__data_source="literature")
+        )
+    return qs
+
+
+def stat_data(period_days: int = 30, user: object = None) -> dict:
+    """Compute dashboard statistics for the given time window in days.
+
+    Architecture-review fix (F14): previously ran every query unfiltered,
+    so any staff user (even one with zero project permissions) could infer
+    the existence/scale of projects and data they can't otherwise see. When
+    *user* is set and isn't a superuser, every query below is scoped to
+    that user's accessible projects, matching the scoping already applied
+    everywhere else in the admin/API (see prototype.mixins._accessible_projects).
+    *user=None* (e.g. dashboard_callback's request=None case) is treated
+    like a superuser — unscoped — since there's no user to scope against.
+    """
     now = timezone.now()
     since = now - timedelta(days=period_days)
     logger.debug("stat_data called at %s (period=%d days)", now, period_days)
 
-    def _pct(count: int, total: int) -> float:
-        return round(count / total * 100, 2) if total > 0 else 0
-
-    def _footer(count: int, total: int) -> str:
-        if count == 0:
-            return mark_safe(  # nosec B308 — pure static literal, no user input
-                '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
-            )
-        pct = _pct(count, total)
-        color = (
-            "text-green-700 dark:text-green-400"
-            if pct > 0
-            else "text-red-600 dark:text-red-400"
-        )
-        sign = "+" if pct > 0 else ""
-        return format_html(
-            '<strong class="{} font-semibold">{}{}</strong>&nbsp; last {} days',
-            color,
-            sign,
-            intcomma(pct),
-            period_days,
-        )
-
-    def _total_and_period(queryset: QuerySet) -> tuple[int, int]:
-        """Return (total count, count in [since, now)) in a single query."""
-        result = queryset.aggregate(
-            total=Count("id"),
-            period=Count(
-                "id", filter=Q(created_at__gte=since, created_at__lt=now)
-            ),
-        )
-        return result["total"], result["period"]
+    scoped = user is not None and not getattr(user, "is_superuser", False)
+    project_ids = (
+        _accessible_projects(user).values_list("id", flat=True)
+        if scoped
+        else None
+    )
 
     # Projects
     project_total, project_period_count = _total_and_period(
-        Project.objects.all()
+        _scope(Project.objects.all(), "id", project_ids), since, now
     )
     logger.debug("Project total: %s", project_total)
 
-    # Locations
+    # Locations — literature-sourced locations have no owning project, and
+    # (like everywhere else this pattern appears) stay visible regardless.
+    location_qs = _scoped_location_qs(project_ids)
     location_total, location_period_count = _total_and_period(
-        Location.objects.all()
+        location_qs, since, now
     )
 
-    # Samples
-    sample_total, sample_period_count = _total_and_period(Sample.objects.all())
+    # Samples — same literature exception as Location.
+    sample_qs = _scoped_sample_qs(project_ids)
+    sample_total, sample_period_count = _total_and_period(
+        sample_qs, since, now
+    )
 
     # Measurements
     measurement_models = [
@@ -207,7 +254,12 @@ def stat_data(period_days: int = 30) -> dict:
         RadiocarbonDating,
     ]
     measurement_totals = [
-        _total_and_period(m.objects.all()) for m in measurement_models
+        _total_and_period(
+            _scope(m.objects.all(), "sample__location__project", project_ids),
+            since,
+            now,
+        )
+        for m in measurement_models
     ]
     measurements_total = sum(total for total, _period in measurement_totals)
     measurements_period_count = sum(
@@ -219,7 +271,7 @@ def stat_data(period_days: int = 30) -> dict:
 
     # Location type breakdown
     location_by_type_rows = list(
-        Location.objects.values("location_type")
+        location_qs.values("location_type")
         .annotate(n=Count("id"))
         .order_by("-n")
     )
@@ -235,33 +287,46 @@ def stat_data(period_days: int = 30) -> dict:
         }
         for row in location_by_type_rows
     ]
+    # Literature locations are visible to all staff regardless of project
+    # scoping (see location_qs above) — literature_count intentionally
+    # stays unscoped; only internal_count (project-owned data) is.
     literature_count = Location.objects.filter(
         data_source="literature"
     ).count()
-    internal_count = Location.objects.filter(data_source="internal").count()
+    internal_count = _scope(
+        Location.objects.filter(data_source="internal"), "project", project_ids
+    ).count()
 
     return {
         "project": [
             {
                 "title": "Projects",
                 "metric": f"{project_total}",
-                "footer": _footer(project_period_count, project_total),
+                "footer": _footer(
+                    project_period_count, project_total, period_days
+                ),
             },
             {
                 "title": "Locations",
                 "metric": f"{location_total}",
-                "footer": _footer(location_period_count, location_total),
+                "footer": _footer(
+                    location_period_count, location_total, period_days
+                ),
             },
             {
                 "title": "Samples",
                 "metric": f"{sample_total}",
-                "footer": _footer(sample_period_count, sample_total),
+                "footer": _footer(
+                    sample_period_count, sample_total, period_days
+                ),
             },
             {
                 "title": "Measurements",
                 "metric": f"{measurements_total}",
                 "footer": _footer(
-                    measurements_period_count, measurements_total
+                    measurements_period_count,
+                    measurements_total,
+                    period_days,
                 ),
             },
         ],
@@ -278,6 +343,8 @@ def stat_data(period_days: int = 30) -> dict:
                             {
                                 "data": _build_monthly_performance(
                                     [GenericMeasurement, GrainSize],
+                                    "sample__location__project",
+                                    project_ids,
                                 ),
                                 "borderColor": "var(--color-primary-700)",
                             },
@@ -294,6 +361,8 @@ def stat_data(period_days: int = 30) -> dict:
                             {
                                 "data": _build_monthly_performance(
                                     [LuminescenceDating, RadiocarbonDating],
+                                    "sample__location__project",
+                                    project_ids,
                                 ),
                                 "borderColor": "var(--color-primary-300)",
                             },
@@ -308,7 +377,9 @@ def stat_data(period_days: int = 30) -> dict:
                     {
                         "datasets": [
                             {
-                                "data": _build_monthly_performance([Sample]),
+                                "data": _build_monthly_performance(
+                                    [Sample], "project", project_ids
+                                ),
                                 "borderColor": "var(--color-primary-500)",
                             },
                         ],
@@ -335,11 +406,19 @@ MONTH_NAMES = [
 ]
 
 
-def _build_monthly_performance(model_classes: list) -> list:
+def _build_monthly_performance(
+    model_classes: list,
+    project_lookup: str | None = None,
+    project_ids: QuerySet | None = None,
+) -> list:
     """Return a list of [month_label, count] pairs for the last 12 months.
 
     Uses one TruncMonth-grouped query per model instead of one .count() per
-    month, so N models cost N queries total instead of 12*N.
+    month, so N models cost N queries total instead of 12*N. If
+    *project_ids* is set, every model's queryset is additionally filtered
+    via *project_lookup* (the field path from that model back to Project,
+    e.g. "project" for Sample, "sample__location__project" for
+    measurement models) — see stat_data's F14 fix.
     """
     today = now()
     months = [
@@ -353,9 +432,11 @@ def _build_monthly_performance(model_classes: list) -> list:
     range_start = make_aware(datetime(months[0][0], months[0][1], 1))
 
     for model in model_classes:
+        qs = model.objects.filter(created_at__gte=range_start)
+        if project_ids is not None:
+            qs = qs.filter(**{f"{project_lookup}__in": project_ids})
         rows = (
-            model.objects.filter(created_at__gte=range_start)
-            .annotate(month=TruncMonth("created_at"))
+            qs.annotate(month=TruncMonth("created_at"))
             .values("month")
             .annotate(n=Count("id"))
         )

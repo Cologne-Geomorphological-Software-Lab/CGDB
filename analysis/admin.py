@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import base64
 import io
-from typing import TYPE_CHECKING, Any
+import logging
+from typing import TYPE_CHECKING, Any, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -30,6 +31,8 @@ from prototype.mixins import (
 )
 
 from .models import (
+    GRAIN_SIZE_INPUT_FIELDS,
+    GRAIN_SIZE_STATS_FIELDS,
     Algorithm,
     CosmogenicNuclideDating,
     Counting,
@@ -55,9 +58,13 @@ from .resources import (
 if TYPE_CHECKING:
     from django.core.files.uploadedfile import UploadedFile
     from django.db.models import QuerySet
-    from django.http import HttpRequest, HttpResponse
+    from django.http import HttpResponse
+
+    from prototype.mixins import AuthenticatedHttpRequest
 
 mpl.use("Agg")
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_float_image(img: Image.Image) -> Image.Image:
@@ -102,21 +109,23 @@ class SampleContextMixin(_SampleContextBase):
     - response_add / response_change: after saving, return to the Sample form.
     """
 
-    def _is_sample_scoped(self, request: HttpRequest) -> bool:
+    def _is_sample_scoped(self, request: AuthenticatedHttpRequest) -> bool:
         url_name = (
             getattr(getattr(request, "resolver_match", None), "url_name", "")
             or ""
         )
         return url_name.startswith("field_data_sample_")
 
-    def _sample_pk_from_add_request(self, request: HttpRequest) -> str | None:
+    def _sample_pk_from_add_request(
+        self, request: AuthenticatedHttpRequest
+    ) -> str | None:
         from field_data.utils import extract_sample_pk_from_get
 
         return extract_sample_pk_from_get(request.GET)
 
     def changelist_view(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         extra_context: dict | None = None,
     ) -> HttpResponse:
         """Redirect to the sample-scoped changelist when a sample filter is active."""
@@ -136,7 +145,7 @@ class SampleContextMixin(_SampleContextBase):
 
     def add_view(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         form_url: str = "",
         extra_context: dict | None = None,
     ) -> HttpResponse:
@@ -157,7 +166,7 @@ class SampleContextMixin(_SampleContextBase):
 
     def change_view(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         object_id: str,
         form_url: str = "",
         extra_context: dict | None = None,
@@ -177,7 +186,9 @@ class SampleContextMixin(_SampleContextBase):
                     pass
         return super().change_view(request, object_id, form_url, extra_context)
 
-    def get_changeform_initial_data(self, request: HttpRequest) -> dict:
+    def get_changeform_initial_data(
+        self, request: AuthenticatedHttpRequest
+    ) -> dict:
         """Pre-fill the sample FK from changelist filter parameters."""
         initial = super().get_changeform_initial_data(request)
         if "sample" not in initial:
@@ -193,7 +204,7 @@ class SampleContextMixin(_SampleContextBase):
 
     def _redirect_to_sample(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         obj: object,
     ) -> HttpResponse | None:
         sample_id = getattr(obj, "sample_id", None)
@@ -208,7 +219,7 @@ class SampleContextMixin(_SampleContextBase):
 
     def response_add(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         obj: object,
         post_url_continue: str | None = None,
     ) -> HttpResponse:
@@ -218,7 +229,7 @@ class SampleContextMixin(_SampleContextBase):
 
     def response_change(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         obj: object,
     ) -> HttpResponse:
         """Return to the parent Sample form after a successful change."""
@@ -231,9 +242,79 @@ class SampleContextMixin(_SampleContextBase):
 # ======================
 
 
+_ALGORITHM_FILE_EXTENSIONS = {
+    "Python": (".py",),
+    "R": (".r",),
+    "MATLAB": (".m",),
+    "Julia": (".jl",),
+}
+_ALGORITHM_MAX_FILE_SIZE_MB = 10
+
+
+class AlgorithmForm(forms.ModelForm):
+    """ModelForm for Algorithm enforcing a size cap and an extension allowlist.
+
+    tech debt A21: Algorithm.file accepts an arbitrary uploaded
+    script/executable and previously had no size or extension validation at
+    all — a weaker guard than GrainSizeImportForm.clean_file's, despite this
+    being the more sensitive upload. "Other" has no single matching
+    extension, so only the size cap applies to it.
+    """
+
+    class Meta:
+        """Form metadata for AlgorithmForm."""
+
+        model = Algorithm
+        fields = [
+            "name",
+            "version",
+            "description",
+            "link",
+            "file",
+            "programming_language",
+        ]
+
+    def clean(self) -> dict[str, object]:
+        """Validate the uploaded file's size and, when known, its extension."""
+        cleaned_data = super().clean() or {}
+        file = cleaned_data.get("file")
+        if not file:
+            return cleaned_data
+
+        max_size_bytes = _ALGORITHM_MAX_FILE_SIZE_MB * 1024 * 1024
+        if file.size > max_size_bytes:
+            raise ValidationError(
+                _(
+                    "File size (%(size).1fMB) exceeds maximum allowed size of %(max)sMB.",
+                )
+                % {
+                    "size": file.size / (1024 * 1024),
+                    "max": _ALGORITHM_MAX_FILE_SIZE_MB,
+                },
+            )
+
+        language = cast("str | None", cleaned_data.get("programming_language"))
+        allowed_extensions = _ALGORITHM_FILE_EXTENSIONS.get(language or "")
+        if allowed_extensions and not file.name.lower().endswith(
+            allowed_extensions,
+        ):
+            raise ValidationError(
+                _(
+                    "File extension does not match the selected programming "
+                    "language (%(language)s). Expected one of: %(extensions)s.",
+                )
+                % {
+                    "language": language,
+                    "extensions": ", ".join(allowed_extensions),
+                },
+            )
+        return cleaned_data
+
+
 class AlgorithmAdmin(ExportMixin, ModelAdmin):
     """Admin for the Algorithm model."""
 
+    form = AlgorithmForm
     change_form_show_cancel_button = True
     list_fullwidth = True
     list_display = ["name", "version", "programming_language"]
@@ -259,7 +340,15 @@ class RawMeasurementAdmin(
         "file",
         "description",
     ]
-    ordering = ["sample__location__project", "sample__location", "sample"]
+    # No custom `ordering`: RawMeasurement.sample is a ManyToManyField, and
+    # Django's base ModelAdmin.get_queryset() applies `ordering` via
+    # .order_by() *before* any .distinct() an override could add. Ordering
+    # through sample__location__project/sample__location/sample forces
+    # those join columns into the SELECT list (required to support the
+    # ORDER BY on a DISTINCT query), which defeats distinct()'s
+    # deduplication - any record linked to 2+ samples renders as one
+    # changelist row per linked sample. Falls back to BaseModel.Meta's
+    # -modified_at/-created_at instead, which doesn't have this problem.
 
     search_fields = ["description", "sample__identifier"]
     raw_id_fields = ["device", "accessories", "researcher"]
@@ -285,6 +374,14 @@ class RawMeasurementAdmin(
         ),
     ]
 
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
+        """Return queryset with device, accessories, and researcher pre-fetched."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("device", "accessories", "researcher")
+        )
+
 
 class RawProcessingAdmin(
     ExportMixin,
@@ -300,6 +397,10 @@ class RawProcessingAdmin(
     list_display = [
         "raw_measurement",
     ]
+
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
+        """Return queryset with raw_measurement pre-fetched."""
+        return super().get_queryset(request).select_related("raw_measurement")
 
 
 # ======================
@@ -497,7 +598,7 @@ class LuminescenceDatingAdmin(
         ),
     )
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
         """Return queryset with sample location and project pre-fetched."""
         return (
             super()
@@ -743,34 +844,7 @@ class GrainSizeImportForm(forms.ModelForm):
         """Form metadata for GrainSizeImportForm."""
 
         model = GrainSize
-        fields = [
-            "sample",
-            "raw_data",
-            "sample_weight",
-            "sample_concentration",
-            "method",
-            "classes",
-            "measured_data",
-            "clay",
-            "fine_silt",
-            "medium_silt",
-            "coarse_silt",
-            "fine_sand",
-            "medium_sand",
-            "coarse_sand",
-            "gravel",
-            "mean",
-            "mode",
-            "median",
-            "std",
-            "skew",
-            "kurtosis",
-            "fwmean",
-            "fwmedian",
-            "fwsd",
-            "fwskew",
-            "fwkurt",
-        ]
+        fields = [*GRAIN_SIZE_INPUT_FIELDS, *GRAIN_SIZE_STATS_FIELDS]
 
 
 _SAMPLE_CONC_MIN = (
@@ -893,7 +967,7 @@ class GrainSizeAdmin(
 
     def get_readonly_fields(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         obj: GrainSize | None = None,
     ) -> list:
         """Make statistics fields read-only when grain size was imported from a file."""
@@ -951,7 +1025,7 @@ class GrainSizeAdmin(
 
     def save_model(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         obj: GrainSize,
         form: Any,
         change: bool,
@@ -1049,7 +1123,7 @@ class GenericMeasurementAdmin(
     list_display = ["parameter__token", "method", "value_with_error"]
     list_fullwidth = True
     autocomplete_fields = ["sample", "parameter", "method"]
-    raw_id_fields = ["raw_data", "MeasurementSeries"]
+    raw_id_fields = ["raw_data", "measurement_series"]
 
     fieldsets = (
         (
@@ -1059,7 +1133,7 @@ class GenericMeasurementAdmin(
                 "fields": (
                     ("sample", "method"),
                     ("parameter", "sample_weight"),
-                    ("raw_data", "MeasurementSeries"),
+                    ("raw_data", "measurement_series"),
                 ),
             },
         ),
@@ -1081,7 +1155,7 @@ class GenericMeasurementAdmin(
             return f"{round(obj.value, 4)} ± {round(obj.error, 4)}"
         return str(round(obj.value, 4))
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
         """Return queryset with method and parameter pre-fetched."""
         return (
             super().get_queryset(request).select_related("method", "parameter")
@@ -1130,8 +1204,13 @@ class MicroXRFElementInline(admin.TabularInline):
                 return mark_safe(  # noqa: S308  # nosec B703, B308 — base64-encoded PIL PNG, no user input
                     f'<img src="data:image/png;base64,{image_base64}" style="max-width:120px; max-height:120px;" />',
                 )
-        except Exception as e:
-            return f"Preview unavailable: {e}"
+        except Exception:
+            logger.warning(
+                "Failed to render MicroXRF preview for element map %s",
+                obj.pk,
+                exc_info=True,
+            )
+            return "Preview unavailable — see server logs for details."
 
     preview.short_description = "Thumbnail"
 
@@ -1151,6 +1230,10 @@ class MicroXRFAdmin(
     list_display = ["measurement_date", "method"]
     raw_id_fields = ["sample"]
     inlines = [MicroXRFElementInline]
+
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
+        """Return queryset with method pre-fetched."""
+        return super().get_queryset(request).select_related("method")
 
 
 class MeasurementSeriesAdmin(ModelAdmin):

@@ -60,7 +60,7 @@ class Reference(BaseModel):
         type (str): The type of reference (e.g., Master's thesis, Bachelor's thesis, PhD thesis, Paper).
         project (Project): The project associated with the reference.
         doi (str): The Digital Object Identifier (DOI) of the reference.
-        ISSN (int): The International Standard Serial Number (ISSN) of the journal.
+        ISSN (str): The International Standard Serial Number (ISSN) of the journal.
         how_to_cite (str): Instructions on how to cite the reference.
 
     Methods:
@@ -140,9 +140,9 @@ class Reference(BaseModel):
         max_length=50,
         blank=True,
     )
-    issn = models.IntegerField(
+    issn = models.CharField(
+        max_length=20,
         blank=True,
-        null=True,
         verbose_name="ISSN",
     )
     isbn_print = models.CharField(

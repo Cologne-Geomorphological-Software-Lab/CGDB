@@ -3,6 +3,26 @@
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 
+# Architecture-review fix (F22): explicit allowlist of models the
+# "literature data is public" exception applies to, rather than
+# getattr(obj, "data_source", None) == "literature" happening to return
+# False for every other scoped model only because they lack that field.
+# That was fail-open-shaped: it silently relied on no *current* model in
+# the traversal chain both having a null project link and a
+# coincidentally-named data_source field — the same "traverse to find
+# project, fall back on a missing link" shape as the admin-layer IDOR this
+# project already fixed once. Add a model here only when it genuinely has
+# its own data_source field with a "literature" value.
+_LITERATURE_ELIGIBLE_MODELS = frozenset({"Location"})
+
+
+def _is_literature_object(obj: object) -> bool:
+    """Return True only for objects the literature exception is meant to cover."""
+    return (
+        type(obj).__name__ in _LITERATURE_ELIGIBLE_MODELS
+        and getattr(obj, "data_source", None) == "literature"
+    )
+
 
 class IsProjectMember(BasePermission):
     """Object-level permission: user must have view_project on the object's project.
@@ -33,7 +53,7 @@ class IsProjectMember(BasePermission):
 
         if project is None:
             # Literature locations are public to all authenticated users
-            return getattr(obj, "data_source", None) == "literature"
+            return _is_literature_object(obj)
 
         return request.user.has_perm("prototype.view_project", project)
 
@@ -71,7 +91,7 @@ class ProjectPathPermission(BasePermission):
 
         project = self._resolve_project(obj)
         if project is None:
-            return getattr(obj, "data_source", None) == "literature"
+            return _is_literature_object(obj)
 
         return request.user.has_perm("prototype.view_project", project)
 

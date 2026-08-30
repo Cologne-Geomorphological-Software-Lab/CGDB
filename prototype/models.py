@@ -93,6 +93,10 @@ class ResearchGroup(BaseModel):
         null=True,
         related_name="group_head",
     )
+    # Not currently read by any application code -- Project.members has a
+    # real, wired-up sync to Guardian permissions (see
+    # ProjectAdmin._sync_member_permissions), this field does not have an
+    # equivalent sync yet. Left as-is rather than removed or half-wired.
     auth_group = models.OneToOneField(
         Group,
         on_delete=models.RESTRICT,

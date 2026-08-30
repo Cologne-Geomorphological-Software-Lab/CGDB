@@ -1,4 +1,11 @@
-"""Admin configuration for the laboratory app."""
+"""Admin configuration for the laboratory app.
+
+tech debt LBG4: these admins use plain Django staff/model-level permissions
+deliberately, not object-level checks - the models here (manufacturers,
+devices, methods, ...) are a shared equipment catalog with no natural
+per-object owner, unlike bibliography.Reference (see bibliography/admin.py's
+ReferenceAdmin) which is creator-scoped for change/delete.
+"""
 
 from __future__ import annotations
 

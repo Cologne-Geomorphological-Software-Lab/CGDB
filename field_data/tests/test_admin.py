@@ -8,6 +8,7 @@ Tests cover:
 - preserved_filters is set so the back-button points to the right URL
 """
 
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, unquote
 
 from django.contrib.auth.models import User
@@ -15,6 +16,11 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from django.http import StreamingHttpResponse
 
 from field_data.admin import SiteAdmin
 from field_data.models import (
@@ -363,3 +369,151 @@ class ProvinceChangelistQueryCountTest(_AdminSetup):
             "Query count grew with the number of provinces — country must "
             "stay select_related() on ProvinceAdmin.get_queryset().",
         )
+
+
+# ===========================================================================
+# FieldPhotoAdmin.download_file — protected download route (tech debt FD8)
+# ===========================================================================
+
+
+class FieldPhotoDownloadViewTests(TestCase):
+    """FieldPhoto.file must be reachable only by users who can view the
+    owning project, matching every other project-scoped resource in this
+    app -- not via the raw, unauthenticated-in-production media URL."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from guardian.shortcuts import assign_perm
+
+        from field_data.models import FieldPhoto
+
+        cls.member = User.objects.create_user(
+            username="fp_member", password="pw", is_staff=True
+        )
+        cls.non_member = User.objects.create_user(
+            username="fp_non_member", password="pw", is_staff=True
+        )
+        cls.superuser = User.objects.create_superuser(
+            "fp_super", "fps@test.com", "pw"
+        )
+        cls.project = Project.objects.create(
+            title="FieldPhoto Project", label="FP01", status="ACTIVE"
+        )
+        assign_perm("view_project", cls.member, cls.project)
+        cls.location = Location.objects.create(
+            identifier="FP_LOC", data_source="internal", project=cls.project
+        )
+
+    def setUp(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from field_data.models import FieldPhoto
+
+        self._FieldPhoto = FieldPhoto
+        self.photo = FieldPhoto.objects.create(content_object=self.location)
+        self.photo.file.save(
+            "profile.jpg", SimpleUploadedFile("profile.jpg", b"photo-bytes")
+        )
+        self.addCleanup(lambda: self.photo.file.delete(save=False))
+        self.url = reverse(
+            "admin:field_data_fieldphoto_download", args=[self.photo.pk]
+        )
+
+    def test_project_member_can_download(self):
+        self.client.force_login(self.member)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        streaming_response = cast("StreamingHttpResponse", response)
+        content = cast("Iterable[bytes]", streaming_response.streaming_content)
+        self.assertEqual(b"".join(content), b"photo-bytes")
+
+    def test_non_member_gets_404_not_the_file(self):
+        self.client.force_login(self.non_member)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_anonymous_user_cannot_download(self):
+        response = self.client.get(self.url)
+        self.assertIn(response.status_code, (302, 403, 404))
+
+    def test_superuser_can_download_regardless_of_membership(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        # Fully consume the streaming response so the underlying file handle
+        # is released before this test's addCleanup tries to delete it
+        # (Windows keeps an open file locked against deletion).
+        content = cast(
+            "Iterable[bytes]",
+            cast("StreamingHttpResponse", response).streaming_content,
+        )
+        b"".join(content)
+
+    def test_404_when_photo_has_no_file(self):
+        empty_photo = self._FieldPhoto.objects.create(
+            content_object=self.location
+        )
+        url = reverse(
+            "admin:field_data_fieldphoto_download", args=[empty_photo.pk]
+        )
+        self.client.force_login(self.member)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_404_for_nonexistent_photo(self):
+        url = reverse("admin:field_data_fieldphoto_download", args=[999999])
+        self.client.force_login(self.member)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_hidden_from_admin_index(self):
+        """FieldPhotoAdmin exists only to host the download route."""
+        self.client.force_login(self.superuser)
+        response = self.client.get(reverse("admin:index"))
+        self.assertNotContains(response, "field_data/fieldphoto/")
+
+
+class FieldPhotoWidgetLinksToProtectedViewTests(TestCase):
+    """The inline's file widget must render the protected download URL,
+    not the FieldFile's raw (in production, unauthenticated) .url."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from field_data.models import FieldPhoto
+
+        cls.superuser = User.objects.create_superuser(
+            "fpw_super", "fpws@test.com", "pw"
+        )
+        cls.project = Project.objects.create(
+            title="FieldPhoto Widget Project", label="FPW01", status="ACTIVE"
+        )
+        cls.location = Location.objects.create(
+            identifier="FPW_LOC", data_source="internal", project=cls.project
+        )
+        cls.photo = FieldPhoto.objects.create(content_object=cls.location)
+        cls.photo.file.save(
+            "sketch.jpg", SimpleUploadedFile("sketch.jpg", b"sketch-bytes")
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.photo.file.delete(save=False)
+        super().tearDownClass()
+
+    def test_location_change_form_links_to_protected_download_not_raw_url(
+        self,
+    ):
+        self.client.force_login(self.superuser)
+        url = reverse(
+            "admin:field_data_location_change", args=[self.location.pk]
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        protected_url = reverse(
+            "admin:field_data_fieldphoto_download", args=[self.photo.pk]
+        )
+        content = response.content.decode()
+        self.assertIn(protected_url, content)
+        self.assertNotIn(self.photo.file.url, content)

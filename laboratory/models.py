@@ -11,6 +11,11 @@ class Manufacturer(models.Model):
     name = models.CharField(max_length=100)
     website = models.URLField(blank=True)
 
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["name"]
+
     def __str__(self) -> str:
         """Return the manufacturer name."""
         return self.name
@@ -40,6 +45,11 @@ class Device(models.Model):
         null=True,
     )
 
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["name"]
+
     def __str__(self) -> str:
         """Return the device name."""
         return f"{self.name}"
@@ -61,6 +71,7 @@ class Accessory(models.Model):
         """Meta options for Accessory."""
 
         verbose_name_plural = "Accessories"
+        ordering = ["device", "name"]
 
     def __str__(self) -> str:
         """Return the device and accessory name."""
@@ -70,8 +81,11 @@ class Accessory(models.Model):
 class AccessoryParameter(models.Model):
     """A named parameter value recorded for an accessory under a specific method."""
 
-    method = models.CharField(
-        max_length=50,
+    method = models.ForeignKey(
+        "Method",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
     )
     accessory = models.ForeignKey(
         Accessory,
@@ -134,6 +148,11 @@ class Method(models.Model):
     )
     available = models.BooleanField(default=True)
 
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["name"]
+
     def __str__(self) -> str:
         """Return the method name."""
         return f"{self.name}"
@@ -169,6 +188,11 @@ class Firmware(models.Model):
     version = models.CharField(max_length=50)
     installation_date = models.DateField()
     changelog = models.TextField(blank=True)
+
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["device", "version"]
 
     def __str__(self) -> str:
         """Return the device name and firmware version."""

@@ -124,7 +124,47 @@ class TestIntegrityCheckJob:
             instance=DagsterInstance.ephemeral(),
         )
         run.refresh_from_db()
-        assert run.result_file.name.startswith("maintenance/integrity_")
+        result_name = run.result_file.name
+        assert result_name is not None
+        assert result_name.startswith("maintenance/integrity_")
+
+    def test_orphan_samples_spanning_multiple_chunks_all_created(self, tmp_path):
+        """tech debt O3: chunked .iterator() + bulk_create must not drop or
+        duplicate rows at a chunk boundary - 5 orphan samples at chunk size
+        2 crosses two boundaries ([2, 2, 1])."""
+        from unittest.mock import patch
+
+        from field_data.models import Sample
+        from prototype.models import Project
+
+        project = Project.objects.create(
+            title="Chunked Integrity Project", label="CIP01", status="ACTIVE"
+        )
+        for i in range(5):
+            Sample.objects.create(
+                identifier=f"ORPHAN{i}", project=project
+            )
+
+        run = self._make_run()
+        with patch(
+            "orchestration.dagster_home.maintenance_jobs._INTEGRITY_CHECK_CHUNK_SIZE",
+            2,
+        ):
+            result = integrity_check_job.execute_in_process(
+                run_config=self._cfg(run, tmp_path),
+                instance=DagsterInstance.ephemeral(),
+            )
+        assert result.success
+
+        assert (
+            IntegrityIssue.objects.filter(
+                run=run, check_type="orphan_samples"
+            ).count()
+            == 5
+        )
+        output_file = next(tmp_path.glob("integrity_*.json"))
+        data = json.loads(output_file.read_text())
+        assert data["orphan_samples"]["count"] == 5
 
 
 @pytest.mark.django_db
@@ -409,7 +449,8 @@ class TestCoerceDfColumns:
         assert df["val"][0] == "keep"
         assert df["val"][1] == "x"
         # pandas may store None as NaN in object columns after apply()
-        assert df["val"][2] is None or pd.isna(df["val"][2])
+        # pandas-stubs' isna() overload can't narrow to the scalar case here.
+        assert df["val"][2] is None or bool(pd.isna(df["val"][2]))
 
 
 # ===========================================================================
@@ -439,8 +480,9 @@ class TestExportModelTable:
         conn = MagicMock()
         context = MagicMock()
 
-        _export_model_table(conn, cfg, Project, context)
+        result = _export_model_table(conn, cfg, Project, context)
 
+        assert result is True
         conn.execute.assert_called_once()
         sql = conn.execute.call_args[0][0]
         assert "CREATE TABLE prototype__project" in sql
@@ -454,14 +496,18 @@ class TestExportModelTable:
         conn = MagicMock()
         context = MagicMock()
 
-        _export_model_table(conn, cfg, Project, context)
+        result = _export_model_table(conn, cfg, Project, context)
 
+        assert result is True
         conn.execute.assert_not_called()
         context.log.info.assert_called_with(
             "Table %s is empty, skipping", "prototype__project"
         )
 
     def test_exception_logged_not_raised(self):
+        """tech debt O2: a per-table failure must be reported to the caller
+        (return False) rather than silently swallowed as if it succeeded,
+        so export_to_duckdb can track and surface it."""
         from orchestration.dagster_home.maintenance_jobs import _export_model_table
         from prototype.models import Project
 
@@ -471,6 +517,176 @@ class TestExportModelTable:
         conn.execute.side_effect = RuntimeError("db error")
         context = MagicMock()
 
-        _export_model_table(conn, cfg, Project, context)  # must not raise
+        result = _export_model_table(conn, cfg, Project, context)  # must not raise
+
+        assert result is False
+        context.log.error.assert_called_once()
+
+    def test_export_spanning_multiple_chunks_uses_create_then_insert(self):
+        """Architecture-review fix (F13): rows beyond the first chunk must
+        use INSERT INTO (not another CREATE TABLE, which would fail on the
+        second call), and every row must still be exported -- proving the
+        chunked rewrite doesn't drop or duplicate rows at a chunk boundary."""
+        from unittest.mock import patch
+
+        from orchestration.dagster_home.maintenance_jobs import _export_model_table
+        from prototype.models import Project
+
+        for i in range(5):
+            Project.objects.create(
+                title=f"ChunkT{i}", label=f"CT{i:02d}", status="ACTIVE"
+            )
+        cfg = self._make_cfg()
+        conn = MagicMock()
+        context = MagicMock()
+
+        with patch(
+            "orchestration.dagster_home.maintenance_jobs._EXPORT_CHUNK_SIZE", 2
+        ):
+            _export_model_table(conn, cfg, Project, context)
+
+        # 5 rows at chunk size 2 -> chunks of [2, 2, 1] -> 3 conn.execute calls.
+        assert conn.execute.call_count == 3
+        sqls = [call.args[0] for call in conn.execute.call_args_list]
+        assert sqls[0].startswith("CREATE TABLE prototype__project")
+        assert sqls[1].startswith("INSERT INTO prototype__project")
+        assert sqls[2].startswith("INSERT INTO prototype__project")
+        context.log.info.assert_called_with(
+            "Exported %d rows to table %s", 5, "prototype__project"
+        )
+
+    def test_heterogeneous_chunks_type_mismatch_is_recovered(self):
+        """tech debt O4: CREATE TABLE infers its schema from only the first
+        chunk. A nullable column that's all-NULL in chunk 1 (here:
+        start_date) gets inferred as a narrow type (e.g. INTEGER) that a
+        later chunk's real DATE values can't be cast into - previously this
+        raised and _export_model_table's except Exception caught it,
+        silently marking the whole table failed. The UNION ALL BY NAME
+        fallback must recover instead, and every row must still land in the
+        DuckDB table."""
+        import duckdb
+        from unittest.mock import patch
+
+        from orchestration.dagster_home.maintenance_jobs import _export_model_table
+        from prototype.models import Project
+
+        for i in range(2):
+            Project.objects.create(
+                title=f"NullChunk{i}",
+                label=f"NC{i:02d}",
+                status="ACTIVE",
+                start_date=None,
+            )
+        for i in range(2):
+            Project.objects.create(
+                title=f"RealChunk{i}",
+                label=f"RC{i:02d}",
+                status="ACTIVE",
+                start_date="2024-01-01",
+            )
+        cfg = self._make_cfg()
+        cfg.include_fields = ["id", "start_date"]
+        conn = duckdb.connect(":memory:")
+        context = MagicMock()
+
+        # BaseModel.Meta.ordering is ["-modified_at", "-created_at"]
+        # (newest first), which would put the real-date rows in chunk 1 and
+        # the all-NULL rows in chunk 2 - the opposite of what reproduces
+        # this bug. Force id order so the all-NULL rows come first, like a
+        # real ordering-agnostic occurrence of this bug would.
+        ordered_qs = Project.objects.values("id", "start_date").order_by("id")
+        with (
+            patch(
+                "orchestration.dagster_home.maintenance_jobs._EXPORT_CHUNK_SIZE",
+                2,
+            ),
+            patch(
+                "orchestration.dagster_home.maintenance_jobs._get_queryset",
+                return_value=ordered_qs,
+            ),
+        ):
+            result = _export_model_table(conn, cfg, Project, context)
+
+        assert result is True
+        context.log.error.assert_not_called()
+        rows = conn.execute(
+            "SELECT start_date FROM prototype__project ORDER BY id"
+        ).fetchall()
+        # _coerce_df_columns already stringifies non-primitive values (e.g.
+        # datetime.date) before they ever reach DuckDB - that's expected,
+        # pre-existing behavior, not part of the O4 bug being tested here.
+        assert [r[0] for r in rows] == [
+            None,
+            None,
+            "2024-01-01",
+            "2024-01-01",
+        ]
+
+
+# ===========================================================================
+# export_to_duckdb — per-table failure tracking (tech debt O2)
+# ===========================================================================
+
+
+class TestCheckExportFailures:
+    """Before this fix, a per-table export failure was only ever logged
+    inside _export_model_table - export_to_duckdb had no way to know how
+    many tables actually succeeded, so a run where every table failed
+    still reported overall "success" with a near-empty DuckDB file.
+
+    _check_export_failures is a plain function (same extraction pattern as
+    _export_model_table/_get_queryset/_coerce_df_columns) precisely so it
+    can be unit-tested directly, without going through Dagster's
+    op-invocation machinery - which doesn't pass context.log/context.op_config
+    through to a bare direct-invocation mock the way a real run does.
+    """
+
+    def test_all_tables_failing_raises(self):
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        with pytest.raises(RuntimeError, match="all 2 configured table"):
+            _check_export_failures(
+                context, attempted=2, failed_tables=["a.A", "b.B"]
+            )
+        context.log.error.assert_called_once()
+
+    def test_partial_failure_logs_but_does_not_raise(self):
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        _check_export_failures(
+            context, attempted=2, failed_tables=["b.B"]
+        )  # must not raise
 
         context.log.error.assert_called_once()
+        error_args = context.log.error.call_args[0]
+        assert error_args[1:3] == (1, 2)  # 1 of 2 tables failed
+
+    def test_all_tables_succeeding_does_not_log_error(self):
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        _check_export_failures(context, attempted=2, failed_tables=[])
+
+        context.log.error.assert_not_called()
+
+    def test_zero_tables_attempted_does_not_raise(self):
+        """No configured tables at all (e.g. all excluded/not found) is not
+        the same failure mode as "every attempted table failed" - must not
+        raise."""
+        from orchestration.dagster_home.maintenance_jobs import (
+            _check_export_failures,
+        )
+
+        context = MagicMock()
+        _check_export_failures(
+            context, attempted=0, failed_tables=[]
+        )  # must not raise
+        context.log.error.assert_not_called()

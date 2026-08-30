@@ -8,6 +8,7 @@ from collections.abc import Iterator
 
 import pytest
 from django.contrib.gis.gdal import GDALRaster
+from django.contrib.gis.gdal.error import GDALException
 
 from raster_data.gdal_metadata import RasterMetadataError, read_raster_metadata
 
@@ -73,5 +74,23 @@ class TestReadRasterMetadata:
     def test_raises_on_non_raster_file(self, tif_path: str) -> None:
         with open(tif_path, "w") as fh:  # noqa: PTH123
             fh.write("this is not a raster file")
+        with pytest.raises(RasterMetadataError):
+            read_raster_metadata(tif_path)
+
+    def test_wraps_gdalexception_from_post_open_attribute_read(
+        self, tif_path: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """tech debt R3: GDALException raised by GDAL *after* a successful
+        open (e.g. reading .bands) must still surface as RasterMetadataError,
+        not propagate uncaught and abort the admin action's whole batch."""
+        _make_geotiff(
+            tif_path, srid=4326, origin=(6.0, 52.0), scale=(0.5, -0.5),
+        )
+
+        def _raise(self: GDALRaster) -> list[object]:
+            msg = "simulated GDAL failure reading band count"
+            raise GDALException(msg)
+
+        monkeypatch.setattr(GDALRaster, "bands", property(_raise))
         with pytest.raises(RasterMetadataError):
             read_raster_metadata(tif_path)

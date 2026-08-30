@@ -34,12 +34,12 @@ git clone git@github.com:Cologne-Geomorphological-Software-Lab/CGDB.git
 cd CGDB
 ```
 
-Set up a virtual environment, activate it and install the project's dependencies:
+Set up a virtual environment, activate it, and install the project's dependencies with [uv](https://docs.astral.sh/uv/):
 
 ```
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
 Create a copy of prototype *local_settings_TEMPLATE.py* as *local_settings.py*:
@@ -306,17 +306,17 @@ The orchestration layer is designed as a **starting point** that can be customis
 
 **Headless by design — there is no Dagster UI/webserver in this setup, in
 dev or in production.** Maintenance jobs are triggered from the Django
-admin ("Trigger selected maintenance job(s)"), which submits directly to
-the daemon's run queue via `dagster job launch`; nothing depends on a UI
-to function, and nothing here ever listens on a network port other than
-Django itself. To inspect run history/logs without a UI, use the `dagster`
+admin ("Trigger selected maintenance job(s)"), which launches the run
+directly (via `dagster job launch` and `DefaultRunLauncher` — no
+`run_coordinator` is configured, so runs aren't queued or throttled);
+nothing depends on a UI to function, and nothing here ever listens on a
+network port other than Django itself. To inspect run history/logs without a UI, use the `dagster`
 CLI (e.g. `dagster run list`, `dagster run logs <run-id>`) against the same
 `DAGSTER_HOME`, or read `MaintenanceRun.log`/`result_file` in the admin.
 
-1. Uncomment Dagster dependencies in `requirements.txt` and install:
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. Dagster's dependencies are already part of the project's dependency set
+   (`uv sync`, see "Installation for local development" above) — nothing to
+   uncomment or install separately.
 
 2. Set the Dagster home directory:
    ```bash
@@ -472,7 +472,7 @@ The module is intentionally minimal to avoid overhead while providing a complete
 ![admin_luminescence](admin_luminescence.png)
 ## References
 
-> Handy, D., van der Meij, W. M., Zickel, M., and Reimann, T.: A database-driven research data framework for integrating and processing high-dimensional geoscientific data, Geosci. Instrum. Method. Data Syst., 15, 165–181, https://doi.org/10.5194/gi-15-165-2026, 2026. 
+> Handy, D., van der Meij, W. M., Zickel, M., and Reimann, T.: A database-driven research data framework for integrating and processing high-dimensional geoscientific data, Geosci. Instrum. Method. Data Syst., 15, 165–181, https://doi.org/10.5194/gi-15-165-2026, 2026.
 
 **Framework Dependencies:**
 - Django - [https://www.djangoproject.com/](https://www.djangoproject.com/)

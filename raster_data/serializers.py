@@ -90,7 +90,16 @@ class RasterDatasetSerializer(serializers.ModelSerializer):
         ]
 
     def get_scene_count(self, obj: RasterDataset) -> int:
-        """Return the number of scenes in this dataset."""
+        """Return the number of scenes in this dataset.
+
+        Reads the `scene_count` annotation RasterDatasetViewSet.get_queryset()
+        adds (Count("scenes")) — avoids one extra COUNT query per row on
+        every list page. Falls back to a direct count() if the annotation
+        is missing (e.g. this serializer used outside that viewset).
+        """
+        annotated: int | None = getattr(obj, "scene_count", None)
+        if annotated is not None:
+            return annotated
         return obj.scenes.count()
 
 
@@ -128,7 +137,15 @@ class _ManifestSceneSerializer(serializers.ModelSerializer):
 
 
 class RasterSceneWriteSerializer(serializers.ModelSerializer):
-    """Write serializer for registering raster scenes via the API."""
+    """Write serializer for registering raster scenes via the API.
+
+    tech debt R5: crs/n_bands/resolution_m/spatial_bbox_wkt/class_names are
+    accepted here as plain caller-supplied values, not verified against the
+    actual file - unlike RasterAdmin's "Recompute metadata from file" admin
+    action, which reads them via GDAL. The manifest endpoint
+    (RasterDatasetViewSet.manifest) documents this distinction since it's
+    the one place both kinds of scene get surfaced together.
+    """
 
     spatial_bbox_wkt = serializers.CharField(
         required=False,

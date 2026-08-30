@@ -1,4 +1,10 @@
-"""Django admin for geodata models (Landform)."""
+"""Django admin for geodata models (Landform).
+
+tech debt LBG4: plain Django staff/model-level permissions are deliberate
+here too - Landform regions are a shared, global catalog with no natural
+per-object owner (see laboratory/admin.py and bibliography/admin.py's
+ReferenceAdmin for the other two data points in this app-family decision).
+"""
 
 from __future__ import annotations
 

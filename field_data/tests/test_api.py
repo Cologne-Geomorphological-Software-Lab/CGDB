@@ -11,6 +11,7 @@ map actions from the field_data side and checks the DRF viewset wiring.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, cast
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import User
@@ -57,6 +58,7 @@ _NEW_MULTILINESTRING_GEOJSON = {
     "coordinates": [[[10.0, 50.0], [10.5, 50.5]]],
 }
 _NEW_POINT_GEOJSON = {"type": "Point", "coordinates": [7.0, 51.0]}
+_OUT_OF_BOUNDS_POINT_GEOJSON = {"type": "Point", "coordinates": [200.0, 51.0]}
 
 
 def _make_client() -> _TestClient:
@@ -96,6 +98,65 @@ class _BaseApiTest(TestCase):
     def setUp(self) -> None:
         self.client = _make_client()
         self.client.force_authenticate(user=self.user)
+
+
+class GeoJsonPaginationTest(_BaseApiTest):
+    """Architecture-review fix: the standard (non-/map) list endpoints for
+    GeoJSON-default viewsets must paginate as a proper FeatureCollection
+    (rest_framework_gis.pagination.GeoJsonPagination), not DRF's generic
+    {"results": [...]} shape (plain PageNumberPagination), which isn't
+    valid GeoJSON at all."""
+
+    def test_study_areas_list_is_a_feature_collection(self) -> None:
+        resp = self.client.get("/api/v1/study-areas/")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["type"] == "FeatureCollection"
+        assert isinstance(data["features"], list)
+
+    def test_locations_list_is_a_feature_collection(self) -> None:
+        """Also confirms the F16 fix: the list endpoint always returns
+        GeoJSON now, not the removed flat lon/lat serializer."""
+        Location.objects.create(
+            identifier="LOC_PAG01",
+            project=self.project,
+            data_source="internal",
+            easting=6.0,
+            northing=50.0,
+        )
+        resp = self.client.get("/api/v1/locations/")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["type"] == "FeatureCollection"
+        assert any(
+            f["properties"]["identifier"] == "LOC_PAG01"
+            for f in data["features"]
+        )
+
+
+class MapActionFeatureCapTest(_BaseApiTest):
+    """Architecture-review fix: the unpaginated .map() actions must reject
+    (not silently truncate) a result set larger than the configured cap,
+    instead of returning an arbitrarily large response. Patches the cap
+    down to a small number rather than creating thousands of rows."""
+
+    def test_study_areas_map_rejects_when_over_cap(self) -> None:
+        StudyArea.objects.create(
+            label="SA_CAP_2",
+            project=self.project,
+            geometry=GEOSGeometry(_STUDY_AREA_WKT, srid=4326),
+        )
+        # self.study_area (from setUpTestData) + SA_CAP_2 = 2 rows over a cap of 1.
+        with patch("field_data.api_views._MAX_MAP_FEATURES", 1):
+            resp = self.client.get("/api/v1/study-areas/map/")
+        assert resp.status_code == 400
+        assert "more than 1 features" in resp.json()[0]
+
+    def test_study_areas_map_succeeds_at_or_under_cap(self) -> None:
+        with patch("field_data.api_views._MAX_MAP_FEATURES", 1):
+            resp = self.client.get("/api/v1/study-areas/map/")
+        assert resp.status_code == 200
+        assert resp.json()["type"] == "FeatureCollection"
 
 
 class StudyAreaMapActionTest(_BaseApiTest):
@@ -253,6 +314,34 @@ class _WritePermissionApiTest(_BaseApiTest):
 
 
 class StudyAreaWriteTest(_WritePermissionApiTest):
+    def test_province_set_on_create_is_readable_afterward(self) -> None:
+        """Architecture-review fix (F17): StudyAreaWriteSerializer accepts
+        province on write, but the read serializer used to omit it from
+        `fields` -- a client that set it could never read it back."""
+        from field_data.models import Country, Province
+
+        country = Country.objects.create(name="Germany", iso_code="DEU")
+        province = Province.objects.create(name="NRW", country=country)
+
+        create_resp = self._client_for(self.editor).post(
+            "/api/v1/study-areas/",
+            {
+                "label": "SA_PROVINCE",
+                "project": self.project.pk,
+                "province": province.pk,
+                "geometry": _NEW_POLYGON_GEOJSON,
+            },
+            format="json",
+        )
+        assert create_resp.status_code == 201
+        study_area_id = create_resp.json()["id"]
+
+        read_resp = self._client_for(self.editor).get(
+            f"/api/v1/study-areas/{study_area_id}/"
+        )
+        assert read_resp.status_code == 200
+        assert read_resp.json()["properties"]["province"] == province.pk
+
     def test_create_with_add_permission_succeeds(self) -> None:
         resp = self._client_for(self.editor).post(
             "/api/v1/study-areas/",
@@ -382,8 +471,10 @@ class LocationWriteTest(_WritePermissionApiTest):
         # the source of truth now, not just momentarily matching.
         self.location.save()
         self.location.refresh_from_db()
-        assert self.location.location.x == pytest.approx(7.0)
-        assert self.location.location.y == pytest.approx(51.0)
+        point = self.location.location
+        assert point is not None
+        assert point.x == pytest.approx(7.0)
+        assert point.y == pytest.approx(51.0)
 
     def test_update_without_change_permission_returns_403(self) -> None:
         resp = self._client_for(self.user).patch(
@@ -392,6 +483,22 @@ class LocationWriteTest(_WritePermissionApiTest):
             format="json",
         )
         assert resp.status_code == 403
+
+    def test_update_out_of_bounds_coordinates_returns_400_not_500(self) -> None:
+        """Architecture-review fix: Location.clean()/.save() raises Django's
+        ValidationError (not DRF's) for out-of-range easting/northing.
+        Without prototype.exceptions.exception_handler translating it, DRF's
+        default handler doesn't recognize django.core.exceptions.ValidationError
+        at all and this falls through to an unhandled 500 instead of a
+        normal 400 error response.
+        """
+        resp = self._client_for(self.editor).patch(
+            f"/api/v1/locations/{self.location.pk}/",
+            {"location": _OUT_OF_BOUNDS_POINT_GEOJSON},
+            format="json",
+        )
+        assert resp.status_code == 400
+        assert "easting" in resp.json()
 
     def test_literature_location_cannot_be_edited(self) -> None:
         author = Author.objects.create(last_name="Geo", first_name="Test")

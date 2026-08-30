@@ -38,6 +38,7 @@ class ManufacturerViewSet(ReadOnlyModelViewSet):
     serializer_class = ManufacturerSerializer
     permission_classes = [IsAuthenticated]
     search_fields = ["name"]
+    ordering_fields = ["name"]
     ordering = ["name"]
 
 
@@ -49,6 +50,7 @@ class DeviceViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ["manufacturer"]
     search_fields = ["name", "description", "token"]
+    ordering_fields = ["name", "manufacturer"]
     ordering = ["name"]
 
 
@@ -60,6 +62,7 @@ class AccessoryViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ["device"]
     search_fields = ["name", "description"]
+    ordering_fields = ["device", "name"]
     ordering = ["device", "name"]
 
 
@@ -71,6 +74,7 @@ class AccessoryParameterViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ["accessory", "method"]
     search_fields = ["parameter_name"]
+    ordering_fields = ["accessory", "parameter_name"]
     ordering = ["accessory", "parameter_name"]
 
 
@@ -82,6 +86,7 @@ class MethodViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filterset_fields = ["category", "laboratory", "available", "device"]
     search_fields = ["name", "description", "token"]
+    ordering_fields = ["name", "category", "laboratory"]
     ordering = ["name"]
 
 

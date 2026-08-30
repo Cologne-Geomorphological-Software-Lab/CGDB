@@ -22,6 +22,8 @@ hand-built test double (unlike test_mixins.py, which tests the mixins'
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
@@ -30,6 +32,15 @@ from field_data.admin import LocationAdmin
 from field_data.models import Location
 from guardian.shortcuts import assign_perm
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from prototype.mixins import AuthenticatedHttpRequest
+
+
+def _make_request(user: User) -> AuthenticatedHttpRequest:
+    request = RequestFactory().get("/admin/field_data/location/")
+    request.user = user
+    return cast("AuthenticatedHttpRequest", request)
 
 _PROJECT_MIXIN_NAMES = {
     "ProjectBasedPermissionMixin",
@@ -104,8 +115,7 @@ class LocationAdminProjectScopingTest(TestCase):
             project=other_project, identifier="other-location"
         )
 
-        request = RequestFactory().get("/admin/field_data/location/")
-        request.user = user
+        request = _make_request(user)
 
         location_admin = LocationAdmin(Location, admin.site)
         visible = location_admin.get_queryset(request)
@@ -128,8 +138,7 @@ class LocationAdminProjectScopingTest(TestCase):
             project=other_project, identifier="foreign-location"
         )
 
-        request = RequestFactory().get("/admin/field_data/location/")
-        request.user = user
+        request = _make_request(user)
 
         location_admin = LocationAdmin(Location, admin.site)
         assert (

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
 from typing import ClassVar
 
 from django.contrib.gis.geos import GEOSGeometry
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from prototype.models import Project
 from raster_data.models import DataSource, RasterDataset, RasterScene
@@ -99,6 +101,88 @@ class RasterSceneTest(TestCase):
             spatial_bbox__intersects=scene_a.spatial_bbox
         )
         assert hits.count() == 2
+
+
+@override_settings(
+    RASTER_CORPUS_ROOT=Path(tempfile.gettempdir()) / "cgdb_corpus_test"
+)
+class RasterSceneCorpusPathValidationTest(TestCase):
+    """Architecture-review fix (F6): corpus_path must not let a
+    project-scoped user point at an arbitrary server filesystem path.
+
+    Narrows RASTER_CORPUS_ROOT to a real, restrictive value for this class
+    only — the global test-settings default is deliberately permissive (see
+    prototype/test_settings.py) so the rest of the suite's pre-existing,
+    arbitrary corpus_path fixtures aren't affected by this check.
+    """
+
+    project: ClassVar[Project]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.project = Project.objects.create(
+            title="Corpus Validation Project", label="CVP01", status="ACTIVE"
+        )
+
+    def test_relative_corpus_path_under_root_is_allowed(self) -> None:
+        """A relative path is resolved against RASTER_CORPUS_ROOT itself --
+        one that stays under the root must keep working."""
+        scene = RasterScene.objects.create(
+            project=self.project, corpus_path="corpus/scenes/relative.tif"
+        )
+        assert scene.corpus_path == "corpus/scenes/relative.tif"
+
+    def test_relative_corpus_path_traversal_is_rejected(self) -> None:
+        """A relative value with enough ".." segments walks past
+        RASTER_CORPUS_ROOT and must be rejected the same as an absolute
+        path outside it -- this is the exploit F6 exists to close."""
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            RasterScene.objects.create(
+                project=self.project,
+                corpus_path="../../../../../../../../etc/passwd",
+            )
+        assert not RasterScene.objects.filter(
+            corpus_path="../../../../../../../../etc/passwd"
+        ).exists()
+
+    def test_absolute_corpus_path_under_configured_root_is_allowed(self) -> None:
+        from django.conf import settings
+
+        allowed = str(Path(settings.RASTER_CORPUS_ROOT) / "scenes" / "ok.tif")
+        scene = RasterScene.objects.create(
+            project=self.project, corpus_path=allowed
+        )
+        assert scene.corpus_path == allowed
+
+    def test_absolute_corpus_path_outside_configured_root_is_rejected(self) -> None:
+        from django.core.exceptions import ValidationError
+
+        with self.assertRaises(ValidationError):
+            RasterScene.objects.create(
+                project=self.project,
+                corpus_path="/etc/passwd",
+            )
+        assert not RasterScene.objects.filter(
+            corpus_path="/etc/passwd"
+        ).exists()
+
+    def test_path_traversal_out_of_root_is_rejected(self) -> None:
+        """corpus_path="<root>/../../etc/passwd" must not escape the root
+        via ".." segments -- resolve() normalizes these before the check."""
+        from django.conf import settings
+        from django.core.exceptions import ValidationError
+
+        escaping = str(
+            Path(settings.RASTER_CORPUS_ROOT) / ".." / ".." / "etc" / "passwd"
+        )
+        with self.assertRaises(ValidationError):
+            RasterScene.objects.create(project=self.project, corpus_path=escaping)
+
+    def test_blank_corpus_path_is_unaffected(self) -> None:
+        scene = RasterScene.objects.create(project=self.project, corpus_path="")
+        assert scene.corpus_path == ""
 
 
 class RasterDatasetTest(TestCase):

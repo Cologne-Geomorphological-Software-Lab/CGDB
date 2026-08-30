@@ -86,6 +86,22 @@ class Command(BaseCommand):
         self._run(["npm", "ci"], dry_run=dry_run, cwd=frontend_dir)
         self._run(["npm", "run", "build"], dry_run=dry_run, cwd=frontend_dir)
 
+        self._migrate_and_collectstatic(
+            dry_run=dry_run, backup_path=backup_path
+        )
+
+        services = self._restart_services(dry_run=dry_run)
+        for service in services:
+            self._health_check(service, dry_run=dry_run)
+
+        self.stdout.write(
+            self.style.SUCCESS(f"Deployment complete. Backup: {backup_path}")
+        )
+
+    def _migrate_and_collectstatic(
+        self, *, dry_run: bool, backup_path: str
+    ) -> None:
+        """Run migrate + collectstatic, pointing at the pre-migrate backup on failure."""
         try:
             if dry_run:
                 self.stdout.write("==> Would run: manage.py migrate --noinput")
@@ -105,6 +121,8 @@ class Command(BaseCommand):
             )
             raise
 
+    def _restart_services(self, *, dry_run: bool) -> list[str]:
+        """Restart every installed service in _SERVICES, warning about any not set up here."""
         services = [s for s in _SERVICES if self._service_exists(s)]
         skipped = [s for s in _SERVICES if s not in services]
         if skipped:
@@ -114,18 +132,11 @@ class Command(BaseCommand):
                     "for it on this host (not installed/enabled here)."
                 )
             )
-
         for service in services:
             self._run(
                 ["sudo", "systemctl", "restart", service], dry_run=dry_run
             )
-
-        for service in services:
-            self._health_check(service, dry_run=dry_run)
-
-        self.stdout.write(
-            self.style.SUCCESS(f"Deployment complete. Backup: {backup_path}")
-        )
+        return services
 
     def _confirm(self) -> bool:
         """Ask for interactive confirmation before any effectful step runs."""

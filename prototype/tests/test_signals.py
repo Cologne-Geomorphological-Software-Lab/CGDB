@@ -1,8 +1,12 @@
 """Tests for prototype signal handlers.
 
-The signal assign_permissions_to_creator fires on post_save for any BaseModel
-instance and uses transaction.on_commit() to assign Guardian object-level
-permissions (view, change, delete) to the creator.
+The signal assign_permissions_to_creator fires on post_save for BaseModel
+instances of the models listed in _GUARDIAN_PERMISSIONED_MODELS (tech debt
+P9 - previously fired for every BaseModel subclass, writing 4 unused
+Guardian rows per create for every model whose admin only ever checks
+permissions on a resolved parent Project, not the object itself) and uses
+transaction.on_commit() to assign Guardian object-level permissions (view,
+change, delete) to the creator.
 
 TestCase wraps tests in a transaction that is never committed, so
 on_commit callbacks do not run by default. We use
@@ -14,6 +18,7 @@ from django.test import TestCase
 
 from guardian.shortcuts import assign_perm, get_perms, remove_perm
 
+from field_data.models import Location
 from prototype.models import Project, Researcher, ResearchGroup
 
 
@@ -186,3 +191,25 @@ class ResearchGroupPermissionTest(TestCase):
         self.assertIn("view_researchgroup", perms)
         self.assertIn("change_researchgroup", perms)
         self.assertIn("delete_researchgroup", perms)
+
+
+class SignalScopingTest(TestCase):
+    """tech debt P9: the signal must not fire for models whose admin never
+    consults per-object Guardian permissions on the object itself (only on
+    a resolved parent Project via prototype/mixins.py's ProjectBasedPermissionMixin
+    family) - writing those rows was pure overhead with no consumer."""
+
+    def test_no_permissions_assigned_for_non_allowlisted_model(self):
+        user = User.objects.create_user(username="scope_sig_u", password="pw")
+        project = Project.objects.create(
+            title="Scope Signal Project", label="SSP01", status="ACTIVE"
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            location = Location.objects.create(
+                identifier="SCOPE_LOC",
+                data_source="internal",
+                project=project,
+                created_by=user,
+            )
+        perms = get_perms(user, location)
+        self.assertEqual(perms, [])

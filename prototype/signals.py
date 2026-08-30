@@ -1,5 +1,7 @@
 """Signal handlers for automatic permission management in the prototype app."""
 
+from typing import cast
+
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models.signals import post_migrate, post_save
@@ -7,6 +9,21 @@ from django.dispatch import receiver
 from guardian.shortcuts import assign_perm
 
 from prototype.models import BaseModel
+
+# Models whose admin actually consults per-object Guardian permissions on
+# the object itself (not on a resolved parent Project - see
+# prototype/mixins.py's ProjectBasedPermissionMixin family, which checks
+# view_project/change_project/delete_project on the *project*, not on the
+# child object, and so doesn't need this signal at all). Everything else
+# writing 4 Guardian rows per create was pure overhead with no consumer.
+_GUARDIAN_PERMISSIONED_MODELS = frozenset(
+    {
+        ("prototype", "project"),
+        ("prototype", "researcher"),
+        ("prototype", "researchgroup"),
+        ("bibliography", "reference"),
+    }
+)
 
 
 @receiver(post_migrate)
@@ -32,6 +49,12 @@ def assign_permissions_to_creator(
 ) -> None:
     """Assigns all object-related permissions to the creator when the object is newly created."""
     if not issubclass(sender, BaseModel):
+        return
+    instance = cast("BaseModel", instance)
+    if (
+        sender._meta.app_label,
+        sender._meta.model_name,
+    ) not in _GUARDIAN_PERMISSIONED_MODELS:
         return
     if not (
         created

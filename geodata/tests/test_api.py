@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, cast
+from unittest import mock
 
 import pytest
 from django.contrib.auth.models import User
@@ -117,3 +118,37 @@ class LandformBboxTest(_BaseApiTest):
     def test_bbox_with_min_greater_than_max_returns_400(self) -> None:
         resp = self.client.get("/api/v1/landforms/?bbox=8.0,52.0,6.0,50.0")
         assert resp.status_code == 400
+
+    def test_bbox_still_respects_continent_filter(self) -> None:
+        """tech debt LBG5: the bbox path used to build its own queryset from
+        scratch, silently ignoring ?continent=/?murphy_code=/search/ordering
+        whenever bbox was also supplied. A second landform intersecting the
+        same bbox but on a different continent must be excluded."""
+        Landform.objects.create(
+            geometry=GEOSGeometry(_MULTIPOLYGON_WKT, srid=4326),
+            brid_nam="Other Continent Region",
+            continent="Asia",
+            murphy_code="OC",
+        )
+        resp = self.client.get(
+            "/api/v1/landforms/?bbox=6.0,50.0,8.0,52.0&continent=Europe"
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        codes = [f["properties"]["murphy_code"] for f in data["features"]]
+        assert codes == ["TR"]
+
+    def test_bbox_over_cap_returns_400(self) -> None:
+        """tech debt LBG11: without a cap, a large/low-zoom bbox over ~56k
+        rows could return an unbounded GeoJSON response - raise instead of
+        silently truncating (matches field_data/raster_data's map caps)."""
+        with mock.patch("geodata.api_views._MAX_BBOX_FEATURES", 0):
+            resp = self.client.get("/api/v1/landforms/?bbox=6.0,50.0,8.0,52.0")
+        assert resp.status_code == 400
+        assert "more than 0 features" in resp.json()[0]
+
+    def test_bbox_within_cap_still_succeeds(self) -> None:
+        with mock.patch("geodata.api_views._MAX_BBOX_FEATURES", 1):
+            resp = self.client.get("/api/v1/landforms/?bbox=6.0,50.0,8.0,52.0")
+        assert resp.status_code == 200
+        assert len(resp.json()["features"]) == 1

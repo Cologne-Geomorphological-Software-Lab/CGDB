@@ -147,6 +147,62 @@ class RasterDatasetManifestTest(_BaseApiTest):
         resp = self.client.get("/api/v1/raster-datasets/")
         assert resp.status_code == 200
 
+
+class RasterDatasetSceneCountTest(_BaseApiTest):
+    """Architecture-review fix: RasterDatasetSerializer.get_scene_count must
+    read the scene_count annotation RasterDatasetViewSet.get_queryset() adds
+    (Count("scenes")), not call obj.scenes.count() per row -- that was one
+    extra COUNT query per dataset on every list page."""
+
+    def test_scene_count_reflects_attached_scenes(self) -> None:
+        other_scene = RasterScene.objects.create(
+            project=self.project,
+            data_source=self.ds,
+            corpus_path="corpus/scenes/s2_002.tif",
+        )
+        self.dataset.scenes.add(self.scene, other_scene)
+        try:
+            resp = self.client.get("/api/v1/raster-datasets/")
+            entry = next(
+                d for d in resp.json()["results"] if d["id"] == self.dataset.pk
+            )
+            assert entry["scene_count"] == 2
+        finally:
+            self.dataset.scenes.remove(self.scene, other_scene)
+            other_scene.delete()
+
+    def test_scene_count_zero_for_empty_dataset(self) -> None:
+        resp = self.client.get("/api/v1/raster-datasets/")
+        entry = next(
+            d for d in resp.json()["results"] if d["id"] == self.dataset.pk
+        )
+        assert entry["scene_count"] == 0
+
+    def test_dataset_list_issues_no_scene_count_query_per_row(self) -> None:
+        """The annotation must eliminate the per-row COUNT, not just move
+        it -- assert the list endpoint's query count doesn't grow with the
+        number of datasets. A warm-up request runs unmeasured first, since
+        the very first request in a test can include one-time caching
+        queries (e.g. ContentType/permission caches) unrelated to what
+        this test checks."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.client.get("/api/v1/raster-datasets/")  # warm-up, unmeasured
+
+        with CaptureQueriesContext(connection) as ctx:
+            self.client.get("/api/v1/raster-datasets/")
+        baseline = len(ctx)
+
+        for i in range(5):
+            RasterDataset.objects.create(
+                project=self.project, name=f"Extra {i}", slug=f"extra-{i}"
+            )
+
+        with CaptureQueriesContext(connection) as ctx:
+            self.client.get("/api/v1/raster-datasets/")
+        assert len(ctx) == baseline
+
     def test_manifest_scene_has_spatial_bbox_wkt(self) -> None:
         scene_with_bbox = RasterScene.objects.create(
             project=self.project,
@@ -161,6 +217,21 @@ class RasterDatasetManifestTest(_BaseApiTest):
         assert "POLYGON" in entry["spatial_bbox_wkt"]
         self.dataset.scenes.remove(scene_with_bbox)
         scene_with_bbox.delete()
+
+    def test_manifest_rejects_when_over_cap(self) -> None:
+        """Architecture-review fix: the unpaginated manifest action must
+        reject (not silently truncate) a scene count over the configured
+        cap, instead of returning an arbitrarily large response."""
+        from unittest.mock import patch
+
+        self.dataset.scenes.add(self.scene)
+        with patch("raster_data.api_views._MAX_MANIFEST_SCENES", 0):
+            resp = self.client.get(
+                f"/api/v1/raster-datasets/{self.dataset.pk}/manifest/"
+            )
+        assert resp.status_code == 400
+        assert "more than 0 scenes" in resp.json()[0]
+        self.dataset.scenes.remove(self.scene)
 
 
 class RasterSceneCreateTest(_BaseApiTest):
@@ -368,5 +439,6 @@ class RasterSceneCreatedByAuditTest(TestCase):
         )
         assert resp.status_code == 201, resp.content
         scene = RasterScene.objects.get(corpus_path="/corpus/scenes/audit.tif")
-        assert scene.created_by_id == self.user.pk
-        assert scene.updated_by_id == self.user.pk
+        # Django-generated FK _id shadow attrs; no mypy-plugin support in basedpyright
+        assert scene.created_by_id == self.user.pk  # pyright: ignore[reportAttributeAccessIssue]
+        assert scene.updated_by_id == self.user.pk  # pyright: ignore[reportAttributeAccessIssue]

@@ -66,15 +66,15 @@ class _BaseApiTest(TestCase):
         cls.accessory = Accessory.objects.create(
             device=cls.device, name="IR-LED array"
         )
+        cls.method = Method.objects.create(
+            name="Single Aliquot Regeneration", device=cls.device
+        )
         cls.accessory_parameter = AccessoryParameter.objects.create(
-            method="SAR",
+            method=cls.method,
             accessory=cls.accessory,
             parameter_name="Power",
             parameter_value="90",
             parameter_unit="%",
-        )
-        cls.method = Method.objects.create(
-            name="Single Aliquot Regeneration", device=cls.device
         )
         auth_user = User.objects.create_user(username="lab_researcher", password="pw")
         cls.researcher = Researcher.objects.create(user=auth_user)

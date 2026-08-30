@@ -289,8 +289,12 @@ class SampleSaveTest(_BaseSetup):
         self.assertEqual(str(sample), "STR01")
 
     def test_identifier_is_unique(self):
+        """tech debt FD7: Sample.save() now calls full_clean(), which
+        catches uniqueness violations via validate_unique() and raises
+        ValidationError before ever reaching the DB - IntegrityError is no
+        longer what surfaces here."""
         Sample.objects.create(identifier="UNIQ01", project=self.project)
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(ValidationError):
             Sample.objects.create(identifier="UNIQ01", project=self.project)
 
 
@@ -424,7 +428,12 @@ class CampaignTest(_BaseSetup):
         self.assertIn("CAMP_STR01", str(campaign))
 
     def test_location_unique_per_campaign(self):
-        """Two locations in the same campaign cannot share an identifier."""
+        """Two locations in the same campaign cannot share an identifier.
+
+        tech debt FD7: Location.save() now calls full_clean(), which catches
+        this via validate_unique() and raises ValidationError before ever
+        reaching the DB - IntegrityError is no longer what surfaces here.
+        """
         campaign = Campaign.objects.create(
             label="CAMP_DUP01", project=self.project
         )
@@ -434,7 +443,7 @@ class CampaignTest(_BaseSetup):
             project=self.project,
             campaign=campaign,
         )
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(ValidationError):
             Location.objects.create(
                 identifier="DUP_LOC",
                 data_source="internal",

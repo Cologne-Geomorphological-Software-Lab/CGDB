@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
-from typing import Self
+from typing import Self, cast
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -51,6 +51,11 @@ class Algorithm(models.Model):
         max_length=50,
         choices=CHOICES,
     )
+
+    class Meta:
+        """Model metadata."""
+
+        ordering = ["name", "version"]
 
     def __str__(self) -> str:
         """Return the algorithm name."""
@@ -98,7 +103,8 @@ class RawMeasurement(BaseModel):
 
     def filename(self) -> str | None:
         """Return the base filename of the uploaded file, or None if no file."""
-        return Path(self.file.name).name if self.file else None
+        # FieldFile.__bool__ is True only when .name is set.
+        return Path(cast("str", self.file.name)).name if self.file else None
 
     def __str__(self) -> str:
         """Return a string combining device and creation timestamp."""
@@ -160,8 +166,9 @@ class RawProcessing(BaseModel):
 
     def processed_filename(self) -> str | None:
         """Return the base filename of the processed file, or None if no file."""
+        # FieldFile.__bool__ is True only when .name is set.
         return (
-            Path(self.processed_file.name).name
+            Path(cast("str", self.processed_file.name)).name
             if self.processed_file
             else None
         )
@@ -209,7 +216,7 @@ class Counting(BaseModel):
     ]
     type = models.CharField(choices=COUNTING_CHOICES, max_length=50)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for Counting."""
 
         verbose_name = "Counting"
@@ -252,7 +259,7 @@ class Pollen(BaseModel):
         blank=True,
     )
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for Pollen."""
 
         verbose_name = "Pollen"
@@ -284,7 +291,7 @@ class PollenCount(BaseModel):
     )
     number = models.IntegerField()
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for PollenCount."""
 
         verbose_name = "Pollen Count"
@@ -487,10 +494,7 @@ class LuminescenceDating(BaseModel):
 
     year_of_publication = models.PositiveIntegerField(
         default=current_year,
-        validators=[
-            MinValueValidator(1984),
-            MaxValueValidator(current_year()),
-        ],
+        validators=[MinValueValidator(1984), max_value_current_year],
         blank=True,
         null=True,
     )
@@ -1157,7 +1161,7 @@ class CosmogenicNuclideDating(BaseModel):
         nuclide_str = self.nuclide or "Unknown"
         return f"{lab_id} ({nuclide_str})"
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for CosmogenicNuclideDating."""
 
         verbose_name = "Cosmogenic Nuclide Dating"
@@ -1373,7 +1377,7 @@ class GenericMeasurement(BaseModel):
     Attributes:
         sample (ForeignKey): Sample associated with the measurement.
         raw_data (ForeignKey): Raw measurement data.
-        MeasurementSeries (ForeignKey): Measurement series.
+        measurement_series (ForeignKey): Measurement series.
         sample_weight (FloatField): Weight of the sample.
         method (ForeignKey): Method used for measurement.
         parameter (ForeignKey): Parameter measured.
@@ -1384,7 +1388,7 @@ class GenericMeasurement(BaseModel):
     sample = models.ForeignKey(
         Sample,
         related_name="generic_measurements",
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
     )
     raw_data = models.ForeignKey(
         RawMeasurement,
@@ -1393,10 +1397,15 @@ class GenericMeasurement(BaseModel):
         blank=True,
         null=True,
     )
-    MeasurementSeries = models.ForeignKey(
+    # tech debt A12: field was PascalCase ("MeasurementSeries"), the only
+    # non-snake_case field in the app. db_column pins the existing
+    # "MeasurementSeries_id" DB column so this is a pure rename, not a
+    # data migration.
+    measurement_series = models.ForeignKey(
         MeasurementSeries,
         related_name="generic_measurements",
         on_delete=models.CASCADE,
+        db_column="MeasurementSeries_id",
         blank=True,
         null=True,
     )
@@ -1457,6 +1466,41 @@ def _classify_fraction(class_value: float) -> str:
     return "gravel"
 
 
+# Shared between GrainSizeImportForm (admin.py), GrainSizeResource
+# (resources.py), and GrainSizeSerializer (serializers.py) so the three
+# field lists can't silently drift apart.
+GRAIN_SIZE_INPUT_FIELDS = [
+    "sample",
+    "raw_data",
+    "sample_weight",
+    "sample_concentration",
+    "method",
+    "classes",
+    "measured_data",
+    "clay",
+    "fine_silt",
+    "medium_silt",
+    "coarse_silt",
+    "fine_sand",
+    "medium_sand",
+    "coarse_sand",
+    "gravel",
+]
+GRAIN_SIZE_STATS_FIELDS = [
+    "mean",
+    "mode",
+    "median",
+    "std",
+    "skew",
+    "kurtosis",
+    "fwmean",
+    "fwmedian",
+    "fwsd",
+    "fwskew",
+    "fwkurt",
+]
+
+
 class GrainSize(BaseModel):
     """Represents the grain size distribution of a sediment sample.
 
@@ -1490,7 +1534,7 @@ class GrainSize(BaseModel):
 
     sample = models.ForeignKey(
         Sample,
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
         related_name="grain_sizes",
     )
     raw_data = models.ForeignKey(
@@ -1684,7 +1728,7 @@ class GrainSize(BaseModel):
         """Return a label combining sample identifier and measurement method."""
         return str(self.sample) + ", " + str(self.method)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for GrainSize."""
 
         verbose_name_plural = "Grain size"
@@ -1729,7 +1773,7 @@ class MicroXRFMeasurement(BaseModel):
 
     sample = models.ForeignKey(
         Sample,
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
         related_name="microxrf_measurements",
     )
     measurement_date = models.DateField(
@@ -1751,7 +1795,7 @@ class MicroXRFMeasurement(BaseModel):
         """Return a label with sample and measurement date."""
         return f"MicroXRF {self.sample} ({self.measurement_date})"
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         """Django metadata for MicroXRFMeasurement."""
 
         verbose_name = "MicroXRF"
@@ -1852,4 +1896,7 @@ class MicroXRFElementMap(BaseModel):
 
     def get_raster_path(self) -> Path:
         """Return the absolute filesystem path to the raster file."""
-        return Path(settings.MEDIA_ROOT) / self.raster_file.name
+        if not self.raster_file:
+            msg = "raster_file is not set on this MicroXRFElementMap."
+            raise ValueError(msg)
+        return Path(settings.MEDIA_ROOT) / cast("str", self.raster_file.name)

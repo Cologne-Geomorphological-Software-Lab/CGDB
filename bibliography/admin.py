@@ -15,6 +15,8 @@ from unfold.contrib.filters.admin import (
 )
 from unfold.decorators import display
 
+from prototype.mixins import CreatorScopedEditMixin
+
 from .models import Author, Reference, ReferenceKeyword
 from .resources import AuthorResource, ReferenceResource
 
@@ -33,6 +35,35 @@ _BIBTEX_TYPE_MAP: dict[str, str] = {
     "Bachelor's thesis": "mastersthesis",
 }
 
+# Reference attributes to emit as BibTeX fields when present, in order.
+_BIBTEX_OPTIONAL_FIELDS = (
+    "year",
+    "journal",
+    "volume",
+    "number",
+    "pages",
+    "publisher",
+    "doi",
+)
+
+
+def _bibtex_entry(ref: Reference) -> str:
+    """Return one BibTeX entry (@type{key, field = {...}, ...}) for a Reference."""
+    entry_type = _BIBTEX_TYPE_MAP.get(ref.type, "misc")
+    cite_key = f"{ref.lead_author.last_name}{ref.year or 'unknown'}{ref.pk}"
+    author_names = [str(ref.lead_author)] + [
+        str(a) for a in ref.second_author.all()
+    ]
+    field_lines = [
+        f"  author = {{{' and '.join(author_names)}}}",
+        f"  title = {{{ref.title}}}",
+    ]
+    for field in _BIBTEX_OPTIONAL_FIELDS:
+        value = getattr(ref, field)
+        if value:
+            field_lines.append(f"  {field} = {{{value}}}")
+    return f"@{entry_type}{{{cite_key},\n" + ",\n".join(field_lines) + "\n}"
+
 
 class ReferenceKeywordAdmin(ModelAdmin):
     """Admin for the ReferenceKeyword model."""
@@ -44,8 +75,17 @@ class ReferenceKeywordAdmin(ModelAdmin):
     ordering = ["keyword"]
 
 
-class ReferenceAdmin(ExportMixin, ModelAdmin):
-    """Admin for the Reference model with tabbed fieldsets and custom list display."""
+class ReferenceAdmin(CreatorScopedEditMixin, ExportMixin, ModelAdmin):
+    """Admin for the Reference model with tabbed fieldsets and custom list display.
+
+    tech debt LBG4: laboratory/geodata's admins use plain staff/model-level
+    permissions because their catalogs (devices, methods, landform regions)
+    have no natural per-object owner. Reference is different - it's a
+    shared, publicly-browsable catalog (has_view_permission below is
+    intentionally open to all staff) where only the permission holder
+    should be able to change or delete an entry (tech debt LBG17), hence
+    CreatorScopedEditMixin instead of either extreme.
+    """
 
     resource_classes = [ReferenceResource]
     change_form_show_cancel_button = True
@@ -146,38 +186,7 @@ class ReferenceAdmin(ExportMixin, ModelAdmin):
         qs = queryset.select_related("lead_author").prefetch_related(
             "second_author"
         )
-        entries: list[str] = []
-        for ref in qs:
-            entry_type = _BIBTEX_TYPE_MAP.get(ref.type, "misc")
-            cite_key = (
-                f"{ref.lead_author.last_name}{ref.year or 'unknown'}{ref.pk}"
-            )
-            author_names = [str(ref.lead_author)] + [
-                str(a) for a in ref.second_author.all()
-            ]
-            field_lines = [
-                f"  author = {{{' and '.join(author_names)}}}",
-                f"  title = {{{ref.title}}}",
-            ]
-            if ref.year:
-                field_lines.append(f"  year = {{{ref.year}}}")
-            if ref.journal:
-                field_lines.append(f"  journal = {{{ref.journal}}}")
-            if ref.volume:
-                field_lines.append(f"  volume = {{{ref.volume}}}")
-            if ref.number:
-                field_lines.append(f"  number = {{{ref.number}}}")
-            if ref.pages:
-                field_lines.append(f"  pages = {{{ref.pages}}}")
-            if ref.publisher:
-                field_lines.append(f"  publisher = {{{ref.publisher}}}")
-            if ref.doi:
-                field_lines.append(f"  doi = {{{ref.doi}}}")
-            entries.append(
-                f"@{entry_type}{{{cite_key},\n"
-                + ",\n".join(field_lines)
-                + "\n}"
-            )
+        entries = [_bibtex_entry(ref) for ref in qs]
         response = HttpResponse(
             "\n\n".join(entries), content_type="application/x-bibtex"
         )
@@ -204,10 +213,6 @@ class ReferenceAdmin(ExportMixin, ModelAdmin):
         """Return the reference type value used to render a coloured badge."""
         return obj.type
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
-        """Return the default queryset for the Reference changelist."""
-        return super().get_queryset(request)
-
     def has_view_permission(
         self,
         _request: HttpRequest,
@@ -216,16 +221,7 @@ class ReferenceAdmin(ExportMixin, ModelAdmin):
         """Allow all authenticated users to view references."""
         return True
 
-    def has_change_permission(
-        self,
-        request: HttpRequest,
-        obj: Reference | None = None,
-    ) -> bool:
-        """Allow change only when the user holds the per-object change permission."""
-        if obj is None:
-            return True
-        change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
-        return request.user.has_perm(change_perm, obj)
+    # has_change_permission / has_delete_permission: see CreatorScopedEditMixin.
 
 
 class LeadAuthorReferenceInline(TabularInline):

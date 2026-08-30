@@ -1,9 +1,11 @@
 """Tests for orchestration admin: permissions, actions, and display helpers."""
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock, patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
@@ -15,6 +17,13 @@ from orchestration.admin import (
 )
 from orchestration.models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
 from prototype.middleware import CurrentUserMiddleware
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from django.http import StreamingHttpResponse
+
+    from prototype.mixins import AuthenticatedHttpRequest
 
 
 class MaintenanceRunAdminPermissionTests(TestCase):
@@ -32,10 +41,10 @@ class MaintenanceRunAdminPermissionTests(TestCase):
         self.admin = MaintenanceRunAdmin(MaintenanceRun, self.site)
         self.factory = RequestFactory()
 
-    def _request(self, user: User) -> object:
+    def _request(self, user: User) -> "AuthenticatedHttpRequest":
         request = self.factory.get("/")
         request.user = user
-        return request
+        return cast("AuthenticatedHttpRequest", request)
 
     def test_superuser_has_add_permission(self):
         self.assertTrue(self.admin.has_add_permission(self._request(self.superuser)))
@@ -77,11 +86,11 @@ class MaintenanceRunAdminActionTests(TestCase):
         self.admin = MaintenanceRunAdmin(MaintenanceRun, self.site)
         self.factory = RequestFactory()
 
-    def _request(self, user: User) -> object:
+    def _request(self, user: User) -> "AuthenticatedHttpRequest":
         request = self.factory.post("/")
         request.user = user
-        request._messages = MagicMock()
-        return request
+        request._messages = MagicMock()  # pyright: ignore[reportAttributeAccessIssue]  # messages middleware attr; test bypasses the middleware and sets it directly
+        return cast("AuthenticatedHttpRequest", request)
 
     def test_trigger_action_submits_pending_runs(self):
         run = MaintenanceRun.objects.create(job_type="integrity", status="pending")
@@ -146,6 +155,55 @@ class MaintenanceRunAdminActionTests(TestCase):
         self.assertIn("no such file or directory", run.log)
         self.assertIsNotNone(run.finished_at)
 
+    def test_trigger_action_marks_run_failed_on_unanticipated_exception(self):
+        """tech debt O7: previously only (SubprocessError, OSError) were
+        caught - any other exception (e.g. a KeyError from a bad job_type,
+        a bug in _submit_maintenance_run) escaped mid-loop, 500ing the
+        admin action and leaving later-selected runs never attempted."""
+        run = MaintenanceRun.objects.create(job_type="integrity", status="pending")
+        request = self._request(self.superuser)
+        error = ValueError("something nobody anticipated")
+
+        with patch(
+            "orchestration.admin._submit_maintenance_run", side_effect=error
+        ):
+            self.admin.trigger_maintenance_job(
+                request, MaintenanceRun.objects.filter(pk=run.pk)
+            )
+        run.refresh_from_db()
+        self.assertEqual(run.status, "failed")
+        self.assertIn("ValueError", run.log)
+        self.assertIn("something nobody anticipated", run.log)
+        self.assertIsNotNone(run.finished_at)
+
+    def test_trigger_action_continues_to_later_runs_after_unanticipated_exception(
+        self,
+    ):
+        """The whole point of catching Exception here: one run's bug must
+        not prevent later-selected runs in the same batch from being
+        attempted at all."""
+        run1 = MaintenanceRun.objects.create(job_type="integrity", status="pending")
+        run2 = MaintenanceRun.objects.create(job_type="backup", status="pending")
+        request = self._request(self.superuser)
+
+        with patch(
+            "orchestration.admin._submit_maintenance_run",
+            side_effect=[ValueError("boom"), None],
+        ):
+            self.admin.trigger_maintenance_job(
+                request,
+                # order_by("pk"): default ordering is newest-first, which
+                # would process run2 before run1 - force run1 first so the
+                # side_effect list lines up with the assertions below.
+                MaintenanceRun.objects.filter(
+                    pk__in=[run1.pk, run2.pk]
+                ).order_by("pk"),
+            )
+        run1.refresh_from_db()
+        run2.refresh_from_db()
+        self.assertEqual(run1.status, "failed")
+        self.assertEqual(run2.status, "running")
+
     def test_trigger_action_skips_non_pending_runs(self):
         run = MaintenanceRun.objects.create(job_type="backup", status="running")
         request = self._request(self.superuser)
@@ -190,7 +248,7 @@ class MaintenanceRunAdminActionTests(TestCase):
         thread-local state) must both end up set after a real save_model
         call, not just triggered_by."""
         request = self._request(self.superuser)
-        CurrentUserMiddleware(lambda _r: None)(request)
+        CurrentUserMiddleware(lambda _r: HttpResponse())(request)
         run = MaintenanceRun(job_type="backup")
         form = MagicMock()
         self.admin.save_model(request, run, form, change=False)
@@ -202,6 +260,28 @@ class MaintenanceRunAdminActionTests(TestCase):
         run = MaintenanceRun(job_type="backup")
         result = self.admin.download_link(run)
         self.assertEqual(result, "—")
+
+    def test_download_link_points_at_admin_view_not_raw_media_url(self):
+        """Architecture-review fix: the link must route through the
+        superuser-gated admin download view, not obj.result_file.url
+        directly -- Django doesn't serve MEDIA_URL at all in production
+        (see prototype/urls.py), so a raw .url link relies entirely on the
+        reverse proxy happening to gate /media/, which nothing enforces."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        run = MaintenanceRun.objects.create(job_type="backup")
+        run.result_file.save(
+            "backup.sql.gz", SimpleUploadedFile("backup.sql.gz", b"dump-bytes")
+        )
+        try:
+            result = self.admin.download_link(run)
+            expected_url = reverse(
+                "admin:orchestration_maintenancerun_download", args=[run.pk]
+            )
+            self.assertIn(expected_url, result)
+            self.assertNotIn(run.result_file.url, result)
+        finally:
+            run.result_file.delete(save=False)
 
     def test_status_display_returns_status_value(self):
         run = MaintenanceRun(job_type="backup", status="success")
@@ -223,10 +303,10 @@ class DuckDBTableConfigAdminPermissionTests(TestCase):
         self.admin = DuckDBTableConfigAdmin(DuckDBTableConfig, self.site)
         self.factory = RequestFactory()
 
-    def _request(self, user: User) -> object:
+    def _request(self, user: User) -> "AuthenticatedHttpRequest":
         request = self.factory.get("/")
         request.user = user
-        return request
+        return cast("AuthenticatedHttpRequest", request)
 
     def test_superuser_has_add_permission(self):
         self.assertTrue(self.admin.has_add_permission(self._request(self.superuser)))
@@ -357,22 +437,87 @@ class AdminChangelistAccessTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
+class MaintenanceRunDownloadViewTests(TestCase):
+    """Integration tests for the F1 architecture-review fix: the result-file
+    download route must be reachable only by superusers, regardless of how
+    the reverse proxy is configured for /media/ in production."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.superuser = User.objects.create_superuser(
+            username="dl_super", password="pw", email="dls@test.com"
+        )
+        # Staff (not superuser) -- the realistic threat model: someone with
+        # *some* admin access, granted (even accidentally, per F4) view
+        # permission on the wrong model, but not full superuser rights.
+        cls.regular_user = User.objects.create_user(
+            username="dl_regular", password="pw", email="dlr@test.com",
+            is_staff=True,
+        )
+
+    def setUp(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.maint_run = MaintenanceRun.objects.create(job_type="backup")
+        self.maint_run.result_file.save(
+            "backup.sql.gz", SimpleUploadedFile("backup.sql.gz", b"dump-bytes")
+        )
+        self.addCleanup(lambda: self.maint_run.result_file.delete(save=False))
+        self.url = reverse(
+            "admin:orchestration_maintenancerun_download", args=[self.maint_run.pk]
+        )
+
+    def test_superuser_can_download(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        streaming_response = cast("StreamingHttpResponse", response)
+        content = cast("Iterable[bytes]", streaming_response.streaming_content)
+        self.assertEqual(b"".join(content), b"dump-bytes")
+
+    def test_regular_user_gets_404_not_the_file(self):
+        self.client.force_login(self.regular_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_anonymous_user_cannot_download(self):
+        response = self.client.get(self.url)
+        self.assertIn(response.status_code, (302, 403, 404))
+
+    def test_superuser_gets_404_when_run_has_no_file(self):
+        run = MaintenanceRun.objects.create(job_type="integrity")
+        url = reverse(
+            "admin:orchestration_maintenancerun_download", args=[run.pk]
+        )
+        self.client.force_login(self.superuser)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_superuser_gets_404_for_nonexistent_run(self):
+        url = reverse(
+            "admin:orchestration_maintenancerun_download", args=[999999]
+        )
+        self.client.force_login(self.superuser)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+
 class IntegrityIssueInlineTests(TestCase):
     def setUp(self):
         self.superuser = User.objects.create_superuser(
             username="super_inline", password="pw", email="si@test.com"
         )
-        self.run = MaintenanceRun.objects.create(
+        self.maint_run = MaintenanceRun.objects.create(
             job_type="integrity", status="success"
         )
         self.issue_with_obj = IntegrityIssue.objects.create(
-            run=self.run,
+            run=self.maint_run,
             check_type="orphan_samples",
             object_id=99,
             description="Sample 'X' has no location.",
         )
         self.issue_no_obj = IntegrityIssue.objects.create(
-            run=self.run,
+            run=self.maint_run,
             check_type="guardian_maintenance_permissions",
             object_id=None,
             description="0 objects have guardian permissions.",
@@ -381,10 +526,10 @@ class IntegrityIssueInlineTests(TestCase):
         self.inline = IntegrityIssueInline(MaintenanceRun, self.site)
         self.factory = RequestFactory()
 
-    def _request(self, user):
+    def _request(self, user: User) -> "AuthenticatedHttpRequest":
         request = self.factory.get("/")
         request.user = user
-        return request
+        return cast("AuthenticatedHttpRequest", request)
 
     def test_has_no_add_permission(self):
         request = self._request(self.superuser)
@@ -401,7 +546,7 @@ class IntegrityIssueInlineTests(TestCase):
 
     def test_admin_link_unknown_check_type(self):
         issue = IntegrityIssue(
-            run=self.run, check_type="unknown_check", object_id=5, description="x"
+            run=self.maint_run, check_type="unknown_check", object_id=5, description="x"
         )
         link = self.inline.admin_link(issue)
         self.assertEqual(link, "5")
@@ -409,53 +554,53 @@ class IntegrityIssueInlineTests(TestCase):
 
 class IssuesSummaryDisplayTests(TestCase):
     def setUp(self):
-        self.run_integrity = MaintenanceRun.objects.create(
+        self.maint_run_integrity = MaintenanceRun.objects.create(
             job_type="integrity", status="success"
         )
         IntegrityIssue.objects.create(
-            run=self.run_integrity,
+            run=self.maint_run_integrity,
             check_type="orphan_samples",
             object_id=1,
             description="a",
         )
         IntegrityIssue.objects.create(
-            run=self.run_integrity,
+            run=self.maint_run_integrity,
             check_type="orphan_samples",
             object_id=2,
             description="b",
         )
         IntegrityIssue.objects.create(
-            run=self.run_integrity,
+            run=self.maint_run_integrity,
             check_type="guardian_maintenance_permissions",
             description="0 objects.",
         )
-        self.run_backup = MaintenanceRun.objects.create(
+        self.maint_run_backup = MaintenanceRun.objects.create(
             job_type="backup", status="success"
         )
-        self.run_pending = MaintenanceRun.objects.create(
+        self.maint_run_pending = MaintenanceRun.objects.create(
             job_type="integrity", status="pending"
         )
         self.site = AdminSite()
         self.admin = MaintenanceRunAdmin(MaintenanceRun, self.site)
 
     def test_dash_for_non_integrity_run(self):
-        result = self.admin.issues_summary(self.run_backup)
+        result = self.admin.issues_summary(self.maint_run_backup)
         self.assertEqual(result, "—")
 
     def test_dash_for_non_success_integrity_run(self):
-        result = self.admin.issues_summary(self.run_pending)
+        result = self.admin.issues_summary(self.maint_run_pending)
         self.assertEqual(result, "—")
 
     def test_shows_orphan_count(self):
-        result = self.admin.issues_summary(self.run_integrity)
+        result = self.admin.issues_summary(self.maint_run_integrity)
         self.assertIn("2", result)
         self.assertIn("Orphans", result)
 
     def test_shows_link_to_orphan_changelist(self):
-        result = self.admin.issues_summary(self.run_integrity)
+        result = self.admin.issues_summary(self.maint_run_integrity)
         self.assertIn("field_data/sample/", result)
         self.assertIn("location__isnull=True", result)
 
     def test_shows_guardian_count(self):
-        result = self.admin.issues_summary(self.run_integrity)
+        result = self.admin.issues_summary(self.maint_run_integrity)
         self.assertIn("Guardian", result)

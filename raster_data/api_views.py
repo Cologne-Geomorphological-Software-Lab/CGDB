@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from django.db.models import Model
+from django.db.models import Count, Model
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -42,6 +42,31 @@ def _project_qs[T: Model](
         return qs
     project_ids = _accessible_projects(user).values_list("id", flat=True)
     return qs.filter(project_id__in=project_ids)
+
+
+_MAX_MANIFEST_SCENES = 2000
+
+
+def _capped_list[T: Model](
+    qs: QuerySet[T], *, limit: int | None = None
+) -> list[T]:
+    """Evaluate *qs* into a list, guarding against an unbounded manifest response.
+
+    See field_data/api_views.py's identical helper for the full rationale
+    (independently duplicated here rather than shared cross-app, matching
+    this module's existing _project_qs/_assert_can_add precedent). *limit*
+    defaults to _MAX_MANIFEST_SCENES, read at call time so tests can patch it.
+    """
+    if limit is None:
+        limit = _MAX_MANIFEST_SCENES
+    capped = list(qs[: limit + 1])
+    if len(capped) > limit:
+        msg = (
+            f"This dataset has more than {limit} scenes to list in one "
+            "manifest response."
+        )
+        raise ValidationError(msg)
+    return capped
 
 
 def _assert_can_add(
@@ -114,10 +139,17 @@ class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
     ordering = ["-modified_at"]
 
     def get_queryset(self) -> QuerySet[RasterDataset]:
-        """Return raster datasets for projects the user can access."""
+        """Return raster datasets for projects the user can access.
+
+        Annotates scene_count (Count("scenes")) so
+        RasterDatasetSerializer.get_scene_count can read it instead of
+        issuing one extra COUNT query per row on every list page.
+        """
         return _project_qs(
             self.request.user,
-            RasterDataset.objects.select_related("project"),
+            RasterDataset.objects.select_related("project").annotate(
+                scene_count=Count("scenes")
+            ),
         )
 
     def get_serializer_class(self) -> type[BaseSerializer]:
@@ -161,7 +193,13 @@ class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
     ) -> Response:
         """Return a JSON manifest of all scenes in this dataset.
 
-        Includes paths and factual metadata of each scene.
+        Includes paths and metadata of each scene. That metadata (crs,
+        n_bands, resolution_m, spatial_bbox, class_names, ...) is only as
+        reliable as its source: values set via RasterAdmin's "Recompute
+        metadata from file" action are GDAL-verified against the actual
+        file, but the write API (RasterSceneWriteSerializer) accepts these
+        same fields as plain, unverified caller input on create - nothing
+        here distinguishes the two (tech debt R5).
         Classification rasters (n_classes set) are identified at query time
         via spatial intersection — not as a separate list.
         """
@@ -175,6 +213,8 @@ class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
                 "name": dataset.name,
                 "slug": dataset.slug,
                 "description": dataset.description,
-                "scenes": _ManifestSceneSerializer(scenes, many=True).data,
+                "scenes": _ManifestSceneSerializer(
+                    _capped_list(scenes), many=True
+                ).data,
             }
         )

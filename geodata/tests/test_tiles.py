@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, cast
 
+from unittest import mock
+
 import pytest
 from django.contrib.auth.models import User
 from django.contrib.gis.geos import GEOSGeometry
+from django.core.cache import cache
 from django.test import Client, TestCase
+from rest_framework.throttling import SimpleRateThrottle
 
 from geodata.models import Landform
 
@@ -63,11 +67,6 @@ class LandformTileTest(_BaseTileTest):
         assert resp.status_code == 200
         assert resp["Content-Type"] == "application/x-protobuf"
 
-    def test_unauthenticated_redirects_to_login(self) -> None:
-        anon = cast("_TestClient", Client())
-        resp = anon.get(_TILE_URL)
-        assert resp.status_code == 302
-
     def test_cache_control_header_present(self) -> None:
         resp = self.client.get(_TILE_URL)
         assert "max-age" in resp["Cache-Control"]
@@ -79,3 +78,58 @@ class LandformTileSpatialiteGuardTest(_BaseTileTest):
     def test_non_postgres_backend_returns_501(self) -> None:
         resp = self.client.get(_TILE_URL)
         assert resp.status_code == 501
+
+    def test_unauthenticated_returns_403_not_a_login_redirect(self) -> None:
+        """Architecture-review fix (F18): landform_tile used to rely on
+        Django's @login_required, which redirects (302) to LOGIN_URL on
+        failure -- the wrong shape for a binary tile endpoint consumed by a
+        map library, and inconsistent with every other authenticated
+        endpoint in this API returning a plain 401/403. The auth check now
+        runs (and returns 403) before the PostGIS-vendor check, so this is
+        verifiable without a real PostGIS backend."""
+        anon = cast("_TestClient", Client())
+        resp = anon.get(_TILE_URL)
+        assert resp.status_code == 403
+
+
+class LandformTileThrottleTest(_BaseTileTest):
+    """tech debt LBG12: landform_tile is a plain Django view, so it never
+    passed through DRF's Anon/UserRateThrottle - manually wrapped with
+    ScopedRateThrottle instead. The throttle check runs before the
+    PostGIS-vendor check, so this is verifiable on SpatiaLite too.
+
+    SimpleRateThrottle.THROTTLE_RATES is a plain class attribute snapshotted
+    from settings at import time (not re-read per request), so
+    @override_settings(REST_FRAMEWORK=...) has no effect on it - patching
+    the class attribute directly is the only way to change the rate here.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        cache.clear()
+
+    def tearDown(self) -> None:
+        cache.clear()
+
+    def test_request_over_the_rate_limit_returns_429(self) -> None:
+        with mock.patch.dict(
+            SimpleRateThrottle.THROTTLE_RATES, {"landform_tile": "1/hour"}
+        ):
+            first = self.client.get(_TILE_URL)
+            assert first.status_code != 429
+
+            second = self.client.get(_TILE_URL)
+        assert second.status_code == 429
+        assert "Retry-After" in second
+
+    def test_unauthenticated_request_is_rejected_before_throttling(self) -> None:
+        """Auth check (403) still runs first - an anonymous flood shouldn't
+        be able to exhaust the shared throttle bucket for real users."""
+        with mock.patch.dict(
+            SimpleRateThrottle.THROTTLE_RATES, {"landform_tile": "1/hour"}
+        ):
+            anon = cast("_TestClient", Client())
+            first = anon.get(_TILE_URL)
+            second = anon.get(_TILE_URL)
+        assert first.status_code == 403
+        assert second.status_code == 403

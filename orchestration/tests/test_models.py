@@ -82,11 +82,11 @@ class MaintenanceRunModelTests(TestCase):
 
 class IntegrityIssueModelTests(TestCase):
     def setUp(self):
-        self.run = MaintenanceRun.objects.create(job_type="integrity")
+        self.maint_run = MaintenanceRun.objects.create(job_type="integrity")
 
     def test_create_issue(self):
         issue = IntegrityIssue.objects.create(
-            run=self.run,
+            run=self.maint_run,
             check_type="orphan_samples",
             object_id=42,
             description="Sample 'X' has no location.",
@@ -96,7 +96,7 @@ class IntegrityIssueModelTests(TestCase):
 
     def test_object_id_nullable(self):
         issue = IntegrityIssue.objects.create(
-            run=self.run,
+            run=self.maint_run,
             check_type="guardian_maintenance_permissions",
             object_id=None,
             description="0 objects have guardian permissions.",
@@ -105,12 +105,12 @@ class IntegrityIssueModelTests(TestCase):
 
     def test_related_name_issues(self):
         IntegrityIssue.objects.create(
-            run=self.run, check_type="orphan_samples", description="a"
+            run=self.maint_run, check_type="orphan_samples", description="a"
         )
         IntegrityIssue.objects.create(
-            run=self.run, check_type="missing_geometries", description="b"
+            run=self.maint_run, check_type="missing_geometries", description="b"
         )
-        self.assertEqual(self.run.issues.count(), 2)
+        self.assertEqual(self.maint_run.issues.count(), 2)  # pyright: ignore[reportAttributeAccessIssue]  # reverse FK related_name accessor; no mypy-plugin support in basedpyright
 
     def test_cascade_delete(self):
         extra_run = MaintenanceRun.objects.create(job_type="integrity")
@@ -123,7 +123,7 @@ class IntegrityIssueModelTests(TestCase):
 
     def test_str(self):
         issue = IntegrityIssue.objects.create(
-            run=self.run,
+            run=self.maint_run,
             check_type="orphan_samples",
             object_id=7,
             description="Sample has no location.",

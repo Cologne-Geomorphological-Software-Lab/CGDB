@@ -25,6 +25,7 @@ class AuthorViewSet(ReadOnlyModelViewSet):
     serializer_class = AuthorSerializer
     permission_classes = [IsAuthenticated]
     search_fields = ["last_name", "first_name"]
+    ordering_fields = ["last_name", "first_name"]
     ordering = ["last_name", "first_name"]
 
 
@@ -35,6 +36,7 @@ class ReferenceKeywordViewSet(ReadOnlyModelViewSet):
     serializer_class = ReferenceKeywordSerializer
     permission_classes = [IsAuthenticated]
     search_fields = ["keyword", "keyword_ger"]
+    ordering_fields = ["keyword"]
     ordering = ["keyword"]
 
 
