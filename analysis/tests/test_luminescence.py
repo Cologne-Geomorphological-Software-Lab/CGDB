@@ -13,6 +13,7 @@ from django.db.models import RestrictedError
 from django.test import SimpleTestCase, TestCase
 
 from analysis.models import (
+    QUALITY_CHOICES,
     LuminescenceDating,
     current_year,
     max_value_current_year,
@@ -202,6 +203,27 @@ class LuminescenceDatingFieldsTest(_LuminescenceSetup):
     def test_default_thesis_is_none_string(self):
         d = LuminescenceDating.objects.create(sample=self.sample)
         self.assertEqual(d.thesis, "None")
+
+    def test_default_data_quality_is_pending(self):
+        d = LuminescenceDating.objects.create(sample=self.sample)
+        self.assertEqual(d.data_quality, "pending")
+
+    def test_data_quality_choices_complete(self):
+        choices = dict(QUALITY_CHOICES)
+        for expected in ("accepted", "questionable", "rejected", "pending"):
+            self.assertIn(expected, choices)
+
+    def test_data_quality_and_quality_note_can_be_set(self):
+        d = LuminescenceDating.objects.create(
+            sample=self.sample,
+            data_quality="questionable",
+            quality_note="High overdispersion, possible contamination.",
+        )
+        d.refresh_from_db()
+        self.assertEqual(d.data_quality, "questionable")
+        self.assertEqual(
+            d.quality_note, "High overdispersion, possible contamination."
+        )
 
     def test_sample_fk_restrict_on_delete(self):
         s = Sample.objects.create(
