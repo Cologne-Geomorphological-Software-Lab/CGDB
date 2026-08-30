@@ -21,7 +21,12 @@ from dagster import job, op
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from django.db.models import QuerySet
+    import duckdb
+    import pandas as pd
+    from dagster import JobDefinition, OpExecutionContext
+    from django.db.models import Model, QuerySet
+
+    from orchestration.models import DuckDBTableConfig
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "prototype.settings")
 django.setup()
@@ -132,7 +137,7 @@ def _backup_postgres(
 
 
 @op(config_schema=_BACKUP_CONFIG_SCHEMA)
-def run_pg_dump(context) -> str:
+def run_pg_dump(context) -> str:  # noqa: ANN001 — Dagster 1.12.8 errors if this param is type-annotated
     """Back up the configured database (SQLite copy or pg_dump) to output_dir."""
     from django.conf import settings
 
@@ -171,7 +176,7 @@ def backup_job() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _get_queryset(model, cfg) -> QuerySet:
+def _get_queryset(model: type[Model], cfg: DuckDBTableConfig) -> QuerySet:
     """Return a values() queryset filtered to the configured fields."""
     if cfg.include_fields:
         return model.objects.values(*cfg.include_fields)
@@ -185,7 +190,7 @@ def _get_queryset(model, cfg) -> QuerySet:
     return model.objects.values()
 
 
-def _coerce_df_columns(df) -> None:
+def _coerce_df_columns(df: pd.DataFrame) -> None:
     """Coerce non-serialisable column values (e.g. geometry WKB) to strings in-place."""
     for col in df.columns:
         if df[col].dtype == object:
@@ -202,7 +207,12 @@ def _coerce_df_columns(df) -> None:
 _EXPORT_CHUNK_SIZE = 10_000
 
 
-def _export_model_table(conn, cfg, model, context) -> bool:
+def _export_model_table(
+    conn: duckdb.DuckDBPyConnection,
+    cfg: DuckDBTableConfig,
+    model: type[Model],
+    context: OpExecutionContext,
+) -> bool:
     """Export one model's queryset to a DuckDB table, in chunks; log and swallow errors.
 
     Iterates via .iterator(chunk_size=...) and writes one DataFrame chunk
@@ -217,6 +227,7 @@ def _export_model_table(conn, cfg, model, context) -> bool:
     error here would otherwise be silently invisible in the job's overall
     "success" status.
     """
+    import duckdb
     import pandas as pd
 
     table_name = f"{cfg.app_label}__{cfg.model_name.lower()}"
@@ -229,8 +240,22 @@ def _export_model_table(conn, cfg, model, context) -> bool:
         if not table_created:
             conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM df")  # noqa: S608  # nosec B608 — table_name derived from Django model metadata (app_label/model_name), not user input
             table_created = True
-        else:
+            return
+        try:
             conn.execute(f"INSERT INTO {table_name} SELECT * FROM df")  # noqa: S608  # nosec B608 — see above
+        except duckdb.ConversionException:
+            # tech debt O4: CREATE TABLE inferred the schema from only the
+            # first chunk - a sparse/all-NULL column there (e.g. inferred
+            # as INTEGER from all-None values) can't hold this chunk's real
+            # values (e.g. strings). Rebuild the table so far via UNION ALL
+            # BY NAME, which lets DuckDB promote the column to a common
+            # type instead of failing the whole export. Only paid when this
+            # mismatch actually happens — the common case (consistent types
+            # across chunks) stays a single INSERT.
+            conn.execute(
+                f"CREATE OR REPLACE TABLE {table_name} AS "  # noqa: S608  # nosec B608 — see above
+                f"SELECT * FROM {table_name} UNION ALL BY NAME SELECT * FROM df"
+            )
 
     try:
         qs = _get_queryset(model, cfg)
@@ -264,7 +289,7 @@ def _export_model_table(conn, cfg, model, context) -> bool:
 
 
 def _check_export_failures(
-    context, attempted: int, failed_tables: list[str]
+    context: OpExecutionContext, attempted: int, failed_tables: list[str]
 ) -> None:
     """Log and, if every configured table failed, raise.
 
@@ -291,7 +316,7 @@ def _check_export_failures(
 
 
 @op(config_schema=_BASE_CONFIG_SCHEMA)
-def export_to_duckdb(context) -> str:
+def export_to_duckdb(context) -> str:  # noqa: ANN001 — Dagster 1.12.8 errors if this param is type-annotated
     """Export configured Django model tables to a DuckDB file."""
     import duckdb
     from django.apps import apps
@@ -339,9 +364,21 @@ def duckdb_export_job() -> None:
 # ---------------------------------------------------------------------------
 
 
+_INTEGRITY_CHECK_CHUNK_SIZE = 10_000
+
+
 @op(config_schema=_BASE_CONFIG_SCHEMA)
-def run_integrity_checks(context) -> str:
-    """Run data integrity checks and write a JSON report to output_dir."""
+def run_integrity_checks(context) -> str:  # noqa: ANN001 — Dagster 1.12.8 errors if this param is type-annotated
+    """Run data integrity checks and write a JSON report to output_dir.
+
+    tech debt O3: the queries feeding orphan_samples/missing_geometries are
+    chunked via .iterator(chunk_size=...) and their IntegrityIssue rows are
+    written via bulk_create in the same chunks, matching the pattern
+    _export_model_table already established for the DuckDB export op - the
+    JSON report still needs the full id list in memory (it's part of the
+    report's contents), but the DB round-trips are now bounded per chunk
+    instead of one INSERT per row.
+    """
     from django.apps import apps
     from django.contrib.contenttypes.models import ContentType
     from guardian.models import UserObjectPermission
@@ -356,46 +393,66 @@ def run_integrity_checks(context) -> str:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     run = MaintenanceRun.objects.get(pk=run_id)
-    run.issues.all().delete()  # idempotent: clear any previous issues for this run
+    run.issues.all().delete()  # pyright: ignore[reportAttributeAccessIssue]  # reverse FK related_name accessor; no mypy-plugin support in basedpyright — idempotent: clear any previous issues for this run
 
     results: dict = {}
 
     # Check 1: Orphan Samples (sample with no location)
     Sample = apps.get_model("field_data", "Sample")
-    orphan_ids = list(
-        Sample.objects.filter(location__isnull=True).values_list(
-            "id", "identifier"
-        )
+    orphan_qs = Sample.objects.filter(location__isnull=True).values_list(
+        "id", "identifier"
     )
+    orphan_ids = []
+    orphan_issues: list = []
+    for sid, identifier in orphan_qs.iterator(
+        chunk_size=_INTEGRITY_CHECK_CHUNK_SIZE
+    ):
+        orphan_ids.append((sid, identifier))
+        orphan_issues.append(
+            IntegrityIssue(
+                run=run,
+                check_type="orphan_samples",
+                object_id=sid,
+                description=f"Sample '{identifier}' (id={sid}) has no location assigned.",
+            )
+        )
+        if len(orphan_issues) >= _INTEGRITY_CHECK_CHUNK_SIZE:
+            IntegrityIssue.objects.bulk_create(orphan_issues)
+            orphan_issues = []
+    if orphan_issues:
+        IntegrityIssue.objects.bulk_create(orphan_issues)
     results["orphan_samples"] = {"count": len(orphan_ids), "ids": orphan_ids}
     context.log.info("Orphan samples (no location): %d", len(orphan_ids))
-    for sid, identifier in orphan_ids:
-        IntegrityIssue.objects.create(
-            run=run,
-            check_type="orphan_samples",
-            object_id=sid,
-            description=f"Sample '{identifier}' (id={sid}) has no location assigned.",
-        )
 
     # Check 2: Locations missing geometry
     Location = apps.get_model("field_data", "Location")
-    missing_geom = list(
-        Location.objects.filter(location__isnull=True).values_list(
-            "id", flat=True
+    missing_geom_qs = Location.objects.filter(
+        location__isnull=True
+    ).values_list("id", flat=True)
+    missing_geom = []
+    missing_geom_issues: list = []
+    for lid in missing_geom_qs.iterator(
+        chunk_size=_INTEGRITY_CHECK_CHUNK_SIZE
+    ):
+        missing_geom.append(lid)
+        missing_geom_issues.append(
+            IntegrityIssue(
+                run=run,
+                check_type="missing_geometries",
+                object_id=lid,
+                description=f"Location id={lid} has no geometry (location field is null).",
+            )
         )
-    )
+        if len(missing_geom_issues) >= _INTEGRITY_CHECK_CHUNK_SIZE:
+            IntegrityIssue.objects.bulk_create(missing_geom_issues)
+            missing_geom_issues = []
+    if missing_geom_issues:
+        IntegrityIssue.objects.bulk_create(missing_geom_issues)
     results["missing_geometries"] = {
         "count": len(missing_geom),
         "ids": missing_geom,
     }
     context.log.info("Locations missing geometry: %d", len(missing_geom))
-    for lid in missing_geom:
-        IntegrityIssue.objects.create(
-            run=run,
-            check_type="missing_geometries",
-            object_id=lid,
-            description=f"Location id={lid} has no geometry (location field is null).",
-        )
 
     # Check 3: Guardian permission count for MaintenanceRun objects
     ct = ContentType.objects.get_for_model(MaintenanceRun)
@@ -443,8 +500,23 @@ _JOB_MAP = {
     "integrity": integrity_check_job,
 }
 
+# tech debt O5: single source of truth for job_type -> op_name/job_name,
+# previously duplicated in two different styles across orchestration/admin.py
+# and run_maintenance_job.py - a rename in one silently desynced the other.
+# Both now import these instead of hand-rolling their own copy.
+OP_NAME_BY_JOB_TYPE = {
+    "backup": "run_pg_dump",
+    "duckdb": "export_to_duckdb",
+    "integrity": "run_integrity_checks",
+}
+JOB_NAME_BY_JOB_TYPE = {
+    "backup": "backup_job",
+    "duckdb": "duckdb_export_job",
+    "integrity": "integrity_check_job",
+}
 
-def get_job_for_type(job_type: str) -> object:
+
+def get_job_for_type(job_type: str) -> JobDefinition:
     """Return the Dagster JobDefinition for the given job_type key."""
     if job_type not in _JOB_MAP:
         msg = f"Unknown maintenance job type: {job_type!r}"

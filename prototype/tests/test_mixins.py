@@ -11,6 +11,7 @@ Tested mixins:
 - GuardianPermissionMixin
 """
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 from django.contrib.admin import ModelAdmin
@@ -29,6 +30,15 @@ from prototype.mixins import (
     ProjectBasedPermissionMixin,
 )
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from django.forms import ModelForm
+
+    from prototype.mixins import AuthenticatedHttpRequest
+
+# save_model()'s form param is only ever passed through to super(), never read by
+# these mixins — tests don't need a real ModelForm instance.
+_NO_FORM = cast("ModelForm", None)
 
 # ---------------------------------------------------------------------------
 # Concrete admin classes for testing
@@ -55,11 +65,11 @@ class _CreatedUpdatedAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     pass
 
 
-def _make_request(user: object):
+def _make_request(user: User) -> "AuthenticatedHttpRequest":
     rf = RequestFactory()
     request = rf.get("/")
     request.user = user
-    return request
+    return cast("AuthenticatedHttpRequest", request)
 
 
 # ===========================================================================
@@ -124,14 +134,14 @@ class CreatedUpdatedMixinTest(_MixinSetup):
         request = _make_request(self.regular_user)
         obj = Project(title="New", label="NEW01", status="ACTIVE")
         # obj.pk is None → new object
-        admin_obj.save_model(request, obj, form=None, change=False)
+        admin_obj.save_model(request, obj, form=_NO_FORM, change=False)
         self.assertEqual(obj.created_by, self.regular_user)
 
     def test_save_new_object_sets_updated_by(self):
         admin_obj = self._make_admin()
         request = _make_request(self.regular_user)
         obj = Project(title="New2", label="NEW02", status="ACTIVE")
-        admin_obj.save_model(request, obj, form=None, change=False)
+        admin_obj.save_model(request, obj, form=_NO_FORM, change=False)
         self.assertEqual(obj.updated_by, self.regular_user)
 
     def test_save_existing_object_does_not_change_created_by(self):
@@ -140,14 +150,14 @@ class CreatedUpdatedMixinTest(_MixinSetup):
         # obj already has a PK and a different created_by
         self.project.created_by = self.other_user
         self.project.save()
-        admin_obj.save_model(request, self.project, form=None, change=True)
+        admin_obj.save_model(request, self.project, form=_NO_FORM, change=True)
         self.project.refresh_from_db()
         self.assertEqual(self.project.created_by, self.other_user)
 
     def test_save_existing_object_updates_updated_by(self):
         admin_obj = self._make_admin()
         request = _make_request(self.regular_user)
-        admin_obj.save_model(request, self.project, form=None, change=True)
+        admin_obj.save_model(request, self.project, form=_NO_FORM, change=True)
         self.project.refresh_from_db()
         self.assertEqual(self.project.updated_by, self.regular_user)
 

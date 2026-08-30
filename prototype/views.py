@@ -1,10 +1,13 @@
 """Views for the prototype app: dashboard, map, and GeoJSON endpoints."""
 
+from __future__ import annotations
+
 import json
 import logging
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from dateutil.relativedelta import relativedelta
@@ -31,6 +34,9 @@ from field_data.models import Location, Sample
 from prototype.mixins import _accessible_projects
 from prototype.models import Project
 
+if TYPE_CHECKING:
+    from prototype.mixins import AuthenticatedHttpRequest
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +58,7 @@ _LOCATION_TYPE_LABELS = {
 }
 
 
-def map_dashboard(request: HttpRequest) -> HttpResponse:
+def map_dashboard(request: AuthenticatedHttpRequest) -> HttpResponse:
     """Render the full-screen map dashboard page."""
     from django.contrib import admin as _admin
 
@@ -128,6 +134,76 @@ def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:
     return context
 
 
+def _scope(
+    queryset: QuerySet, project_lookup: str, project_ids: QuerySet | None
+) -> QuerySet:
+    """Restrict *queryset* to accessible projects, unless *project_ids* is None (unscoped)."""
+    if project_ids is None:
+        return queryset
+    return queryset.filter(**{f"{project_lookup}__in": project_ids})
+
+
+def _pct(count: int, total: int) -> float:
+    """Return count as a percentage of total, or 0 when total is empty."""
+    return round(count / total * 100, 2) if total > 0 else 0
+
+
+def _footer(count: int, total: int, period_days: int) -> str:
+    """Return the "+N% last M days" (or "No new entries") footer HTML for a stat tile."""
+    if count == 0:
+        return mark_safe(  # nosec B308 — pure static literal, no user input
+            '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
+        )
+    pct = _pct(count, total)
+    color = (
+        "text-green-700 dark:text-green-400"
+        if pct > 0
+        else "text-red-600 dark:text-red-400"
+    )
+    sign = "+" if pct > 0 else ""
+    return format_html(
+        '<strong class="{} font-semibold">{}{}</strong>&nbsp; last {} days',
+        color,
+        sign,
+        intcomma(pct),
+        period_days,
+    )
+
+
+def _total_and_period(
+    queryset: QuerySet, since: datetime, now: datetime
+) -> tuple[int, int]:
+    """Return (total count, count in [since, now)) in a single query."""
+    result = queryset.aggregate(
+        total=Count("id"),
+        period=Count(
+            "id", filter=Q(created_at__gte=since, created_at__lt=now)
+        ),
+    )
+    return result["total"], result["period"]
+
+
+def _scoped_location_qs(project_ids: QuerySet | None) -> QuerySet:
+    """Locations restricted to accessible projects; literature locations always visible."""
+    qs = Location.objects.all()
+    if project_ids is not None:
+        qs = qs.filter(
+            Q(project_id__in=project_ids) | Q(data_source="literature")
+        )
+    return qs
+
+
+def _scoped_sample_qs(project_ids: QuerySet | None) -> QuerySet:
+    """Samples restricted to accessible projects; literature-location samples always visible."""
+    qs = Sample.objects.all()
+    if project_ids is not None:
+        qs = qs.filter(
+            Q(project_id__in=project_ids)
+            | Q(location__data_source="literature")
+        )
+    return qs
+
+
 def stat_data(period_days: int = 30, user: object = None) -> dict:
     """Compute dashboard statistics for the given time window in days.
 
@@ -151,68 +227,24 @@ def stat_data(period_days: int = 30, user: object = None) -> dict:
         else None
     )
 
-    def _scope(queryset: QuerySet, project_lookup: str) -> QuerySet:
-        """Restrict *queryset* to accessible projects, unless unscoped."""
-        if project_ids is None:
-            return queryset
-        return queryset.filter(**{f"{project_lookup}__in": project_ids})
-
-    def _pct(count: int, total: int) -> float:
-        return round(count / total * 100, 2) if total > 0 else 0
-
-    def _footer(count: int, total: int) -> str:
-        if count == 0:
-            return mark_safe(  # nosec B308 — pure static literal, no user input
-                '<span class="text-gray-500 dark:text-gray-400">No new entries</span>'
-            )
-        pct = _pct(count, total)
-        color = (
-            "text-green-700 dark:text-green-400"
-            if pct > 0
-            else "text-red-600 dark:text-red-400"
-        )
-        sign = "+" if pct > 0 else ""
-        return format_html(
-            '<strong class="{} font-semibold">{}{}</strong>&nbsp; last {} days',
-            color,
-            sign,
-            intcomma(pct),
-            period_days,
-        )
-
-    def _total_and_period(queryset: QuerySet) -> tuple[int, int]:
-        """Return (total count, count in [since, now)) in a single query."""
-        result = queryset.aggregate(
-            total=Count("id"),
-            period=Count(
-                "id", filter=Q(created_at__gte=since, created_at__lt=now)
-            ),
-        )
-        return result["total"], result["period"]
-
     # Projects
     project_total, project_period_count = _total_and_period(
-        _scope(Project.objects.all(), "id")
+        _scope(Project.objects.all(), "id", project_ids), since, now
     )
     logger.debug("Project total: %s", project_total)
 
     # Locations — literature-sourced locations have no owning project, and
     # (like everywhere else this pattern appears) stay visible regardless.
-    location_qs = Location.objects.all()
-    if project_ids is not None:
-        location_qs = location_qs.filter(
-            Q(project_id__in=project_ids) | Q(data_source="literature")
-        )
-    location_total, location_period_count = _total_and_period(location_qs)
+    location_qs = _scoped_location_qs(project_ids)
+    location_total, location_period_count = _total_and_period(
+        location_qs, since, now
+    )
 
     # Samples — same literature exception as Location.
-    sample_qs = Sample.objects.all()
-    if project_ids is not None:
-        sample_qs = sample_qs.filter(
-            Q(project_id__in=project_ids)
-            | Q(location__data_source="literature")
-        )
-    sample_total, sample_period_count = _total_and_period(sample_qs)
+    sample_qs = _scoped_sample_qs(project_ids)
+    sample_total, sample_period_count = _total_and_period(
+        sample_qs, since, now
+    )
 
     # Measurements
     measurement_models = [
@@ -222,7 +254,11 @@ def stat_data(period_days: int = 30, user: object = None) -> dict:
         RadiocarbonDating,
     ]
     measurement_totals = [
-        _total_and_period(_scope(m.objects.all(), "sample__location__project"))
+        _total_and_period(
+            _scope(m.objects.all(), "sample__location__project", project_ids),
+            since,
+            now,
+        )
         for m in measurement_models
     ]
     measurements_total = sum(total for total, _period in measurement_totals)
@@ -258,7 +294,7 @@ def stat_data(period_days: int = 30, user: object = None) -> dict:
         data_source="literature"
     ).count()
     internal_count = _scope(
-        Location.objects.filter(data_source="internal"), "project"
+        Location.objects.filter(data_source="internal"), "project", project_ids
     ).count()
 
     return {
@@ -266,23 +302,31 @@ def stat_data(period_days: int = 30, user: object = None) -> dict:
             {
                 "title": "Projects",
                 "metric": f"{project_total}",
-                "footer": _footer(project_period_count, project_total),
+                "footer": _footer(
+                    project_period_count, project_total, period_days
+                ),
             },
             {
                 "title": "Locations",
                 "metric": f"{location_total}",
-                "footer": _footer(location_period_count, location_total),
+                "footer": _footer(
+                    location_period_count, location_total, period_days
+                ),
             },
             {
                 "title": "Samples",
                 "metric": f"{sample_total}",
-                "footer": _footer(sample_period_count, sample_total),
+                "footer": _footer(
+                    sample_period_count, sample_total, period_days
+                ),
             },
             {
                 "title": "Measurements",
                 "metric": f"{measurements_total}",
                 "footer": _footer(
-                    measurements_period_count, measurements_total
+                    measurements_period_count,
+                    measurements_total,
+                    period_days,
                 ),
             },
         ],

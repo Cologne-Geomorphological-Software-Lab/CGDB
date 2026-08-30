@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, cast
+from unittest import mock
 
 import pytest
 from django.contrib.auth.models import User
@@ -136,3 +137,18 @@ class LandformBboxTest(_BaseApiTest):
         data = resp.json()
         codes = [f["properties"]["murphy_code"] for f in data["features"]]
         assert codes == ["TR"]
+
+    def test_bbox_over_cap_returns_400(self) -> None:
+        """tech debt LBG11: without a cap, a large/low-zoom bbox over ~56k
+        rows could return an unbounded GeoJSON response - raise instead of
+        silently truncating (matches field_data/raster_data's map caps)."""
+        with mock.patch("geodata.api_views._MAX_BBOX_FEATURES", 0):
+            resp = self.client.get("/api/v1/landforms/?bbox=6.0,50.0,8.0,52.0")
+        assert resp.status_code == 400
+        assert "more than 0 features" in resp.json()[0]
+
+    def test_bbox_within_cap_still_succeeds(self) -> None:
+        with mock.patch("geodata.api_views._MAX_BBOX_FEATURES", 1):
+            resp = self.client.get("/api/v1/landforms/?bbox=6.0,50.0,8.0,52.0")
+        assert resp.status_code == 200
+        assert len(resp.json()["features"]) == 1

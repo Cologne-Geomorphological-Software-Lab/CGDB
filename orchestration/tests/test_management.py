@@ -141,4 +141,6 @@ class RunMaintenanceJobCommandTests(TestCase):
                 )
 
         run.refresh_from_db()
-        self.assertIn("integrity_", run.result_file.name)
+        result_name = run.result_file.name
+        assert result_name is not None
+        self.assertIn("integrity_", result_name)

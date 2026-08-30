@@ -8,7 +8,7 @@ GrainSize (test_api.py).
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from django.contrib import admin as django_admin
 from django.contrib.auth.models import User
@@ -17,6 +17,9 @@ from django.db.models import RestrictedError
 from django.test import SimpleTestCase, TestCase
 from guardian.shortcuts import assign_perm
 from rest_framework.test import APIClient
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse as TestResponse
 
 from analysis.admin import CosmogenicNuclideDatingAdmin
 from analysis.models import CosmogenicNuclideDating, current_year
@@ -265,7 +268,9 @@ class CosmogenicNuclideDatingViewSetTest(TestCase):
     def test_member_sees_cosmogenic_dating(self) -> None:
         client = APIClient()
         client.force_authenticate(user=self.member)
-        resp = client.get("/api/v1/cosmogenic-nuclide-datings/")
+        resp = cast(
+            "TestResponse", client.get("/api/v1/cosmogenic-nuclide-datings/")
+        )
         assert resp.status_code == 200
         ids = [item["id"] for item in resp.json()["results"]]
         assert self.dating.pk in ids
@@ -273,12 +278,17 @@ class CosmogenicNuclideDatingViewSetTest(TestCase):
     def test_non_member_detail_returns_403_or_404(self) -> None:
         client = APIClient()
         client.force_authenticate(user=self.non_member)
-        resp = client.get(
-            f"/api/v1/cosmogenic-nuclide-datings/{self.dating.pk}/"
+        resp = cast(
+            "TestResponse",
+            client.get(
+                f"/api/v1/cosmogenic-nuclide-datings/{self.dating.pk}/"
+            ),
         )
         assert resp.status_code in (403, 404)
 
     def test_unauthenticated_returns_401_or_403(self) -> None:
         client = APIClient()
-        resp = client.get("/api/v1/cosmogenic-nuclide-datings/")
+        resp = cast(
+            "TestResponse", client.get("/api/v1/cosmogenic-nuclide-datings/")
+        )
         assert resp.status_code in (401, 403)

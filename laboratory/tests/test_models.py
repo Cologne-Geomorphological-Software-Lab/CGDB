@@ -58,7 +58,7 @@ class _LabSetup(TestCase):
             installation_date="2024-01-01",
         )
         cls.param = AccessoryParameter.objects.create(
-            method="dispersion",
+            method=cls.method,
             accessory=cls.accessory,
             parameter_name="pump_speed",
             parameter_value="2500",

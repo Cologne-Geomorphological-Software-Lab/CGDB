@@ -4,8 +4,19 @@ Called from both the post_migrate signal (automatic) and the
 create_permission_groups management command (manual/reset).
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
+
+if TYPE_CHECKING:
+
+    class _SupportsWrite(Protocol):
+        """The only capability create_permission_groups needs from stdout."""
+
+        def write(self, s: str, /) -> object: ...
 
 
 def _q(*specs: str, actions: list[str] | None = None) -> Q:
@@ -124,7 +135,7 @@ GROUPS = {
 def create_permission_groups(
     *,
     reset: bool = False,
-    stdout: object = None,
+    stdout: _SupportsWrite | None = None,
 ) -> tuple:
     """Create or update predefined permission groups. Idempotent.
 

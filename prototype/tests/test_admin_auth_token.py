@@ -10,6 +10,8 @@ user's token. These tests confirm the lockdown mirrors the pattern already
 used by MaintenanceRunAdmin/DuckDBTableConfigAdmin (orchestration/admin.py).
 """
 
+from typing import TYPE_CHECKING, cast
+
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
@@ -18,6 +20,9 @@ from django.urls import reverse
 from rest_framework.authtoken.models import TokenProxy
 
 from prototype.admin import AuthTokenAdmin
+
+if TYPE_CHECKING:
+    from prototype.mixins import AuthenticatedHttpRequest
 
 
 class AuthTokenAdminPermissionTests(TestCase):
@@ -37,10 +42,10 @@ class AuthTokenAdminPermissionTests(TestCase):
         self.admin = AuthTokenAdmin(TokenProxy, self.site)
         self.factory = RequestFactory()
 
-    def _request(self, user: User) -> object:
+    def _request(self, user: User) -> "AuthenticatedHttpRequest":
         request = self.factory.get("/")
         request.user = user
-        return request
+        return cast("AuthenticatedHttpRequest", request)
 
     def test_superuser_has_module_perms(self):
         self.assertTrue(self.admin.has_module_perms(self._request(self.superuser)))

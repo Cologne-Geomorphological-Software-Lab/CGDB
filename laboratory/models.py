@@ -81,8 +81,11 @@ class Accessory(models.Model):
 class AccessoryParameter(models.Model):
     """A named parameter value recorded for an accessory under a specific method."""
 
-    method = models.CharField(
-        max_length=50,
+    method = models.ForeignKey(
+        "Method",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
     )
     accessory = models.ForeignKey(
         Accessory,

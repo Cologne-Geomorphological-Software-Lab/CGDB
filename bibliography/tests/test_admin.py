@@ -8,6 +8,8 @@ any Reference row, not just ones they can change.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
 from django.contrib import admin as django_admin
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
@@ -16,11 +18,14 @@ from guardian.shortcuts import assign_perm
 from bibliography.admin import ReferenceAdmin
 from bibliography.models import Author, Reference
 
+if TYPE_CHECKING:
+    from prototype.mixins import AuthenticatedHttpRequest
 
-def _make_request(user: object):
+
+def _make_request(user: User) -> AuthenticatedHttpRequest:
     request = RequestFactory().get("/")
     request.user = user
-    return request
+    return cast("AuthenticatedHttpRequest", request)
 
 
 class ReferenceAdminDeletePermissionTest(TestCase):

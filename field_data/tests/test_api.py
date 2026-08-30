@@ -471,8 +471,10 @@ class LocationWriteTest(_WritePermissionApiTest):
         # the source of truth now, not just momentarily matching.
         self.location.save()
         self.location.refresh_from_db()
-        assert self.location.location.x == pytest.approx(7.0)
-        assert self.location.location.y == pytest.approx(51.0)
+        point = self.location.location
+        assert point is not None
+        assert point.x == pytest.approx(7.0)
+        assert point.y == pytest.approx(51.0)
 
     def test_update_without_change_permission_returns_403(self) -> None:
         resp = self._client_for(self.user).patch(

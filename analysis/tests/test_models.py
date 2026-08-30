@@ -27,18 +27,17 @@ class AlgorithmTestCase(TestCase):
         test_file = SimpleUploadedFile(
             "test_files/test.txt", b"file_content", content_type="text/plain"
         )
-        (
-            Algorithm.objects.create(
-                name="Dijkstra",
-                version="1.0",
-                description="The Dijkstra algorithm calculates the shortest paths in an edge-weighted graph.",
-                file=test_file,
-                programming_language="Python",
-            ),
+        Algorithm.objects.create(
+            name="Dijkstra",
+            version="1.0",
+            description="The Dijkstra algorithm calculates the shortest paths in an edge-weighted graph.",
+            file=test_file,
+            programming_language="Python",
         )
 
     def test_algorithm_file_upload(self):
         dijkstra = Algorithm.objects.get(name="Dijkstra")
+        assert dijkstra.file.name is not None
         self.assertTrue(
             dijkstra.file.name.startswith("analysis/algorithms/test")
         )
@@ -222,13 +221,14 @@ class RawMeasurementModelTest(TestCase):
         self.assertEqual(self.raw_measurement.device, self.device)
         self.assertEqual(self.raw_measurement.accessories, self.accessory)
         self.assertEqual(self.raw_measurement.researcher, self.researcher)
+        assert file.file.name is not None
         self.assertTrue(
             file.file.name.startswith("analysis/raw_data/test_raw_data")
         )
         self.assertEqual(self.raw_measurement.description, "Test description")
 
     def test_file_upload_path(self):
-
+        assert self.raw_measurement.file.name is not None
         self.assertTrue(
             self.raw_measurement.file.name.startswith("analysis/raw_data/")
         )

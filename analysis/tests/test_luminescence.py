@@ -5,6 +5,7 @@ required/optional fields, choices, defaults, FK protect-on-delete.
 """
 
 import datetime
+from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -18,6 +19,9 @@ from analysis.models import (
 )
 from field_data.models import Location, Sample
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from django.db.models import Field
 
 # ===========================================================================
 # Shared fixture
@@ -122,7 +126,9 @@ class MaxValueCurrentYearFunctionTest(SimpleTestCase):
         function instead, which recomputes the year on every call -- same
         pattern CosmogenicNuclideDating already used correctly."""
         field = LuminescenceDating._meta.get_field("year_of_publication")
-        self.assertIn(max_value_current_year, field.validators)
+        self.assertIn(
+            max_value_current_year, cast("Field", field).validators
+        )
 
 
 class LuminescenceDatingYearValidatorTest(_LuminescenceSetup):

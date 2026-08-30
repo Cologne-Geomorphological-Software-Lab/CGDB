@@ -9,12 +9,22 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 from django.test import SimpleTestCase, TestCase
 
 from analysis.models import GrainSize
+from analysis.tests._mps_fixtures import MINIMAL_AV
 from field_data.models import Location, Sample
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from laboratory.models import Method
+
+# from_file()'s method param is stored on the unsaved instance but never
+# dereferenced as a real Method row in these tests — a placeholder string
+# stands in for a real FK target.
+_METHOD_PLACEHOLDER = cast("Method", "L")
 
 
 def _make_sample():
@@ -35,30 +45,6 @@ def _make_av_file(content: str) -> Path:
     return Path(path)
 
 
-MINIMAL_AV = """\
-[#Bindiam]
-10.0
-20.0
-[#Binheight]
-50.0
-50.0
-[Size0]
-Obs=150.5
-[SizeStats]
-Mean=15.0
-Mode=12.0
-Median=14.0
-SD=3.5
-Skew=0.2
-Kurtosis=2.8
-FWMean=15.1
-FWMedian=14.2
-FWSD=3.6
-FWSkew=0.3
-FWKurt=2.9
-"""
-
-
 # ===========================================================================
 # Happy-path tests – no DB needed
 # ===========================================================================
@@ -70,7 +56,7 @@ class GrainSizeFromFileHappyPathTest(SimpleTestCase):
         self.path = _make_av_file(MINIMAL_AV)
         self.addCleanup(os.unlink, self.path)
         self.sample = _make_sample()
-        self.method = "L"
+        self.method = _METHOD_PLACEHOLDER
 
     def _parse(self, content: str | None = None):
         if content is not None:
@@ -170,7 +156,7 @@ class GrainSizeFromFileErrorHandlingTest(SimpleTestCase):
     def _parse(self, content: str):
         path = _make_av_file(content)
         self.addCleanup(os.unlink, path)
-        return GrainSize.from_file(path, _make_sample(), "L")
+        return GrainSize.from_file(path, _make_sample(), _METHOD_PLACEHOLDER)
 
     def test_missing_size_block_raises_value_error(self):
         content = (
@@ -233,7 +219,7 @@ class GrainSizeFromFileErrorHandlingTest(SimpleTestCase):
                 b"[#Bindiam]\n10.0\n[#Binheight]\n50.0\n[Size0]\nObs=100\n"
                 b"# Ger\xe4t: Mastersizer\n"  # "Gerät" in latin-1
             )
-        gs = GrainSize.from_file(Path(path), _make_sample(), "L")
+        gs = GrainSize.from_file(Path(path), _make_sample(), _METHOD_PLACEHOLDER)
         self.assertEqual(gs.classes, [10.0])
 
 
@@ -262,13 +248,13 @@ class GrainSizeFromFileIntegrationTest(TestCase):
     def test_from_file_returns_unsaved_instance(self):
         path = _make_av_file(MINIMAL_AV)
         self.addCleanup(os.unlink, path)
-        gs = GrainSize.from_file(path, self.sample, "L")
+        gs = GrainSize.from_file(path, self.sample, _METHOD_PLACEHOLDER)
         self.assertIsNone(gs.pk)
 
     def test_from_file_can_be_saved(self):
         path = _make_av_file(MINIMAL_AV)
         self.addCleanup(os.unlink, path)
-        gs = GrainSize.from_file(path, self.sample, "L")
+        gs = GrainSize.from_file(path, self.sample, _METHOD_PLACEHOLDER)
         gs.save()
         self.assertTrue(GrainSize.objects.filter(sample=self.sample).exists())
 
@@ -281,7 +267,7 @@ class GrainSizeFromFileIntegrationTest(TestCase):
         )
         path = _make_av_file(content)
         self.addCleanup(os.unlink, path)
-        gs = GrainSize.from_file(path, self.sample, "L")
+        gs = GrainSize.from_file(path, self.sample, _METHOD_PLACEHOLDER)
         gs.save()
         saved = GrainSize.objects.get(pk=gs.pk)
         self.assertAlmostEqual(saved.clay, 40.0)

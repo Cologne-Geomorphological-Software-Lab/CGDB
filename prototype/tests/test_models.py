@@ -8,6 +8,7 @@ because they are simple enough for SimpleTestCase).
 from __future__ import annotations
 
 from django.contrib.auth.models import Group, User
+from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from field_data.models import Country, Province
@@ -103,11 +104,10 @@ class ProjectStrTest(TestCase):
 class CountryStrTest(SimpleTestCase):
     """Unit tests via __new__ – no DB required."""
 
-    def _make_country(self, name: str, pk: int | None = None):
+    def _make_country(self, name: str | None, pk: int | None = None):
         c = Country.__new__(Country)
         c.name = name
         c.pk = pk
-        c.id = pk
         return c
 
     def test_str_with_name(self):
@@ -122,11 +122,10 @@ class CountryStrTest(SimpleTestCase):
 class ProvinceStrTest(SimpleTestCase):
     """Unit tests via __new__ – no DB required."""
 
-    def _make_province(self, name: str, pk: int | None = None):
+    def _make_province(self, name: str | None, pk: int | None = None):
         p = Province.__new__(Province)
         p.name = name
         p.pk = pk
-        p.id = pk
         return p
 
     def test_str_with_name(self):
@@ -160,7 +159,7 @@ class BaseModelAuditTrailTest(TestCase):
     def _set_current_user(self, user):
         request = RequestFactory().get("/")
         request.user = user
-        CurrentUserMiddleware(lambda _r: None)(request)
+        CurrentUserMiddleware(lambda _r: HttpResponse())(request)
 
     def test_created_by_and_updated_by_set_on_create(self):
         self._set_current_user(self.user_a)

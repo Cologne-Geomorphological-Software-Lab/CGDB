@@ -24,6 +24,14 @@ from prototype.mixins import (
 from .gdal_metadata import RasterMetadataError, read_raster_metadata
 from .models import DataSource, RasterDataset, RasterScene
 
+# tech debt R7: recompute_metadata_from_file runs blocking GDAL opens
+# synchronously in the request/worker thread - the only place in the app
+# metadata extraction runs from a live request rather than a background job.
+# Capped for the same reason api_views._MAX_MANIFEST_SCENES exists: an
+# admin selecting "all" on a large changelist shouldn't be able to block a
+# worker indefinitely.
+_MAX_RECOMPUTE_SCENES = 500
+
 
 class RasterDataModelAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     """Base admin for raster_data models: Unfold styling + audit fields."""
@@ -194,8 +202,18 @@ class RasterSceneAdmin(ProjectBasedPermissionMixin, RasterDataModelAdmin):
         records, and the occasional corrupt or non-raster file.
         """
         total = queryset.count()
+        if total > _MAX_RECOMPUTE_SCENES:
+            self.message_user(
+                request,
+                f"Selected {total} scenes, but this action processes at "
+                f"most {_MAX_RECOMPUTE_SCENES} at a time (each file is "
+                "opened synchronously). Narrow the selection and retry.",
+                messages.ERROR,
+            )
+            return
+
         success_count = 0
-        for scene in queryset:
+        for scene in queryset.select_related("data_source"):
             path = self._local_path_for(request, scene)
             if path is None:
                 continue

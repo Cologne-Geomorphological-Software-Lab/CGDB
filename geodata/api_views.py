@@ -9,10 +9,12 @@ from django.http import HttpRequest, HttpResponse
 from django.views.decorators.http import require_GET
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from .models import Landform
@@ -22,6 +24,14 @@ _BBOX_PARTS = 4
 _MVT_EXTENT = 4096
 _MVT_BUFFER = 64
 _SRID_WGS84 = 4326  # matches Landform.geometry's fixed srid=4326
+
+# tech debt LBG11: the ?bbox= GeoJSON path bypasses pagination entirely by
+# design (a map wants every polygon in view at once) - mirrors
+# field_data.api_views._MAX_MAP_FEATURES / raster_data.api_views.
+# _MAX_MANIFEST_SCENES: raise instead of silently truncating, since a
+# low-zoom/large bbox over ~56k rows could otherwise return an unbounded
+# response.
+_MAX_BBOX_FEATURES = 5000
 
 
 class _LandformPagination(PageNumberPagination):
@@ -163,8 +173,18 @@ class LandformViewSet(ReadOnlyModelViewSet):
             )
         )
 
+        # One extra row (limit + 1) so this stays a single LIMIT query
+        # instead of a separate COUNT — see _MAX_BBOX_FEATURES above.
+        capped_rows = list(rows[: _MAX_BBOX_FEATURES + 1])
+        if len(capped_rows) > _MAX_BBOX_FEATURES:
+            msg = (
+                f"This bbox would return more than {_MAX_BBOX_FEATURES} "
+                "features. Narrow the bbox or zoom in further."
+            )
+            raise ValidationError(msg)
+
         features = []
-        for row in rows:
+        for row in capped_rows:
             geom_json = row["geojson"]
             if not geom_json:
                 continue
@@ -184,6 +204,20 @@ class LandformViewSet(ReadOnlyModelViewSet):
             )
 
         return {"type": "FeatureCollection", "features": features}
+
+
+class _LandformTileThrottleScope:
+    """Duck-typed stand-in for the "view" arg ScopedRateThrottle.allow_request() expects.
+
+    It only reads .throttle_scope off that arg - landform_tile is a plain
+    Django view, not a DRF APIView, so there's no real view instance with
+    that attribute already on it to pass through.
+    """
+
+    throttle_scope = "landform_tile"
+
+
+_landform_tile_throttle_scope = _LandformTileThrottleScope()
 
 
 @require_GET
@@ -223,9 +257,24 @@ def landform_tile(
     forcing PostGIS to transform and test all ~56k rows on every request —
     transforming the one tile envelope instead lets `geometry`'s GiST index
     do the filtering.
+
+    tech debt LBG12: as a plain Django view (not a DRF APIView) this never
+    passed through DRF's Anon/UserRateThrottle the way every other endpoint
+    in this API does, despite each tile running its own ST_Transform/
+    ST_AsMVT query — throttled manually below via the same ScopedRateThrottle
+    class the "login" scope already uses (prototype/api_views.py), just
+    invoked directly instead of through APIView.check_throttles().
     """
     if not request.user.is_authenticated:
         return HttpResponse(status=403)
+
+    throttle = ScopedRateThrottle()
+    if not throttle.allow_request(request, _landform_tile_throttle_scope):
+        response = HttpResponse(status=429)
+        retry_after = throttle.wait()
+        if retry_after is not None:
+            response["Retry-After"] = str(int(retry_after))
+        return response
 
     if connection.vendor != "postgresql":
         return HttpResponse(status=501)

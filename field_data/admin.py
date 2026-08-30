@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from django import forms as django_forms
 from django.contrib import messages
@@ -66,13 +66,17 @@ from .resources import (
 )
 
 if TYPE_CHECKING:
-    from django.contrib.auth.models import User
-    from django.db.models import Field as DBField
-    from django.db.models import QuerySet
-    from django.forms import Field, ModelChoiceField
-    from django.http import HttpRequest, HttpResponse
+    from django.contrib.admin import ModelAdmin as DjangoModelAdmin
+    from django.db.models import ForeignKey, ManyToManyField, QuerySet
+    from django.forms import ModelChoiceField, ModelMultipleChoiceField
+    from django.http import HttpResponse
 
+    from prototype.mixins import AuthenticatedHttpRequest
     from prototype.models import Project
+
+    _AdminBase = DjangoModelAdmin[Any]
+else:
+    _AdminBase = object
 
 
 def _project_for_field_photo_target(obj: object) -> Project | None:
@@ -149,7 +153,9 @@ class FieldPhotoAdmin(ModelAdmin):
     hidden from the admin index since it's not meant to be browsed directly.
     """
 
-    def has_module_permission(self, _request: HttpRequest) -> bool:
+    def has_module_permission(
+        self, _request: AuthenticatedHttpRequest
+    ) -> bool:
         """Hide from the admin index nav - edited via the inline instead."""
         return False
 
@@ -165,7 +171,7 @@ class FieldPhotoAdmin(ModelAdmin):
         return custom_urls + super().get_urls()  # type: ignore[no-any-return]
 
     def download_file(
-        self, request: HttpRequest, object_id: int
+        self, request: AuthenticatedHttpRequest, object_id: int
     ) -> FileResponse:
         """Stream a field photo's file to users who can view its owning project.
 
@@ -178,10 +184,9 @@ class FieldPhotoAdmin(ModelAdmin):
         photo = get_object_or_404(FieldPhoto, pk=object_id)
         if not photo.file:
             raise Http404
-        user = cast("User", request.user)
-        if not user.is_superuser:
+        if not request.user.is_superuser:
             project = _project_for_field_photo_target(photo.content_object)
-            if project is None or not user.has_perm(
+            if project is None or not request.user.has_perm(
                 "prototype.view_project", project
             ):
                 raise Http404
@@ -294,7 +299,9 @@ class ProvinceAdmin(
     list_filter_sheet = False
     list_filter_submit = True
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[Province]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[Province]:
         """select_related('country') — list_display renders it per row."""
         return super().get_queryset(request).select_related("country")
 
@@ -338,7 +345,7 @@ class BulkTagForm(django_forms.Form):
         self.fields["tags"].queryset = tag_qs  # type: ignore[attr-defined]
 
 
-class BulkTagActionMixin:
+class BulkTagActionMixin(_AdminBase):
     """Admin mixin that adds add/remove bulk tag actions."""
 
     actions = ["add_tags_to_selected", "remove_tags_from_selected"]
@@ -356,7 +363,7 @@ class BulkTagActionMixin:
         itself so this works for every model that includes this mixin
         (Location/Sample/Site/Layer all define their own "tags" field).
         """
-        m2m_field = self.model._meta.get_field("tags")  # type: ignore[attr-defined]
+        m2m_field = self.model._meta.get_field("tags")
         through = m2m_field.remote_field.through
         self_field = m2m_field.m2m_field_name()
         tag_field = m2m_field.m2m_reverse_field_name()
@@ -376,14 +383,14 @@ class BulkTagActionMixin:
 
     def _bulk_tag_action(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         queryset: QuerySet[Any],
         action_name: str,
         verb: str,
     ) -> HttpResponse | None:
         from django.template.response import TemplateResponse
 
-        ct = ContentType.objects.get_for_model(self.model)  # type: ignore[attr-defined]
+        ct = ContentType.objects.get_for_model(self.model)
         project_ids = queryset.values_list("project", flat=True).distinct()
         tag_qs = Tag.objects.filter(content_type=ct, project__in=project_ids)
 
@@ -394,7 +401,7 @@ class BulkTagActionMixin:
                 count = queryset.count()
                 self._bulk_write_tags(queryset, selected_tags, verb)
                 past = "added to" if verb == "add" else "removed from"
-                self.message_user(  # type: ignore[attr-defined]
+                self.message_user(
                     request,
                     f"Tags {past} {count} record(s).",
                     messages.SUCCESS,
@@ -407,22 +414,22 @@ class BulkTagActionMixin:
             request,
             "admin/field_data/bulk_tag_action.html",
             {
-                **self.admin_site.each_context(request),  # type: ignore[attr-defined]
+                **self.admin_site.each_context(request),
                 "title": "Add tags" if verb == "add" else "Remove tags",
                 "queryset": queryset,
                 "action_name": action_name,
                 "verb": verb,
                 "form": form,
                 "action_checkbox_name": ACTION_CHECKBOX_NAME,
-                "opts": self.model._meta,  # type: ignore[attr-defined]
-                "media": self.media,  # type: ignore[attr-defined]
+                "opts": self.model._meta,
+                "media": self.media,
             },
         )
 
     @admin.action(description="Add tags to selected")
     def add_tags_to_selected(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         queryset: QuerySet[Any],
     ) -> HttpResponse | None:
         """Open an intermediate page to add tags to all selected records."""
@@ -433,7 +440,7 @@ class BulkTagActionMixin:
     @admin.action(description="Remove tags from selected")
     def remove_tags_from_selected(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         queryset: QuerySet[Any],
     ) -> HttpResponse | None:
         """Open an intermediate page to remove tags from all selected records."""
@@ -442,34 +449,36 @@ class BulkTagActionMixin:
         )
 
 
-class TagFilterMixin:
+class TagFilterMixin(_AdminBase):
     """Restrict the tags M2M dropdown to the current model's content type and project."""
 
-    def formfield_for_manytomany(
+    def formfield_for_manytomany(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
         self,
-        db_field: object,
-        request: HttpRequest,
+        db_field: ManyToManyField[Any, Any],
+        request: AuthenticatedHttpRequest,
         **kwargs: object,
-    ) -> Field | None:
+    ) -> ModelMultipleChoiceField[Any] | None:
         """Filter tag choices to the current model's content type and project."""
-        if db_field.name == "tags":  # type: ignore[attr-defined]
-            ct = ContentType.objects.get_for_model(self.model)  # type: ignore[attr-defined]
+        if db_field.name == "tags":
+            ct = ContentType.objects.get_for_model(self.model)
             qs = Tag.objects.filter(content_type=ct)
-            object_id = request.resolver_match.kwargs.get(  # type: ignore[union-attr]
-                "object_id"
+            object_id = (
+                request.resolver_match.kwargs.get("object_id")
+                if request.resolver_match
+                else None
             )
             if object_id:
                 try:
-                    project = self.model.objects.values_list(  # type: ignore[attr-defined]
+                    project = self.model.objects.values_list(
                         "project",
                         flat=True,
                     ).get(pk=object_id)
                     if project:
                         qs = qs.filter(project=project)
-                except self.model.DoesNotExist:  # type: ignore[attr-defined]
+                except self.model.DoesNotExist:
                     pass
             kwargs["queryset"] = qs
-        return super().formfield_for_manytomany(db_field, request, **kwargs)  # type: ignore[no-any-return, misc]
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
 
 def _srid_choices() -> list[tuple[int, str]]:
@@ -649,7 +658,9 @@ class LocationAdmin(
 
     map_preview.short_description = "Map preview (satellite)"  # type: ignore[attr-defined]
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[Location]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[Location]:
         """Return queryset with related project, campaign, and reference pre-fetched."""
         return (
             super()
@@ -753,7 +764,9 @@ class StudyAreaAdmin(
     list_filter_submit = True
     inlines = [SiteStackedInline]
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[StudyArea]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[StudyArea]:
         """Return queryset with related project and province pre-fetched.
 
         Avoids one extra query per FK column per row on the changelist —
@@ -803,7 +816,7 @@ class SiteAdmin(
     change_form_show_cancel_button = True
     list_fullwidth = True
     resource_classes = [SiteResource]
-    project_path = "study_area__project"  # type: ignore[assignment]
+    project_path = "study_area__project"
     list_display = [
         "label",
         "study_area",
@@ -815,7 +828,9 @@ class SiteAdmin(
     list_filter_sheet = False
     list_filter_submit = True
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[Site]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[Site]:
         """Return queryset with related study_area pre-fetched."""
         return super().get_queryset(request).select_related("study_area")
 
@@ -862,7 +877,9 @@ class CampaignAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
     list_filter_sheet = False
     list_filter_submit = True
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[Campaign]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[Campaign]:
         """Return queryset with related project and destination_country pre-fetched."""
         return (
             super()
@@ -941,7 +958,7 @@ class LayerAdmin(ExportMixin, NestedProjectPermissionMixin, ModelAdmin):
     form = LayerAdminForm
     change_form_show_cancel_button = True
     list_fullwidth = True
-    project_path = "location__project"  # type: ignore[assignment]
+    project_path = "location__project"
     list_display = [
         "location",
         "identifier",
@@ -1028,7 +1045,7 @@ class SampleAdmin(
         "depth_mid",
         "colored_status",
     ]
-    inlines: list[Any] = []
+    inlines = []
     list_filter = [
         ("project", RelatedDropdownFilter),
         ("location__campaign", RelatedDropdownFilter),
@@ -1090,7 +1107,9 @@ class SampleAdmin(
         ),
     )
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[Sample]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[Sample]:
         """Return the project-scoped queryset with project/location pre-fetched.
 
         list_display renders "project" and "location" for every row; without
@@ -1101,10 +1120,10 @@ class SampleAdmin(
             super().get_queryset(request).select_related("project", "location")
         )
 
-    def formfield_for_foreignkey(
+    def formfield_for_foreignkey(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
         self,
-        db_field: DBField[Any, Any],
-        request: HttpRequest,
+        db_field: ForeignKey[Any, Any],
+        request: AuthenticatedHttpRequest,
         **kwargs: object,
     ) -> ModelChoiceField[Any] | None:
         """Restrict the location dropdown to locations in add_project-permitted projects.
@@ -1115,12 +1134,10 @@ class SampleAdmin(
         reasoning as HybridProjectPermissionMixin.formfield_for_foreignkey's
         "project" field (prototype/mixins.py), which this pairs with.
         """
-        if db_field.name == "location" and not getattr(
-            request.user, "is_superuser", False
-        ):
+        if db_field.name == "location" and not request.user.is_superuser:
             kwargs["queryset"] = _project_scoped_queryset(
                 request,
-                cast("type[Any]", self.model),
+                self.model,  # pyright: ignore[reportArgumentType]  # basedpyright mis-infers self.model through this mixin's unparameterized ModelAdmin base; mypy resolves it correctly
                 "location",
                 Location,
                 "project",
@@ -1152,18 +1169,22 @@ class SampleAdmin(
             prefix = f"field_data_sample_{slug}"
 
             def make_views(m: type[Any]) -> tuple[Any, ...]:
-                def _cl(request: HttpRequest, sample_pk: int) -> HttpResponse:
+                def _cl(
+                    request: AuthenticatedHttpRequest, sample_pk: int
+                ) -> HttpResponse:
                     return self._analysis_changelist_view(
                         request,
                         sample_pk,
                         m,
                     )
 
-                def _add(request: HttpRequest, sample_pk: int) -> HttpResponse:
+                def _add(
+                    request: AuthenticatedHttpRequest, sample_pk: int
+                ) -> HttpResponse:
                     return self._analysis_add_view(request, sample_pk, m)
 
                 def _change(
-                    request: HttpRequest,
+                    request: AuthenticatedHttpRequest,
                     sample_pk: int,
                     object_id: str,
                 ) -> HttpResponse:
@@ -1194,11 +1215,11 @@ class SampleAdmin(
                     name=f"{prefix}_change",
                 ),
             ]
-        return custom_urls + super().get_urls()  # type: ignore[no-any-return]
+        return custom_urls + super().get_urls()
 
     def _get_accessible_sample(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         sample_pk: int,
     ) -> None:
         """Return Sample if accessible; raise 404 if missing, 403 if forbidden."""
@@ -1208,13 +1229,15 @@ class SampleAdmin(
 
     def _analysis_changelist_view(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         sample_pk: int,
         model_class: type,
     ) -> HttpResponse:
         """Render an analysis model's changelist filtered for sample_pk."""
         self._get_accessible_sample(request, sample_pk)
-        analysis_admin = self.admin_site.get_model_admin(model_class)
+        analysis_admin: DjangoModelAdmin[Any] = (
+            self.admin_site.get_model_admin(model_class)
+        )
 
         # Inject the sample filter — changelist reads this from GET params
         mutable_get = request.GET.copy()
@@ -1237,7 +1260,7 @@ class SampleAdmin(
             if cl is not None:
                 cl.preserved_filters = pf
 
-        return response  # type: ignore[no-any-return]
+        return response
 
     # ------------------------------------------------------------------
     # Add-view helpers
@@ -1245,12 +1268,14 @@ class SampleAdmin(
 
     def _analysis_add_view(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         sample_pk: int,
         model_class: type,
     ) -> HttpResponse:
         self._get_accessible_sample(request, sample_pk)
-        analysis_admin = self.admin_site.get_model_admin(model_class)
+        analysis_admin: DjangoModelAdmin[Any] = (
+            self.admin_site.get_model_admin(model_class)
+        )
         mutable_get = request.GET.copy()
         mutable_get["sample"] = str(sample_pk)
         request.GET = mutable_get  # type: ignore[assignment]
@@ -1261,7 +1286,7 @@ class SampleAdmin(
             response.context_data["preserved_filters"] = urlencode(  # pyright: ignore[reportAttributeAccessIssue]
                 {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
-        return response  # type: ignore[no-any-return]
+        return response
 
     # ------------------------------------------------------------------
     # Change-view helpers
@@ -1269,7 +1294,7 @@ class SampleAdmin(
 
     def _analysis_change_view(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         sample_pk: int,
         model_class: type,
         object_id: str,
@@ -1279,7 +1304,9 @@ class SampleAdmin(
         # a crafted URL like /sample/1/luminescencedating/99/change/ cannot expose
         # a measurement that belongs to an inaccessible sample.
         get_object_or_404(model_class, pk=object_id, sample_id=sample_pk)
-        analysis_admin = self.admin_site.get_model_admin(model_class)
+        analysis_admin: DjangoModelAdmin[Any] = (
+            self.admin_site.get_model_admin(model_class)
+        )
         response = analysis_admin.change_view(request, str(object_id))
         if hasattr(response, "context_data"):
             from urllib.parse import urlencode
@@ -1287,7 +1314,7 @@ class SampleAdmin(
             response.context_data["preserved_filters"] = urlencode(  # pyright: ignore[reportAttributeAccessIssue]
                 {"_changelist_filters": f"sample__id__exact={sample_pk}"},
             )
-        return response  # type: ignore[no-any-return]
+        return response
 
 
 class SampleTypeAdmin(ImportExportMixin, ModelAdmin):
@@ -1322,7 +1349,9 @@ class TagAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
     list_filter_sheet = False
     list_filter_submit = True
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[Tag]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[Tag]:
         """Return queryset with related content_type and project pre-fetched."""
         return (
             super()
@@ -1330,9 +1359,9 @@ class TagAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
             .select_related("content_type", "project")
         )
 
-    def get_search_results(
+    def get_search_results(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         queryset: QuerySet[Any],
         search_term: str,
     ) -> tuple[QuerySet[Any], bool]:
@@ -1345,7 +1374,10 @@ class TagAdmin(ExportMixin, ProjectBasedPermissionMixin, ModelAdmin):
         app_label = request.GET.get("app_label")
         field_name = request.GET.get("field_name")
         model_name = request.GET.get("model_name")
-        model_map = {"location": Location, "sample": Sample}
+        model_map: dict[str, type[Location | Sample]] = {
+            "location": Location,
+            "sample": Sample,
+        }
         if (
             app_label == "field_data"
             and field_name == "tags"
@@ -1391,7 +1423,7 @@ class TransectAdmin(
     change_form_show_cancel_button = True
     list_fullwidth = True
     compressed_fields = True
-    project_path = "study_area__project"  # type: ignore[assignment]
+    project_path = "study_area__project"
     readonly_fields = ["id", *AUDIT_READONLY_FIELDS]
     list_display = ["identifier", "study_area", "campaign"]
     search_fields = ["identifier", "study_area__label"]
@@ -1403,7 +1435,9 @@ class TransectAdmin(
     list_filter_submit = True
     raw_id_fields = ["study_area", "campaign"]
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[Transect]:
+    def get_queryset(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self, request: AuthenticatedHttpRequest
+    ) -> QuerySet[Transect]:
         """Return queryset with related study_area and campaign pre-fetched."""
         return (
             super()

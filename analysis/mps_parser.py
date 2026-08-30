@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import contextlib
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # Maps .mps file stat key -> model field name
 STATS_KEY_MAP: dict[str, str] = {
@@ -51,7 +55,7 @@ def parse_block_line(line: str, block: str | None, state: dict) -> None:
         _parse_stats_line(line, state["stats"])
 
 
-def parse_mps_lines(lines: list[str]) -> dict:
+def parse_mps_lines(lines: Sequence[str]) -> dict:
     """Parse .mps file lines into a structured data dict."""
     state: dict = {
         "classes": [],
@@ -78,5 +82,5 @@ def parse_mps_lines(lines: list[str]) -> dict:
 
 def read_mps_file(file_path: str | Path) -> dict:
     """Read and parse a .mps instrument file into a structured data dict."""
-    with Path.open(file_path, encoding="latin-1", errors="ignore") as file:
+    with Path(file_path).open(encoding="latin-1", errors="ignore") as file:
         return parse_mps_lines(file.readlines())

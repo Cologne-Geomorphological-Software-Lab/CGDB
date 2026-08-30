@@ -8,6 +8,7 @@ Tests cover:
 - preserved_filters is set so the back-button points to the right URL
 """
 
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, unquote
 
 from django.contrib.auth.models import User
@@ -15,6 +16,11 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from django.http import StreamingHttpResponse
 
 from field_data.admin import SiteAdmin
 from field_data.models import (
@@ -417,9 +423,9 @@ class FieldPhotoDownloadViewTests(TestCase):
         self.client.force_login(self.member)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            b"".join(response.streaming_content), b"photo-bytes"
-        )
+        streaming_response = cast("StreamingHttpResponse", response)
+        content = cast("Iterable[bytes]", streaming_response.streaming_content)
+        self.assertEqual(b"".join(content), b"photo-bytes")
 
     def test_non_member_gets_404_not_the_file(self):
         self.client.force_login(self.non_member)
@@ -437,7 +443,11 @@ class FieldPhotoDownloadViewTests(TestCase):
         # Fully consume the streaming response so the underlying file handle
         # is released before this test's addCleanup tries to delete it
         # (Windows keeps an open file locked against deletion).
-        b"".join(response.streaming_content)
+        content = cast(
+            "Iterable[bytes]",
+            cast("StreamingHttpResponse", response).streaming_content,
+        )
+        b"".join(content)
 
     def test_404_when_photo_has_no_file(self):
         empty_photo = self._FieldPhoto.objects.create(

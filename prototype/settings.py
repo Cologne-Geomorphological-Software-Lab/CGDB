@@ -298,6 +298,11 @@ REST_FRAMEWORK = {
         # ThrottledObtainAuthToken (prototype/api_views.py) to slow down
         # credential-stuffing against the login endpoint specifically.
         "login": "10/hour",
+        # geodata.api_views.landform_tile: each ST_AsMVT query is more
+        # expensive than a typical API call, but normal map panning/zooming
+        # legitimately requests dozens of tiles per viewport change — wide
+        # enough for that, tight enough to bound a scripted tile-scraping flood.
+        "landform_tile": "3000/hour",
     },
 }
 

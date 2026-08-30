@@ -1,13 +1,14 @@
 """Management command: run a maintenance job headlessly via Dagster.
 
 Manual fallback only. The admin's "Trigger selected maintenance job(s)"
-action no longer calls this command — it submits directly to the
-dagster-daemon's run queue via `dagster job launch` (see
-orchestration.admin._submit_maintenance_run), and status/log/result_file
-are now written by the ops themselves plus the run-status sensors in
-orchestration/dagster_home/sensors.py, not by this command. Kept as a
-synchronous, in-process way to run a job by hand (e.g. if the daemon is
-unavailable) without needing a Dagster CLI/daemon round-trip.
+action no longer calls this command — it launches the run directly via
+`dagster job launch` and DefaultRunLauncher (see
+orchestration.admin._submit_maintenance_run; no run_coordinator is
+configured in dagster.yaml, so this isn't a queue), and status/log/
+result_file are now written by the ops themselves plus the run-status
+sensors in orchestration/dagster_home/sensors.py, not by this command.
+Kept as a synchronous, in-process way to run a job by hand (e.g. if the
+daemon is unavailable) without needing a Dagster CLI/daemon round-trip.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ import os
 import traceback
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -53,8 +54,8 @@ class Command(BaseCommand):
         """Execute the maintenance job and update the run record."""
         from orchestration.models import MaintenanceRun
 
-        job_type: str = options["job_type"]
-        run_pk: int = options["run_id"]
+        job_type = cast("str", options["job_type"])
+        run_pk = cast("int", options["run_id"])
 
         try:
             run = MaintenanceRun.objects.get(pk=run_pk)
@@ -81,17 +82,14 @@ class Command(BaseCommand):
             from dagster import DagsterInstance
 
             from orchestration.dagster_home.maintenance_jobs import (
+                OP_NAME_BY_JOB_TYPE,
                 get_job_for_type,
             )
 
             instance = DagsterInstance.get()
             job_def = get_job_for_type(job_type)
 
-            op_name = {
-                "backup": "run_pg_dump",
-                "duckdb": "export_to_duckdb",
-                "integrity": "run_integrity_checks",
-            }[job_type]
+            op_name = OP_NAME_BY_JOB_TYPE[job_type]
 
             op_config: dict = {
                 "run_id": run.pk,

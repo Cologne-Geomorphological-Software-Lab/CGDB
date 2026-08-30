@@ -20,6 +20,7 @@ from analysis.models import (
     GenericMeasurement,
     GrainSize,
     LuminescenceDating,
+    MeasurementSeries,
     MicroXRFElementMap,
     MicroXRFMeasurement,
     Parameter,
@@ -157,6 +158,28 @@ class GenericMeasurementStrTest(_AnalysisExtSetup):
         self.assertIn(str(self.parameter), result)
 
 
+class GenericMeasurementSeriesFieldTest(_AnalysisExtSetup):
+    """tech debt A12: measurement_series (formerly PascalCase
+    "MeasurementSeries") must round-trip through the pinned db_column
+    without Django or the DB ever seeing a mismatch."""
+
+    def test_field_is_snake_case_and_persists(self):
+        self.assertFalse(
+            hasattr(GenericMeasurement, "MeasurementSeries"),
+            "old PascalCase field name should no longer exist",
+        )
+        series = MeasurementSeries.objects.create(datetime="2024-01-01T00:00:00Z")
+        gm = GenericMeasurement.objects.create(
+            sample=self.sample,
+            method=self.method,
+            parameter=self.parameter,
+            value=1.0,
+            measurement_series=series,
+        )
+        gm.refresh_from_db()
+        self.assertEqual(gm.measurement_series, series)
+
+
 # ===========================================================================
 # MicroXRFMeasurement.__str__
 # ===========================================================================
@@ -222,6 +245,7 @@ class RawMeasurementFilenameTest(_AnalysisExtSetup):
         )
         # Django may append a suffix to avoid name collisions; check stem and extension
         name = rm.filename()
+        assert name is not None
         self.assertTrue(name.startswith("testdata"))
         self.assertTrue(name.endswith(".txt"))
 

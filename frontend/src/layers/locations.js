@@ -2,7 +2,7 @@ import Cluster from 'ol/source/Cluster.js';
 import VectorLayer from 'ol/layer/Vector.js';
 import VectorSource from 'ol/source/Vector.js';
 
-import { geojsonFormat } from '../utils/geojsonFormat.js';
+import { readFeatureCollection } from '../utils/geojsonFormat.js';
 import { clusterStyle, makePointStyle } from '../styles/mapStyles.js';
 
 export const locationSource = new VectorSource();
@@ -25,7 +25,7 @@ export async function fetchLocations(url) {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Failed to load locations (HTTP ${resp.status})`);
   const data = await resp.json();
-  return geojsonFormat.readFeatures(data);
+  return readFeatureCollection(data);
 }
 
 export function setVisibleLocations(features) {

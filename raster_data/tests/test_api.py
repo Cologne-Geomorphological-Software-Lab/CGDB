@@ -439,5 +439,6 @@ class RasterSceneCreatedByAuditTest(TestCase):
         )
         assert resp.status_code == 201, resp.content
         scene = RasterScene.objects.get(corpus_path="/corpus/scenes/audit.tif")
-        assert scene.created_by_id == self.user.pk
-        assert scene.updated_by_id == self.user.pk
+        # Django-generated FK _id shadow attrs; no mypy-plugin support in basedpyright
+        assert scene.created_by_id == self.user.pk  # pyright: ignore[reportAttributeAccessIssue]
+        assert scene.updated_by_id == self.user.pk  # pyright: ignore[reportAttributeAccessIssue]

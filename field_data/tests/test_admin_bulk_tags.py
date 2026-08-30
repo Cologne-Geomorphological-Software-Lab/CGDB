@@ -9,6 +9,7 @@ rewrite (add/remove/idempotency/query-count), not just that the action
 still "looks the same" from the outside.
 """
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 from django.contrib.admin.sites import AdminSite
@@ -21,6 +22,9 @@ from django.test.utils import CaptureQueriesContext
 from field_data.admin import LocationAdmin
 from field_data.models import Location, Tag
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from prototype.mixins import AuthenticatedHttpRequest
 
 
 class BulkTagActionTests(TestCase):
@@ -51,15 +55,15 @@ class BulkTagActionTests(TestCase):
         self.admin = LocationAdmin(Location, self.site)
         self.factory = RequestFactory()
 
-    def _post(self, tag_pks):
+    def _post(self, tag_pks) -> "AuthenticatedHttpRequest":
         data = {
             "_apply_tag_action": "1",
             "tags": [str(pk) for pk in tag_pks],
         }
         request = self.factory.post("/", data)
         request.user = self.superuser
-        request._messages = MagicMock()
-        return request
+        request._messages = MagicMock()  # pyright: ignore[reportAttributeAccessIssue]  # messages middleware attr; test bypasses the middleware and sets it directly
+        return cast("AuthenticatedHttpRequest", request)
 
     def test_add_tags_applies_to_every_selected_object(self):
         request = self._post([self.tag_a.pk, self.tag_b.pk])

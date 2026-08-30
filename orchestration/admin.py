@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,18 +29,9 @@ from .models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
 if TYPE_CHECKING:
     from django.db.models import QuerySet
     from django.forms import ModelForm
-    from django.http import HttpRequest, HttpResponse
+    from django.urls import URLPattern
 
-_OP_NAME_BY_JOB_TYPE = {
-    "backup": "run_pg_dump",
-    "duckdb": "export_to_duckdb",
-    "integrity": "run_integrity_checks",
-}
-_JOB_NAME_BY_JOB_TYPE = {
-    "backup": "backup_job",
-    "duckdb": "duckdb_export_job",
-    "integrity": "integrity_check_job",
-}
+    from prototype.mixins import AuthenticatedHttpRequest
 
 # Maps check_type to (app_label, model_name) for admin change-page links
 _CHECK_TYPE_MODEL_MAP: dict[str, tuple[str, str]] = {
@@ -62,16 +54,22 @@ _CHECK_TYPE_LABELS: dict[str, str] = {
 
 
 def _submit_maintenance_run(run: MaintenanceRun) -> None:
-    """Submit a maintenance job to the dagster-daemon's run queue.
+    """Launch a maintenance job via the dagster-daemon's DefaultRunLauncher.
 
     Shells out to `dagster job launch` rather than calling
     DagsterInstance.submit_run() directly: submit_run() requires a real
     BaseWorkspaceRequestContext (a loaded code location), which is too
     heavyweight to construct inline in a Django admin request — the CLI
-    resolves the workspace itself. With QueuedRunCoordinator configured in
-    dagster.yaml, the CLI just enqueues the run and returns; the daemon's
-    queue processor dispatches it later via run_launcher, so this call is
-    non-blocking on the job's actual execution.
+    resolves the workspace itself.
+
+    tech debt O10: dagster.yaml configures no run_coordinator, only
+    run_launcher: DefaultRunLauncher - runs are launched directly, not
+    queued (a prior version of this docstring incorrectly claimed
+    QueuedRunCoordinator was configured; it isn't, deliberately - see
+    dagster.yaml's own comment on why concurrency-limited queueing isn't
+    needed yet). This call is still non-blocking on the job's actual
+    execution because DefaultRunLauncher itself launches the run in a
+    separate process and returns, not because of any queue.
 
     Unlike the old detached subprocess.Popen (which could silently fail to
     even start), this call is checked — a submission failure (bad config,
@@ -80,6 +78,16 @@ def _submit_maintenance_run(run: MaintenanceRun) -> None:
     the admin instead of claiming "dispatched" regardless.
     """
     from django.conf import settings
+
+    # tech debt O5: job_type -> op_name/job_name lives in maintenance_jobs.py
+    # (single source of truth - see its OP_NAME_BY_JOB_TYPE/JOB_NAME_BY_JOB_TYPE
+    # docstring). Imported lazily, matching run_maintenance_job.py's own
+    # deferred import of that module - it calls django.setup() at import
+    # time, which admin.py's module-load time is the wrong place for.
+    from orchestration.dagster_home.maintenance_jobs import (
+        JOB_NAME_BY_JOB_TYPE,
+        OP_NAME_BY_JOB_TYPE,
+    )
 
     dagster_home = str(settings.BASE_DIR / "orchestration" / "dagster_home")
     env = os.environ.copy()
@@ -99,14 +107,10 @@ def _submit_maintenance_run(run: MaintenanceRun) -> None:
         "-m",
         "orchestration.dagster_home.repository",
         "-j",
-        _JOB_NAME_BY_JOB_TYPE[run.job_type],
+        JOB_NAME_BY_JOB_TYPE[run.job_type],
         "--config-json",
         json.dumps(
-            {
-                "ops": {
-                    _OP_NAME_BY_JOB_TYPE[run.job_type]: {"config": op_config}
-                }
-            }
+            {"ops": {OP_NAME_BY_JOB_TYPE[run.job_type]: {"config": op_config}}}
         ),
         "--tags",
         json.dumps({"maintenance_run_id": str(run.pk)}),
@@ -120,6 +124,46 @@ def _submit_maintenance_run(run: MaintenanceRun) -> None:
     )
 
 
+def _mark_run_failed(run: MaintenanceRun, log: str) -> None:
+    """Record a maintenance run as failed with the given log text."""
+    run.status = "failed"
+    run.log = log
+    run.finished_at = timezone.now()
+    run.save(update_fields=["status", "log", "finished_at"])
+
+
+def _run_one_maintenance_job(run: MaintenanceRun) -> bool:
+    """Mark run running, submit it, and record success/failure. Returns True if triggered."""
+    run.status = "running"
+    run.started_at = timezone.now()
+    run.save(update_fields=["status", "started_at"])
+    try:
+        _submit_maintenance_run(run)
+    except (subprocess.SubprocessError, OSError) as exc:
+        # SubprocessError covers CalledProcessError/TimeoutExpired
+        # (submission ran but failed/hung); OSError covers the subprocess
+        # never starting at all (e.g. FileNotFoundError, PermissionError)
+        # -- without this broader catch, that case would crash the whole
+        # admin action instead of marking just this run as failed and
+        # continuing with the rest.
+        stderr = getattr(exc, "stderr", None) or b""
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        _mark_run_failed(run, stderr or str(exc))
+        return False
+    except Exception:  # noqa: BLE001
+        # tech debt O7: anything unanticipated (e.g. a bad job_type, a
+        # JSON-serialization bug) must not escape this loop either - the
+        # same "one run doesn't fail the whole selection" guarantee as the
+        # SubprocessError/OSError case above, just for the errors we
+        # didn't specifically expect. Marked as failed with the full
+        # traceback logged (not just str(exc)) since these are, by
+        # definition, unanticipated.
+        _mark_run_failed(run, traceback.format_exc())
+        return False
+    return True
+
+
 class IntegrityIssueInline(TabularInline):
     """Read-only inline showing integrity issues found during a run."""
 
@@ -130,7 +174,7 @@ class IntegrityIssueInline(TabularInline):
     can_delete = False
 
     def has_add_permission(
-        self, _request: HttpRequest, _obj: object = None
+        self, _request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Disallow adding issues manually."""
         return False
@@ -184,28 +228,28 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     # Permission lockdown: superuser only
     # ------------------------------------------------------------------
 
-    def has_module_perms(self, request: HttpRequest) -> bool:
+    def has_module_perms(self, request: AuthenticatedHttpRequest) -> bool:
         """Grant module-level access to superusers only."""
         return request.user.is_superuser
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Grant add permission to superusers only."""
         return request.user.is_superuser
 
     def has_change_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant change permission to superusers only."""
         return request.user.is_superuser
 
     def has_delete_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant delete permission to superusers only."""
         return request.user.is_superuser
 
     def has_view_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant view permission to superusers only."""
         return request.user.is_superuser
@@ -217,14 +261,14 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     @display(description="Job Type")
     def job_type_display(self, obj: MaintenanceRun) -> str:
         """Return the human-readable job type label."""
-        return obj.get_job_type_display()
+        return obj.get_job_type_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     @display(description="Dump Format")
     def dump_format_display(self, obj: MaintenanceRun) -> str:
         """Return the dump format label, or a dash for non-backup jobs."""
         if obj.job_type != "backup":
             return "—"
-        return obj.get_dump_format_display()
+        return obj.get_dump_format_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     @display(
         label={
@@ -247,7 +291,9 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
 
         counts: dict[str, int] = {
             r["check_type"]: r["n"]
-            for r in obj.issues.values("check_type").annotate(n=Count("id"))
+            for r in obj.issues.values(  # pyright: ignore[reportAttributeAccessIssue]  # reverse FK related_name accessor; no mypy-plugin support in basedpyright
+                "check_type"
+            ).annotate(n=Count("id"))
         }
 
         parts: list[str] = []
@@ -287,7 +333,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
             return format_html('<a href="{}" download>Download</a>', url)
         return "—"
 
-    def get_urls(self) -> list[object]:
+    def get_urls(self) -> list[URLPattern]:
         """Add a superuser-gated download route alongside the default admin URLs."""
         custom_urls = [
             path(
@@ -299,8 +345,8 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
         return custom_urls + super().get_urls()
 
     def download_result(
-        self, request: HttpRequest, object_id: int
-    ) -> HttpResponse:
+        self, request: AuthenticatedHttpRequest, object_id: int
+    ) -> FileResponse:
         """Stream a maintenance run's result file, superuser-only.
 
         `admin_view()` already enforces staff-login; `has_view_permission`
@@ -324,9 +370,9 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
 
     @admin.action(description="Trigger selected maintenance job(s)")
     def trigger_maintenance_job(
-        self, request: HttpRequest, queryset: QuerySet
+        self, request: AuthenticatedHttpRequest, queryset: QuerySet
     ) -> None:
-        """Submit pending runs to the dagster-daemon's run queue."""
+        """Launch pending runs directly via the dagster-daemon's DefaultRunLauncher."""
         if not request.user.is_superuser:
             self.message_user(
                 request,
@@ -335,32 +381,18 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
             )
             return
 
-        triggered = 0
-        failed = 0
-        for run in queryset.filter(status="pending"):
-            run.status = "running"
-            run.started_at = timezone.now()
-            run.save(update_fields=["status", "started_at"])
-            try:
-                _submit_maintenance_run(run)
-            except (subprocess.SubprocessError, OSError) as exc:
-                # SubprocessError covers CalledProcessError/TimeoutExpired
-                # (submission ran but failed/hung); OSError covers the
-                # subprocess never starting at all (e.g. FileNotFoundError,
-                # PermissionError) -- without this broader catch, that case
-                # would crash the whole admin action instead of marking
-                # just this run as failed and continuing with the rest.
-                stderr = getattr(exc, "stderr", None) or b""
-                if isinstance(stderr, bytes):
-                    stderr = stderr.decode("utf-8", errors="replace")
-                run.status = "failed"
-                run.log = stderr or str(exc)
-                run.finished_at = timezone.now()
-                run.save(update_fields=["status", "log", "finished_at"])
-                failed += 1
-            else:
-                triggered += 1
+        results = [
+            _run_one_maintenance_job(run)
+            for run in queryset.filter(status="pending")
+        ]
+        triggered = sum(results)
+        failed = len(results) - triggered
+        self._report_trigger_results(request, triggered, failed)
 
+    def _report_trigger_results(
+        self, request: AuthenticatedHttpRequest, triggered: int, failed: int
+    ) -> None:
+        """Summarize a trigger_maintenance_job run as one or more admin messages."""
         if triggered:
             self.message_user(
                 request,
@@ -382,7 +414,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
 
     def save_model(
         self,
-        request: HttpRequest,
+        request: AuthenticatedHttpRequest,
         obj: MaintenanceRun,
         form: ModelForm,
         change: bool,
@@ -409,28 +441,28 @@ class DuckDBTableConfigAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
     # Permission lockdown: superuser only
     # ------------------------------------------------------------------
 
-    def has_module_perms(self, request: HttpRequest) -> bool:
+    def has_module_perms(self, request: AuthenticatedHttpRequest) -> bool:
         """Grant module-level access to superusers only."""
         return request.user.is_superuser
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Grant add permission to superusers only."""
         return request.user.is_superuser
 
     def has_change_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant change permission to superusers only."""
         return request.user.is_superuser
 
     def has_delete_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant delete permission to superusers only."""
         return request.user.is_superuser
 
     def has_view_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant view permission to superusers only."""
         return request.user.is_superuser

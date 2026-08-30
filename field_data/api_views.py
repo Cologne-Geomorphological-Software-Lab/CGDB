@@ -15,8 +15,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework_gis.pagination import GeoJsonPagination
 
 if TYPE_CHECKING:
-    from django.contrib.auth.base_user import AbstractBaseUser
-    from django.contrib.auth.models import AnonymousUser
+    from django.contrib.auth.models import User
     from django.db.models import QuerySet
     from rest_framework.request import Request
     from rest_framework.serializers import BaseSerializer
@@ -55,9 +54,7 @@ from .serializers import (
 )
 
 
-def _project_qs(
-    user: AbstractBaseUser | AnonymousUser, qs: QuerySet
-) -> QuerySet:
+def _project_qs(user: User, qs: QuerySet) -> QuerySet:
     """Filter a queryset by accessible projects for the given user."""
     if user.is_superuser:
         return qs
@@ -122,9 +119,7 @@ def _location_count_subquery(qs: QuerySet, location_lookup: str) -> Subquery:
     )
 
 
-def _assert_can_add(
-    user: AbstractBaseUser | AnonymousUser, project: Project
-) -> None:
+def _assert_can_add(user: User, project: Project) -> None:
     """Raise PermissionDenied unless the user may add data to the project.
 
     Takes the Project instance (not a pk) so this can do a direct
@@ -136,16 +131,14 @@ def _assert_can_add(
     independently duplicated between field_data and raster_data) rather
     than a cross-app refactor for this phase.
     """
-    if getattr(user, "is_superuser", False):
+    if user.is_superuser:
         return
     if not user.has_perm("prototype.add_project", project):
         msg = "You do not have permission to add data to this project."
         raise PermissionDenied(msg)
 
 
-def _assert_can_change(
-    user: AbstractBaseUser | AnonymousUser, project: Project | None
-) -> None:
+def _assert_can_change(user: User, project: Project | None) -> None:
     """Raise PermissionDenied unless the user may change data in the project.
 
     Same has_perm("prototype.change_project", ...) check already used
@@ -153,7 +146,7 @@ def _assert_can_change(
     ProjectBasedPermissionMixin etc.) via guardian's ObjectPermissionBackend
     — this is its first use from a DRF view.
     """
-    if getattr(user, "is_superuser", False):
+    if user.is_superuser:
         return
     if project is None or not user.has_perm(
         "prototype.change_project", project
@@ -201,7 +194,7 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
 
     def get_queryset(self) -> QuerySet[Location]:
         """Return locations filtered to projects the user can access."""
-        user = self.request.user
+        user = cast("User", self.request.user)
         qs = Location.objects.select_related(
             "project", "campaign", "study_site", "transect", "exposure_type"
         )
@@ -237,7 +230,7 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
         change_project check could even target.
         """
         instance = cast("Location", serializer.instance)
-        user = self.request.user
+        user = cast("User", self.request.user)
         if (
             not getattr(user, "is_superuser", False)
             and instance.data_source == "literature"
@@ -289,7 +282,8 @@ class CampaignViewSet(ReadOnlyModelViewSet):
     def get_queryset(self) -> QuerySet[Campaign]:
         """Return campaigns for projects the user can access."""
         return _project_qs(
-            self.request.user, Campaign.objects.select_related("project")
+            cast("User", self.request.user),
+            Campaign.objects.select_related("project"),
         )
 
 
@@ -314,7 +308,8 @@ class StudyAreaViewSet(
     def get_queryset(self) -> QuerySet[StudyArea]:
         """Return study areas for projects the user can access."""
         return _project_qs(
-            self.request.user, StudyArea.objects.select_related("project")
+            cast("User", self.request.user),
+            StudyArea.objects.select_related("project"),
         )
 
     def get_serializer_class(self) -> type[BaseSerializer]:
@@ -327,7 +322,7 @@ class StudyAreaViewSet(
         """Reject the write unless the user may add data to the target project."""
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         project = validated_data["project"]
-        _assert_can_add(self.request.user, project)
+        _assert_can_add(cast("User", self.request.user), project)
         serializer.save()
 
     def perform_update(self, serializer: BaseSerializer) -> None:
@@ -339,11 +334,11 @@ class StudyAreaViewSet(
         own add permission entirely.
         """
         instance = cast("StudyArea", serializer.instance)
-        _assert_can_change(self.request.user, instance.project)
+        _assert_can_change(cast("User", self.request.user), instance.project)
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         new_project = validated_data.get("project", instance.project)
         if new_project.pk != instance.project.pk:
-            _assert_can_add(self.request.user, new_project)
+            _assert_can_add(cast("User", self.request.user), new_project)
         serializer.save()
 
     @action(detail=False, methods=["get"], url_path="map")
@@ -374,7 +369,7 @@ class TransectViewSet(
 
     def get_queryset(self) -> QuerySet[Transect]:
         """Return transects for study areas the user can access."""
-        user = self.request.user
+        user = cast("User", self.request.user)
         qs = Transect.objects.select_related("study_area__project", "campaign")
         if user.is_superuser:
             return qs
@@ -391,7 +386,7 @@ class TransectViewSet(
         """Reject the write unless the user may add data to the transect's study area's project."""
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         study_area = validated_data["study_area"]
-        _assert_can_add(self.request.user, study_area.project)
+        _assert_can_add(cast("User", self.request.user), study_area.project)
         serializer.save()
 
     def perform_update(self, serializer: BaseSerializer) -> None:
@@ -400,11 +395,15 @@ class TransectViewSet(
         See StudyAreaViewSet.perform_update for why.
         """
         instance = cast("Transect", serializer.instance)
-        _assert_can_change(self.request.user, instance.study_area.project)
+        _assert_can_change(
+            cast("User", self.request.user), instance.study_area.project
+        )
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         new_study_area = validated_data.get("study_area", instance.study_area)
         if new_study_area.project.pk != instance.study_area.project.pk:
-            _assert_can_add(self.request.user, new_study_area.project)
+            _assert_can_add(
+                cast("User", self.request.user), new_study_area.project
+            )
         serializer.save()
 
     @action(detail=False, methods=["get"], url_path="map")
@@ -428,7 +427,7 @@ class LayerViewSet(ReadOnlyModelViewSet):
 
     def get_queryset(self) -> QuerySet[Layer]:
         """Return layers for locations the user can access."""
-        user = self.request.user
+        user = cast("User", self.request.user)
         qs = Layer.objects.select_related("location__project")
         if user.is_superuser:
             return qs
@@ -451,7 +450,7 @@ class SampleViewSet(ReadOnlyModelViewSet):
 
     def get_queryset(self) -> QuerySet[Sample]:
         """Return samples for projects the user can access."""
-        user = self.request.user
+        user = cast("User", self.request.user)
         qs = Sample.objects.select_related(
             "project", "location", "layer", "type"
         )

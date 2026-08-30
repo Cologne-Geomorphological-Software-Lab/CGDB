@@ -1,7 +1,10 @@
 """Tests for the IsProjectMember and ProjectPathPermission DRF permission classes."""
 
+from types import SimpleNamespace
+
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
+from rest_framework.request import Request
 from guardian.shortcuts import assign_perm
 
 from field_data.models import Location
@@ -16,14 +19,10 @@ from prototype.api_permissions import (
 from prototype.models import Project
 
 
-class _Obj:
-    """Minimal stub for permission target objects."""
-
-
-def _make_request(user):
-    r = RequestFactory().get("/")
-    r.user = user
-    return r
+def _make_request(user) -> Request:
+    request = Request(RequestFactory().get("/"))
+    request.user = user
+    return request
 
 
 class IsLiteratureObjectTest(TestCase):
@@ -42,12 +41,12 @@ class IsLiteratureObjectTest(TestCase):
         self.assertFalse(_is_literature_object(loc))
 
     def test_non_location_object_is_never_eligible_even_if_it_looks_like_one(self):
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.data_source = "literature"
         self.assertFalse(_is_literature_object(obj))
 
     def test_object_with_no_data_source_attribute_is_not_eligible(self):
-        self.assertFalse(_is_literature_object(_Obj()))
+        self.assertFalse(_is_literature_object(SimpleNamespace()))
 
 
 class IsProjectMemberTest(TestCase):
@@ -82,7 +81,7 @@ class IsProjectMemberTest(TestCase):
 
         anon = MagicMock()
         anon.is_authenticated = False
-        r = RequestFactory().get("/")
+        r = Request(RequestFactory().get("/"))
         r.user = anon
         self.assertFalse(self.perm.has_permission(r, None))
 
@@ -91,14 +90,14 @@ class IsProjectMemberTest(TestCase):
     def test_superuser_always_allowed(self):
         self.assertTrue(
             self.perm.has_object_permission(
-                _make_request(self.superuser), None, _Obj()
+                _make_request(self.superuser), None, SimpleNamespace()
             )
         )
 
     # --- has_object_permission: direct project FK ---
 
     def test_user_with_perm_on_direct_project(self):
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.project = self.project
         self.assertTrue(
             self.perm.has_object_permission(
@@ -107,7 +106,7 @@ class IsProjectMemberTest(TestCase):
         )
 
     def test_user_without_perm_on_direct_project(self):
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.project = self.project
         self.assertFalse(
             self.perm.has_object_permission(
@@ -118,9 +117,9 @@ class IsProjectMemberTest(TestCase):
     # --- has_object_permission: nested location.project ---
 
     def test_user_with_perm_via_location_project(self):
-        location = _Obj()
+        location = SimpleNamespace()
         location.project = self.project
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.location = location
         self.assertTrue(
             self.perm.has_object_permission(
@@ -148,7 +147,7 @@ class IsProjectMemberTest(TestCase):
         object presenting that attribute could satisfy, whether or not it
         was actually a model this exception was meant to cover. Must now
         be denied since _Obj isn't Location."""
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.data_source = "literature"
         self.assertFalse(
             self.perm.has_object_permission(
@@ -157,7 +156,7 @@ class IsProjectMemberTest(TestCase):
         )
 
     def test_non_literature_object_without_project_denied(self):
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.data_source = "internal"
         self.assertFalse(
             self.perm.has_object_permission(
@@ -168,7 +167,7 @@ class IsProjectMemberTest(TestCase):
     def test_object_with_no_attributes_denied(self):
         self.assertFalse(
             self.perm.has_object_permission(
-                _make_request(self.user), None, _Obj()
+                _make_request(self.user), None, SimpleNamespace()
             )
         )
 
@@ -201,7 +200,7 @@ class ProjectPathPermissionTest(TestCase):
 
         anon = MagicMock()
         anon.is_authenticated = False
-        r = RequestFactory().get("/")
+        r = Request(RequestFactory().get("/"))
         r.user = anon
         perm = ProjectPathPermission()
         self.assertFalse(perm.has_permission(r, None))
@@ -209,9 +208,9 @@ class ProjectPathPermissionTest(TestCase):
     # --- SampleScopedPermission: single-hop path.sample.project ---
 
     def test_sample_scoped_allows_member(self):
-        sample = _Obj()
+        sample = SimpleNamespace()
         sample.project = self.project
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.sample = sample
         perm = SampleScopedPermission()
         self.assertTrue(
@@ -219,9 +218,9 @@ class ProjectPathPermissionTest(TestCase):
         )
 
     def test_sample_scoped_denies_non_member(self):
-        sample = _Obj()
+        sample = SimpleNamespace()
         sample.project = self.project
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.sample = sample
         perm = SampleScopedPermission()
         self.assertFalse(
@@ -231,11 +230,11 @@ class ProjectPathPermissionTest(TestCase):
     # --- CountingScopedPermission: two-hop path.counting.sample.project ---
 
     def test_counting_scoped_allows_member(self):
-        sample = _Obj()
+        sample = SimpleNamespace()
         sample.project = self.project
-        counting = _Obj()
+        counting = SimpleNamespace()
         counting.sample = sample
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.counting = counting
         perm = CountingScopedPermission()
         self.assertTrue(
@@ -243,11 +242,11 @@ class ProjectPathPermissionTest(TestCase):
         )
 
     def test_counting_scoped_denies_non_member(self):
-        sample = _Obj()
+        sample = SimpleNamespace()
         sample.project = self.project
-        counting = _Obj()
+        counting = SimpleNamespace()
         counting.sample = sample
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.counting = counting
         perm = CountingScopedPermission()
         self.assertFalse(
@@ -257,11 +256,11 @@ class ProjectPathPermissionTest(TestCase):
     # --- MeasurementScopedPermission: two-hop path.measurement.sample.project ---
 
     def test_measurement_scoped_allows_member(self):
-        sample = _Obj()
+        sample = SimpleNamespace()
         sample.project = self.project
-        measurement = _Obj()
+        measurement = SimpleNamespace()
         measurement.sample = sample
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.measurement = measurement
         perm = MeasurementScopedPermission()
         self.assertTrue(
@@ -274,7 +273,7 @@ class ProjectPathPermissionTest(TestCase):
         perm = SampleScopedPermission()
         self.assertTrue(
             perm.has_object_permission(
-                _make_request(self.superuser), None, _Obj()
+                _make_request(self.superuser), None, SimpleNamespace()
             )
         )
 
@@ -283,7 +282,7 @@ class ProjectPathPermissionTest(TestCase):
         IsProjectMemberTest's — a broken traversal chain landing on an
         object that merely presents data_source="literature" must be
         denied unless that object is actually Location."""
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.data_source = "literature"
         perm = SampleScopedPermission()
         self.assertFalse(
@@ -291,7 +290,7 @@ class ProjectPathPermissionTest(TestCase):
         )
 
     def test_broken_chain_non_literature_denied(self):
-        obj = _Obj()
+        obj = SimpleNamespace()
         obj.data_source = "internal"
         perm = SampleScopedPermission()
         self.assertFalse(

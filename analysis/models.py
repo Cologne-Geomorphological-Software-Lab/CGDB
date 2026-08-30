@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
-from typing import Self
+from typing import Self, cast
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -103,7 +103,8 @@ class RawMeasurement(BaseModel):
 
     def filename(self) -> str | None:
         """Return the base filename of the uploaded file, or None if no file."""
-        return Path(self.file.name).name if self.file else None
+        # FieldFile.__bool__ is True only when .name is set.
+        return Path(cast("str", self.file.name)).name if self.file else None
 
     def __str__(self) -> str:
         """Return a string combining device and creation timestamp."""
@@ -165,8 +166,9 @@ class RawProcessing(BaseModel):
 
     def processed_filename(self) -> str | None:
         """Return the base filename of the processed file, or None if no file."""
+        # FieldFile.__bool__ is True only when .name is set.
         return (
-            Path(self.processed_file.name).name
+            Path(cast("str", self.processed_file.name)).name
             if self.processed_file
             else None
         )
@@ -1375,7 +1377,7 @@ class GenericMeasurement(BaseModel):
     Attributes:
         sample (ForeignKey): Sample associated with the measurement.
         raw_data (ForeignKey): Raw measurement data.
-        MeasurementSeries (ForeignKey): Measurement series.
+        measurement_series (ForeignKey): Measurement series.
         sample_weight (FloatField): Weight of the sample.
         method (ForeignKey): Method used for measurement.
         parameter (ForeignKey): Parameter measured.
@@ -1395,10 +1397,15 @@ class GenericMeasurement(BaseModel):
         blank=True,
         null=True,
     )
-    MeasurementSeries = models.ForeignKey(
+    # tech debt A12: field was PascalCase ("MeasurementSeries"), the only
+    # non-snake_case field in the app. db_column pins the existing
+    # "MeasurementSeries_id" DB column so this is a pure rename, not a
+    # data migration.
+    measurement_series = models.ForeignKey(
         MeasurementSeries,
         related_name="generic_measurements",
         on_delete=models.CASCADE,
+        db_column="MeasurementSeries_id",
         blank=True,
         null=True,
     )
@@ -1457,6 +1464,41 @@ def _classify_fraction(class_value: float) -> str:
         if class_value < boundary:
             return name
     return "gravel"
+
+
+# Shared between GrainSizeImportForm (admin.py), GrainSizeResource
+# (resources.py), and GrainSizeSerializer (serializers.py) so the three
+# field lists can't silently drift apart.
+GRAIN_SIZE_INPUT_FIELDS = [
+    "sample",
+    "raw_data",
+    "sample_weight",
+    "sample_concentration",
+    "method",
+    "classes",
+    "measured_data",
+    "clay",
+    "fine_silt",
+    "medium_silt",
+    "coarse_silt",
+    "fine_sand",
+    "medium_sand",
+    "coarse_sand",
+    "gravel",
+]
+GRAIN_SIZE_STATS_FIELDS = [
+    "mean",
+    "mode",
+    "median",
+    "std",
+    "skew",
+    "kurtosis",
+    "fwmean",
+    "fwmedian",
+    "fwsd",
+    "fwskew",
+    "fwkurt",
+]
 
 
 class GrainSize(BaseModel):
@@ -1854,4 +1896,7 @@ class MicroXRFElementMap(BaseModel):
 
     def get_raster_path(self) -> Path:
         """Return the absolute filesystem path to the raster file."""
-        return Path(settings.MEDIA_ROOT) / self.raster_file.name
+        if not self.raster_file:
+            msg = "raster_file is not set on this MicroXRFElementMap."
+            raise ValueError(msg)
+        return Path(settings.MEDIA_ROOT) / cast("str", self.raster_file.name)

@@ -1,4 +1,14 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
   - repo: local
     hooks:
       - id: ruff
@@ -24,5 +34,29 @@ repos:
       - id: basedpyright
         name: basedpyright
         entry: scripts/run-basedpyright.cmd
+        language: script
+        pass_filenames: false
+
+      - id: bandit
+        name: bandit (security)
+        entry: scripts/run-bandit.cmd
+        language: script
+        pass_filenames: false
+
+      - id: vulture
+        name: vulture (dead code)
+        entry: scripts/run-vulture.cmd
+        language: script
+        pass_filenames: false
+
+      - id: xenon
+        name: xenon (complexity gate)
+        entry: scripts/run-xenon.cmd
+        language: script
+        pass_filenames: false
+
+      - id: pylint-duplicate-code
+        name: pylint (duplicate code)
+        entry: scripts/run-pylint-duplicate.cmd
         language: script
         pass_filenames: false

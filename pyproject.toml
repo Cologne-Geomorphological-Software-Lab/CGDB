@@ -78,8 +78,12 @@ ignore = [
 "analysis/admin.py" = ["BLE001", "TRY301", "ANN401"]
 # Dagster workspace: namespace packages intentional; context.log has no .exception(); broad catch is asset contract
 "orchestration/dagster_home/repository.py" = ["INP001"]
-# maintenance_jobs: ANN001 — Dagster 1.12.8 errors if context param is type-annotated; TRY400 — context.log has no .exception()
-"orchestration/dagster_home/maintenance_jobs.py" = ["INP001", "ANN001", "TRY400"]
+# maintenance_jobs: TRY400 — context.log has no .exception(). ANN001 is NOT
+# file-wide — only the 3 @op-decorated functions' `context` param can't be
+# annotated (Dagster 1.12.8 errors if it is); those get an inline noqa
+# instead, so plain internal helpers (_get_queryset, _coerce_df_columns,
+# _export_model_table, etc.) still get real ANN001 checking (tech debt O8).
+"orchestration/dagster_home/maintenance_jobs.py" = ["INP001", "TRY400"]
 "orchestration/dagster_home/sensors.py" = ["INP001"]
 # run_maintenance_job: ARG/ANN — Django management command signature (*args, **options) cannot be changed
 "orchestration/management/commands/run_maintenance_job.py" = ["ARG001", "ARG002", "ANN003", "BLE001"]
@@ -99,9 +103,12 @@ convention = "google"
 
 [tool.bandit]
 exclude_dirs = ["venv"]
-# B105/B106: all instances are settings templates or test fixture passwords — intentional
+# B105/B106/B107: all instances are settings templates or test fixture passwords — intentional
 # B101: assert statements are legitimate in non-test production code here
-skips = ["B101", "B105", "B106"]
+# B404/B603: subprocess use is already reviewed per call site via ruff's flake8-bandit
+# (S404/S603) rules with documented `# noqa: S603` — bandit would just re-flag the same,
+# already-accepted call sites with no `# nosec` equivalent mechanism as convenient
+skips = ["B101", "B105", "B106", "B107", "B404", "B603"]
 
 [tool.coverage.run]
 branch = true
@@ -171,6 +178,24 @@ ignore_errors = true
 [tool.django-stubs]
 django_settings_module = "prototype.test_settings"
 
+[tool.pylint.main]
+# Only duplicate-code (R0801) is enabled — see .pre-commit-config.yaml. Migrations
+# duplicate models.py's field definitions by design; not a real code-quality issue.
+ignore-paths = ['.*[\\/]migrations[\\/].*']
+
+[tool.pylint."messages control"]
+disable = ["all"]
+enable = ["duplicate-code"]
+
+[tool.pylint.similarities]
+# Default (4 lines) flags short, incidental overlaps that are extremely common
+# in this codebase — the same handful of Django model field names repeated
+# across independent admin/serializer/resource Meta.fields declarations. 12
+# lines still catches real duplication (a copy-pasted block of logic) without
+# that noise.
+min-similarity-lines = 12
+ignore-imports = true
+
 [dependency-groups]
 dev = [
     # Linting / formatting
@@ -185,9 +210,13 @@ dev = [
     "pytest",
     "pytest-django",
     "pytest-cov",
-    # Static analysis / metrics (ad-hoc local use — not wired into pre-commit/CI)
+    # Static analysis / metrics — bandit, vulture, xenon, pylint wired into
+    # pre-commit (see .pre-commit-config.yaml); radon and lizard stay ad-hoc
+    # local use only.
     "radon",
     "vulture",
     "bandit",
     "lizard",
+    "xenon",
+    "pylint",
 ]

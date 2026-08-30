@@ -3,5 +3,5 @@
   "venvPath": ".",
   "venv": ".venv",
   "typeCheckingMode": "basic",
-  "exclude": ["venv", ".venv", "**/migrations", "manage.py", "docs"]
+  "exclude": ["venv", ".venv", "**/migrations", "manage.py", "docs", "vulture_whitelist.py"]
 }

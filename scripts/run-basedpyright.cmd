@@ -1,2 +1,2 @@
 @echo off
-.venv\Scripts\python.exe -m basedpyright field_data\admin.py field_data\models.py
+.venv\Scripts\python.exe -m basedpyright analysis bibliography field_data geodata laboratory orchestration prototype raster_data

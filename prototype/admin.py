@@ -26,9 +26,11 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from django.db.models import QuerySet
-    from django.forms import Field
-    from django.http import HttpRequest
+    from django.db.models import ForeignKey, Model, QuerySet
+    from django.forms import BaseFormSet, Field, ModelForm
+
+    from .mixins import AuthenticatedHttpRequest
+    from .models import BaseModel
 
 
 class PermissionBasedModelAdmin(
@@ -37,7 +39,7 @@ class PermissionBasedModelAdmin(
 ):
     """Base admin class with object-level Guardian permissions."""
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Allow add when the user holds the model-level add permission."""
         if request.user.is_superuser:
             return True
@@ -46,9 +48,9 @@ class PermissionBasedModelAdmin(
 
     def save_model(
         self,
-        request: HttpRequest,
-        obj: object,
-        form: object,
+        request: AuthenticatedHttpRequest,
+        obj: BaseModel,
+        form: ModelForm,
         change: bool,
     ) -> None:
         """Set created_by on insert and updated_by on every save."""
@@ -58,7 +60,7 @@ class PermissionBasedModelAdmin(
         super().save_model(request, obj, form, change)
 
 
-_PERMISSION_LABELS = {
+_PERMISSION_LABELS: dict[str, str] = {
     "view_project": "View data",
     "add_project": "Add data",
     "change_project": "Edit data",
@@ -88,12 +90,10 @@ class ProjectUserObjectPermissionInline(TabularInline):
     @display(description="Access level")
     def permission_label(self, obj: ProjectUserObjectPermission) -> str:
         """Return a human-readable access level label for the permission codename."""
-        return _PERMISSION_LABELS.get(
-            obj.permission.codename,
-            obj.permission.codename,
-        )
+        codename: str = obj.permission.codename
+        return _PERMISSION_LABELS.get(codename, codename)
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
         """Return the queryset with user and permission pre-fetched."""
         return (
             super().get_queryset(request).select_related("user", "permission")
@@ -101,8 +101,8 @@ class ProjectUserObjectPermissionInline(TabularInline):
 
     def formfield_for_foreignkey(
         self,
-        db_field: object,
-        request: HttpRequest,
+        db_field: ForeignKey,
+        request: AuthenticatedHttpRequest,
         **kwargs: object,
     ) -> Field | None:
         """Restrict the permission dropdown to project-level prototype permissions."""
@@ -119,32 +119,32 @@ class ProjectUserObjectPermissionInline(TabularInline):
 
     def has_add_permission(
         self,
-        request: HttpRequest,
-        _obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        _obj: Model | None = None,
     ) -> bool:
         """Allow add only for superusers."""
         return request.user.is_superuser
 
     def has_change_permission(
         self,
-        request: HttpRequest,
-        _obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        _obj: Model | None = None,
     ) -> bool:
         """Allow change only for superusers."""
         return request.user.is_superuser
 
     def has_delete_permission(
         self,
-        request: HttpRequest,
-        _obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        _obj: Model | None = None,
     ) -> bool:
         """Allow delete only for superusers."""
         return request.user.is_superuser
 
     def has_view_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow view for superusers or users with change_project on the project."""
         return request.user.is_superuser or (
@@ -189,7 +189,7 @@ class ResearcherAdmin(PermissionBasedModelAdmin, ModelAdmin):
             )
             return [
                 obj.user.get_full_name(),
-                obj.get_position_display() or "",
+                obj.get_position_display() or "",  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
                 initials or "?",
             ]
         return [str(obj), "", "?"]
@@ -228,16 +228,16 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
 
     def save_related(
         self,
-        request: HttpRequest,
-        form: object,
-        formsets: object,
+        request: AuthenticatedHttpRequest,
+        form: ModelForm,
+        formsets: list[BaseFormSet],
         change: bool,
     ) -> None:
         """Save related objects then sync Guardian permissions for project members."""
         super().save_related(request, form, formsets, change)
         self._sync_member_permissions(form.instance)
 
-    def _sync_member_permissions(self, project: object) -> None:
+    def _sync_member_permissions(self, project: Project) -> None:
         """Sync Guardian object-permissions to match the current members M2M.
 
         Called after save_related so that project.members already reflects the
@@ -426,28 +426,28 @@ class AuthTokenAdmin(ModelAdmin):
     fields = ("user",)
     ordering = ("-created",)
 
-    def has_module_perms(self, request: HttpRequest) -> bool:
+    def has_module_perms(self, request: AuthenticatedHttpRequest) -> bool:
         """Grant module-level access to superusers only."""
         return request.user.is_superuser
 
     def has_view_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant view permission to superusers only."""
         return request.user.is_superuser
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Grant add permission to superusers only."""
         return request.user.is_superuser
 
     def has_change_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant change permission to superusers only."""
         return request.user.is_superuser
 
     def has_delete_permission(
-        self, request: HttpRequest, _obj: object = None
+        self, request: AuthenticatedHttpRequest, _obj: object = None
     ) -> bool:
         """Grant delete permission to superusers only."""
         return request.user.is_superuser

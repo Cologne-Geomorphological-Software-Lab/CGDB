@@ -113,11 +113,11 @@ class StudyAreaMapSerializer(GeoFeatureModelSerializer):
 
     def get_climate_koeppen_display(self, obj: StudyArea) -> str:
         """Return the human-readable Köppen climate label."""
-        return obj.get_climate_koeppen_display()
+        return obj.get_climate_koeppen_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     def get_ecozone_schultz_display(self, obj: StudyArea) -> str:
         """Return the human-readable Schultz ecozone label."""
-        return obj.get_ecozone_schultz_display()
+        return obj.get_ecozone_schultz_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     def get_admin_url(self, obj: StudyArea) -> str:
         """Return the admin change-form URL for this study area."""
@@ -345,7 +345,7 @@ class LocationMapSerializer(GeoFeatureModelSerializer):
 
     def get_location_type_display(self, obj: Location) -> str:
         """Return the human-readable location type label."""
-        return obj.get_location_type_display()
+        return obj.get_location_type_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
 
     def get_admin_url(self, obj: Location) -> str:
         """Return the admin change-form URL for this location."""

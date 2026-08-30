@@ -8,6 +8,8 @@ Sample URL hierarchy:
 - get_changeform_initial_data: pre-fills sample FK from preserved_filters
 """
 
+from typing import TYPE_CHECKING, cast
+
 from django.contrib import admin as django_admin
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
@@ -17,6 +19,9 @@ from analysis.models import GenericMeasurement, Parameter
 from field_data.models import Location, Sample
 from laboratory.models import Method
 from prototype.models import Project, Researcher
+
+if TYPE_CHECKING:
+    from prototype.mixins import AuthenticatedHttpRequest
 
 
 class _AdminSetup(TestCase):
@@ -170,6 +175,7 @@ class InitialDataTest(_AdminSetup):
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        assert response.context_data is not None
         form = response.context_data["adminform"].form
         self.assertEqual(str(form.initial.get("sample")), str(self.sample.pk))
 
@@ -189,6 +195,7 @@ class InitialDataTest(_AdminSetup):
         )
         response = self.client.get(f"{scoped_url}?{pf}")
         self.assertEqual(response.status_code, 200)
+        assert response.context_data is not None
         form = response.context_data["adminform"].form
         self.assertIn("sample", form.initial)
 
@@ -250,7 +257,9 @@ class RawMeasurementAdminOrderingTest(TestCase):
         admin_instance = RawMeasurementAdmin(RawMeasurement, django_admin.site)
         request = RequestFactory().get("/")
         request.user = self.superuser
-        qs = admin_instance.get_queryset(request)
+        qs = admin_instance.get_queryset(
+            cast("AuthenticatedHttpRequest", request)
+        )
         matches = list(qs.filter(pk=self.multi_sample_measurement.pk))
         self.assertEqual(len(matches), 1)
 
@@ -258,6 +267,7 @@ class RawMeasurementAdminOrderingTest(TestCase):
         url = reverse("admin:analysis_rawmeasurement_changelist")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        assert response.context_data is not None
         self.assertEqual(
             response.context_data["cl"].result_count, 1
         )

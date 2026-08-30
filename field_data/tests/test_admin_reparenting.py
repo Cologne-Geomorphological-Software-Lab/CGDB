@@ -21,7 +21,7 @@ looks reachable.
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from django.contrib.admin import site as django_admin_site
 from django.contrib.auth.models import User
@@ -33,6 +33,21 @@ from guardian.shortcuts import assign_perm
 from field_data.admin import CampaignAdmin, SampleAdmin, SiteAdmin
 from field_data.models import Campaign, Location, Sample, Site, StudyArea
 from prototype.models import Project
+
+if TYPE_CHECKING:
+    from django.forms import ModelForm
+
+    from prototype.mixins import AuthenticatedHttpRequest
+
+# save_model()'s form param is only ever passed through to super(), never read
+# by these mixins — tests don't need a real ModelForm instance.
+_NO_FORM = cast("ModelForm", None)
+
+
+def _make_request(url: str, user: User) -> AuthenticatedHttpRequest:
+    request = RequestFactory().post(url)
+    request.user = user
+    return cast("AuthenticatedHttpRequest", request)
 
 
 def _form_post_data(response, overrides: dict) -> dict:
@@ -181,12 +196,11 @@ class CampaignReparentingTest(_ReparentingSetup):
         because formfield_for_foreignkey already filters the choices.
         """
         admin = CampaignAdmin(Campaign, django_admin_site)
-        request = RequestFactory().post(self._change_url())
-        request.user = self.editor
+        request = _make_request(self._change_url(), self.editor)
         obj = Campaign.objects.get(pk=self.campaign.pk)
         obj.project = self.project_b  # bypasses the ModelChoiceField entirely
         with self.assertRaises(PermissionDenied):
-            admin.save_model(request, obj, form=None, change=True)
+            admin.save_model(request, obj, form=_NO_FORM, change=True)
         self.campaign.refresh_from_db()
         self.assertEqual(self.campaign.project.pk, self.project_a.pk)
 
@@ -272,12 +286,11 @@ class SiteReparentingTest(_ReparentingSetup):
         self,
     ) -> None:
         admin = SiteAdmin(Site, django_admin_site)
-        request = RequestFactory().post(self._change_url())
-        request.user = self.editor
+        request = _make_request(self._change_url(), self.editor)
         obj = Site.objects.get(pk=self.site.pk)
         obj.study_area = self.study_area_b
         with self.assertRaises(PermissionDenied):
-            admin.save_model(request, obj, form=None, change=True)
+            admin.save_model(request, obj, form=_NO_FORM, change=True)
         self.site.refresh_from_db()
         self.assertEqual(self.site.study_area.pk, self.study_area_a.pk)
 
@@ -368,11 +381,10 @@ class SampleReparentingTest(_ReparentingSetup):
         self,
     ) -> None:
         admin = SampleAdmin(Sample, django_admin_site)
-        request = RequestFactory().post(self._change_url())
-        request.user = self.editor
+        request = _make_request(self._change_url(), self.editor)
         obj = Sample.objects.get(pk=self.sample.pk)
         obj.project = self.project_b
         with self.assertRaises(PermissionDenied):
-            admin.save_model(request, obj, form=None, change=True)
+            admin.save_model(request, obj, form=_NO_FORM, change=True)
         self.sample.refresh_from_db()
         self.assertEqual(self.sample.project.pk, self.project_a.pk)

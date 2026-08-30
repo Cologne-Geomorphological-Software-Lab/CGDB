@@ -137,7 +137,15 @@ class _ManifestSceneSerializer(serializers.ModelSerializer):
 
 
 class RasterSceneWriteSerializer(serializers.ModelSerializer):
-    """Write serializer for registering raster scenes via the API."""
+    """Write serializer for registering raster scenes via the API.
+
+    tech debt R5: crs/n_bands/resolution_m/spatial_bbox_wkt/class_names are
+    accepted here as plain caller-supplied values, not verified against the
+    actual file - unlike RasterAdmin's "Recompute metadata from file" admin
+    action, which reads them via GDAL. The manifest endpoint
+    (RasterDatasetViewSet.manifest) documents this distinction since it's
+    the one place both kinds of scene get surfaced together.
+    """
 
     spatial_bbox_wkt = serializers.CharField(
         required=False,

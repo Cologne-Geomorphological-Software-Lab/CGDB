@@ -53,10 +53,8 @@ class MaintenanceRun(BaseModel):
 
     def __str__(self) -> str:
         """Return a human-readable representation of this run."""
-        return (
-            f"{self.get_job_type_display()} [{self.status}]"
-            f" @ {self.started_at or 'pending'}"
-        )
+        job_type_label = self.get_job_type_display()  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated choices-field accessor; no mypy-plugin support in basedpyright
+        return f"{job_type_label} [{self.status}] @ {self.started_at or 'pending'}"
 
 
 class IntegrityIssue(models.Model):
@@ -80,7 +78,8 @@ class IntegrityIssue(models.Model):
 
     def __str__(self) -> str:
         """Return a human-readable representation of this issue."""
-        return f"{self.check_type} (run={self.run_id}, obj={self.object_id})"
+        run_id = self.run_id  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated FK _id shadow attribute; no mypy-plugin support in basedpyright
+        return f"{self.check_type} (run={run_id}, obj={self.object_id})"
 
 
 class DuckDBTableConfig(BaseModel):

@@ -6,6 +6,8 @@ import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from django.http import HttpRequest, HttpResponse
 
 _user = threading.local()
@@ -14,7 +16,9 @@ _user = threading.local()
 class CurrentUserMiddleware:
     """Middleware that stores the current request user in a thread-local variable."""
 
-    def __init__(self, get_response: object) -> None:
+    def __init__(
+        self, get_response: Callable[[HttpRequest], HttpResponse]
+    ) -> None:
         """Store the next middleware or view callable."""
         self.get_response = get_response
 

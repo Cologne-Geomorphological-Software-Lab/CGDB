@@ -20,3 +20,21 @@ STATICFILES_DIRS  # noqa
 
 # GIS admin — imported for side effects (registers GIS admin classes)
 gis_admin  # noqa
+
+# Django migration RunPython functions always take schema_editor even when unused
+schema_editor  # noqa
+
+# Django system-checks framework calls this by keyword even when unused (see ARG001 noqa)
+app_configs  # noqa
+
+# TYPE_CHECKING-only stub method parameters (`...` bodies) — never referenced,
+# that's the point of a type-only Protocol/subclass stub
+credentials  # noqa
+
+# TYPE_CHECKING-only imports referenced solely inside string-literal cast()
+# calls (e.g. cast("Iterable[bytes]", ...)) — real usage, invisible to
+# vulture's AST-only analysis since it doesn't resolve forward-ref strings
+Iterable  # noqa
+StreamingHttpResponse  # noqa
+TestResponse  # noqa
+_FieldsetSpec  # noqa

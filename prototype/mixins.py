@@ -11,9 +11,26 @@ from guardian.shortcuts import get_objects_for_user
 from prototype.models import Project
 
 if TYPE_CHECKING:
-    from django.db.models import Field
-    from django.forms import ModelChoiceField
+    from django.contrib.admin import ModelAdmin as _AdminBase
+    from django.contrib.auth.models import User
+    from django.db.models import ForeignKey, Model
+    from django.forms import ModelChoiceField, ModelForm
     from django.http import HttpRequest
+
+    from prototype.models import BaseModel
+
+    class AuthenticatedHttpRequest(HttpRequest):
+        """An HttpRequest whose `user` is a concrete, authenticated User.
+
+        No custom AUTH_USER_MODEL exists in this project, and every caller of
+        these methods runs behind Django admin's login gate — request.user is
+        never AnonymousUser by the time they execute. Type-checking only,
+        never instantiated.
+        """
+
+        user: User
+else:
+    _AdminBase = object
 
 
 def _has_data_source_field(model: type) -> bool:
@@ -68,7 +85,7 @@ AUDIT_READONLY_FIELDS = [
 
 
 def _project_scoped_queryset(
-    request: HttpRequest,
+    request: AuthenticatedHttpRequest,
     admin_model: type[Any],
     field_name: str,
     related_model: type[Any],
@@ -107,14 +124,14 @@ def _project_scoped_queryset(
     return allowed.distinct()
 
 
-class CreatedUpdatedModelAdminMixin:
+class CreatedUpdatedModelAdminMixin(_AdminBase):
     """Sets created_by and updated_by on save. Use as a base for admin classes that manage BaseModel objects."""
 
     def save_model(
         self,
-        request: HttpRequest,
-        obj: object,
-        form: object,
+        request: AuthenticatedHttpRequest,
+        obj: BaseModel,
+        form: ModelForm,
         change: bool,
     ) -> None:
         """Set created_by on insert and updated_by on every save."""
@@ -124,14 +141,14 @@ class CreatedUpdatedModelAdminMixin:
         super().save_model(request, obj, form, change)
 
 
-class ProjectBasedPermissionMixin:
+class ProjectBasedPermissionMixin(_AdminBase):
     """Mixin for admin classes that need project-based permissions.
 
     Literature data (data_source='literature') is visible to all users but
     editable only by superusers.
     """
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
         """Return only objects belonging to projects the user may view."""
         if request.user.is_superuser:
             return super().get_queryset(request)
@@ -149,7 +166,10 @@ class ProjectBasedPermissionMixin:
         return qs.filter(project_id__in=accessible_project_ids)
 
     def formfield_for_foreignkey(
-        self, db_field: Field, request: HttpRequest, **kwargs: object
+        self,
+        db_field: ForeignKey,
+        request: AuthenticatedHttpRequest,
+        **kwargs: object,
     ) -> ModelChoiceField | None:
         """Scope the "project" field's choices to add_project-permitted projects.
 
@@ -162,7 +182,7 @@ class ProjectBasedPermissionMixin:
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
@@ -170,8 +190,8 @@ class ProjectBasedPermissionMixin:
 
     def has_change_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow change only when the user has change_project on the object's project.
 
@@ -184,21 +204,22 @@ class ProjectBasedPermissionMixin:
         if request.user.is_superuser:
             return True
 
-        if hasattr(obj, "data_source") and obj.data_source == "literature":
+        if getattr(obj, "data_source", None) == "literature":
             return False
 
-        if hasattr(obj, "project") and obj.project:
+        project: Model | None = getattr(obj, "project", None)
+        if project:
             return request.user.has_perm(
                 "prototype.change_project",
-                obj.project,
+                project,
             )
 
         return super().has_change_permission(request, obj)
 
     def has_view_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow view only when the user has view_project on the object's project."""
         if obj is None:
@@ -206,15 +227,16 @@ class ProjectBasedPermissionMixin:
         if request.user.is_superuser:
             return True
 
-        if hasattr(obj, "project") and obj.project:
-            return request.user.has_perm("prototype.view_project", obj.project)
+        project: Model | None = getattr(obj, "project", None)
+        if project:
+            return request.user.has_perm("prototype.view_project", project)
 
         return super().has_view_permission(request, obj)
 
     def has_delete_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow delete only when the user has delete_project on the object's project."""
         if obj is None:
@@ -222,22 +244,23 @@ class ProjectBasedPermissionMixin:
         if request.user.is_superuser:
             return True
 
-        if hasattr(obj, "data_source") and obj.data_source == "literature":
+        if getattr(obj, "data_source", None) == "literature":
             return False
 
-        if hasattr(obj, "project") and obj.project:
+        project: Model | None = getattr(obj, "project", None)
+        if project:
             return request.user.has_perm(
                 "prototype.delete_project",
-                obj.project,
+                project,
             )
 
         return super().has_delete_permission(request, obj)
 
     def save_model(
         self,
-        request: HttpRequest,
-        obj: object,
-        form: object,
+        request: AuthenticatedHttpRequest,
+        obj: BaseModel,
+        form: ModelForm,
         change: bool,
     ) -> None:
         """Reject a save that reparents obj into a project the user can't add to.
@@ -265,14 +288,14 @@ class ProjectBasedPermissionMixin:
         super().save_model(request, obj, form, change)
 
 
-class GuardianPermissionMixin:
+class GuardianPermissionMixin(_AdminBase):
     """Generic Guardian permission mixin for any model.
 
     Provides object-level permission checking for models that inherit from BaseModel
     and use Guardian permissions.
     """
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
         """Return only objects the user has object-level view permission for."""
         qs = super().get_queryset(request)
         if request.user.is_superuser:
@@ -296,7 +319,7 @@ class GuardianPermissionMixin:
             id__in=accessible_objects.values_list("id", flat=True),
         )
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Allow add when the user has the model-level add permission."""
         if request.user.is_superuser:
             return True
@@ -305,8 +328,8 @@ class GuardianPermissionMixin:
 
     def has_change_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow change when the user has object-level change permission."""
         if obj is None:
@@ -316,8 +339,8 @@ class GuardianPermissionMixin:
 
     def has_view_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow view when the user has object-level view permission."""
         if obj is None:
@@ -327,8 +350,8 @@ class GuardianPermissionMixin:
 
     def has_delete_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow delete when the user has object-level delete permission."""
         if obj is None:
@@ -337,13 +360,50 @@ class GuardianPermissionMixin:
         return request.user.has_perm(delete_perm, obj)
 
 
-class NestedProjectPermissionMixin:
+class CreatorScopedEditMixin(_AdminBase):
+    """Object-level guard for shared, browsable catalogs.
+
+    Everyone can view; only the permission holder (typically the creator)
+    can change or delete. Unlike GuardianPermissionMixin above, this
+    deliberately does NOT filter get_queryset() or override
+    has_view_permission - those stay whatever the admin class itself
+    defines (often a plain "allow all authenticated users" override),
+    because a catalog like bibliography.Reference is meant to be browsed by
+    everyone, not hidden per-owner. Only change/delete are object-scoped
+    (tech debt LBG4/LBG17 - see bibliography/admin.py's ReferenceAdmin, the
+    original motivating case, for the full rationale).
+    """
+
+    def has_change_permission(
+        self,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
+    ) -> bool:
+        """Allow change only when the user holds the per-object change permission."""
+        if obj is None:
+            return True
+        change_perm = f"{self.opts.app_label}.change_{self.opts.model_name}"
+        return request.user.has_perm(change_perm, obj)
+
+    def has_delete_permission(
+        self,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
+    ) -> bool:
+        """Allow delete only when the user holds the per-object delete permission."""
+        if obj is None:
+            return True
+        delete_perm = f"{self.opts.app_label}.delete_{self.opts.model_name}"
+        return request.user.has_perm(delete_perm, obj)
+
+
+class NestedProjectPermissionMixin(_AdminBase):
     """Mixin for admin classes where the project relationship is nested.
 
     For example, layer.location.project. Set project_path to the ORM lookup path.
     """
 
-    project_path = None
+    project_path: str | None = None
 
     def get_project_filter_path(self) -> str:
         """Return the ORM filter keyword for filtering by accessible project IDs."""
@@ -352,10 +412,10 @@ class NestedProjectPermissionMixin:
         msg = "project_path must be defined or get_project_filter_path must be overridden"
         raise NotImplementedError(msg)
 
-    def get_project_from_obj(self, obj: object) -> object:
+    def get_project_from_obj(self, obj: Model) -> Model | None:
         """Traverse project_path attributes on obj and return the project instance."""
         if self.project_path:
-            current_obj = obj
+            current_obj: Model | None = obj
             for attr in self.project_path.split("__"):
                 if current_obj is None:
                     return None
@@ -364,7 +424,7 @@ class NestedProjectPermissionMixin:
         msg = "project_path must be defined or get_project_from_obj must be overridden"
         raise NotImplementedError(msg)
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
         """Return only objects reachable through the nested project the user may view."""
         if request.user.is_superuser:
             return super().get_queryset(request)
@@ -379,7 +439,10 @@ class NestedProjectPermissionMixin:
         return qs.filter(**filter_kwargs)
 
     def formfield_for_foreignkey(
-        self, db_field: Field, request: HttpRequest, **kwargs: object
+        self,
+        db_field: ForeignKey,
+        request: AuthenticatedHttpRequest,
+        **kwargs: object,
     ) -> ModelChoiceField | None:
         """Scope project_path's anchor field to add_project-permitted projects.
 
@@ -391,6 +454,7 @@ class NestedProjectPermissionMixin:
         if (
             self.project_path
             and db_field.name == path_parts[0]
+            and db_field.related_model is not None
             and not request.user.is_superuser
         ):
             kwargs["queryset"] = _project_scoped_queryset(
@@ -402,7 +466,7 @@ class NestedProjectPermissionMixin:
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
@@ -410,8 +474,8 @@ class NestedProjectPermissionMixin:
 
     def has_change_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow change when the user has change_project on the nested project.
 
@@ -430,8 +494,8 @@ class NestedProjectPermissionMixin:
 
     def has_view_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow view when the user has view_project on the nested project."""
         if obj is None:
@@ -445,8 +509,8 @@ class NestedProjectPermissionMixin:
 
     def has_delete_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow delete when the user has delete_project on the nested project."""
         if obj is None:
@@ -460,9 +524,9 @@ class NestedProjectPermissionMixin:
 
     def save_model(
         self,
-        request: HttpRequest,
-        obj: object,
-        form: object,
+        request: AuthenticatedHttpRequest,
+        obj: BaseModel,
+        form: ModelForm,
         change: bool,
     ) -> None:
         """Reject a save that reparents obj into a project the user can't add to.
@@ -488,13 +552,13 @@ class NestedProjectPermissionMixin:
         super().save_model(request, obj, form, change)
 
 
-class HybridProjectPermissionMixin:
+class HybridProjectPermissionMixin(_AdminBase):
     """Mixin for models with both a direct project FK and an indirect one through location.
 
     For example, Sample which can have project or location.project.
     """
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet:
+    def get_queryset(self, request: AuthenticatedHttpRequest) -> QuerySet:
         """Return objects accessible via either a direct or location-level project FK."""
         if request.user.is_superuser:
             return super().get_queryset(request)
@@ -509,7 +573,10 @@ class HybridProjectPermissionMixin:
         )
 
     def formfield_for_foreignkey(
-        self, db_field: Field, request: HttpRequest, **kwargs: object
+        self,
+        db_field: ForeignKey,
+        request: AuthenticatedHttpRequest,
+        **kwargs: object,
     ) -> ModelChoiceField | None:
         """Scope the direct "project" field's choices to add_project-permitted projects.
 
@@ -523,27 +590,25 @@ class HybridProjectPermissionMixin:
             )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
+    def has_add_permission(self, request: AuthenticatedHttpRequest) -> bool:
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
         return _addable_projects(request.user).exists()
 
-    def _get_project(self, obj: object) -> object:
-        if hasattr(obj, "project") and obj.project:
-            return obj.project
-        if (
-            hasattr(obj, "location")
-            and obj.location
-            and hasattr(obj.location, "project")
-        ):
-            return obj.location.project
+    def _get_project(self, obj: Model) -> Model | None:
+        project: Model | None = getattr(obj, "project", None)
+        if project:
+            return project
+        location: Model | None = getattr(obj, "location", None)
+        if location is not None:
+            return getattr(location, "project", None)
         return None
 
     def has_change_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow change when the user has change_project on the resolved project."""
         if obj is None:
@@ -557,8 +622,8 @@ class HybridProjectPermissionMixin:
 
     def has_view_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow view when the user has view_project on the resolved project."""
         if obj is None:
@@ -572,8 +637,8 @@ class HybridProjectPermissionMixin:
 
     def has_delete_permission(
         self,
-        request: HttpRequest,
-        obj: object | None = None,
+        request: AuthenticatedHttpRequest,
+        obj: Model | None = None,
     ) -> bool:
         """Allow delete when the user has delete_project on the resolved project."""
         if obj is None:
@@ -587,9 +652,9 @@ class HybridProjectPermissionMixin:
 
     def save_model(
         self,
-        request: HttpRequest,
-        obj: object,
-        form: object,
+        request: AuthenticatedHttpRequest,
+        obj: BaseModel,
+        form: ModelForm,
         change: bool,
     ) -> None:
         """Reject a save that reparents obj into a project the user can't add to.

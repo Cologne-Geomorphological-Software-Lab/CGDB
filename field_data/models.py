@@ -892,7 +892,12 @@ class Location(BaseModel):
             self.location = pt
         else:
             self.location = None
-        self.clean()
+        # full_clean() (not just clean()) so field-level validators (e.g.
+        # slope_aspect's Min/MaxValueValidator) are enforced on every save
+        # path, not only when going through the admin's ModelForm - bulk
+        # import (resources.py) and direct ORM/script .save() used to skip
+        # them entirely.
+        self.full_clean()
         super().save(*args, **kwargs)
 
 
@@ -1225,7 +1230,10 @@ class Sample(BaseModel):
         if self.location and self.location.project and not self.project:
             self.project = self.location.project
 
-        self.clean()
+        # full_clean() (not just clean()) so field-level validators are
+        # enforced on every save path - see Location.save()'s equivalent
+        # change (tech debt FD7) for the full rationale.
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:

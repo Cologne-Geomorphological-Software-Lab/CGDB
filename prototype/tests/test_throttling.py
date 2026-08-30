@@ -20,6 +20,7 @@ directly sidesteps that entirely.
 
 from __future__ import annotations
 
+from typing import cast
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -29,7 +30,11 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework.throttling import ScopedRateThrottle
 
-_FAST_LOGIN_RATE = {**ScopedRateThrottle.THROTTLE_RATES, "login": "2/min"}
+# DRF's THROTTLE_RATES is set from api_settings at import time with no type
+# annotation basedpyright can see (unstubbed library) — it's always a dict at
+# runtime.
+_PRODUCTION_RATES = cast("dict[str, str]", ScopedRateThrottle.THROTTLE_RATES)
+_FAST_LOGIN_RATE = {**_PRODUCTION_RATES, "login": "2/min"}
 
 
 @patch.object(ScopedRateThrottle, "THROTTLE_RATES", _FAST_LOGIN_RATE)
@@ -89,4 +94,5 @@ class LoginThrottleProductionRateTest(TestCase):
         from prototype.api_views import ThrottledObtainAuthToken
 
         assert ThrottledObtainAuthToken.throttle_scope == "login"
-        assert ScopedRateThrottle.THROTTLE_RATES["login"] == "10/hour"
+        rates = cast("dict[str, str]", ScopedRateThrottle.THROTTLE_RATES)
+        assert rates["login"] == "10/hour"

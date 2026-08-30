@@ -5,16 +5,19 @@ from __future__ import annotations
 import os
 import tempfile
 from typing import TYPE_CHECKING, ClassVar
+from unittest import mock
 
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.models import Permission, User
 from django.contrib.gis.gdal import GDALRaster
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from guardian.shortcuts import assign_perm
 
 from prototype.models import Project
-from raster_data.models import RasterScene
+from raster_data.models import DataSource, RasterScene
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -138,6 +141,67 @@ class RecomputeMetadataActionTest(TestCase):
         bad_scene.refresh_from_db()
         self.assertEqual(good_scene.crs, "EPSG:4326")
         self.assertEqual(bad_scene.crs, "")
+
+    def test_selection_over_cap_is_rejected_without_processing(self) -> None:
+        """tech debt R7: each file is opened synchronously in the request/
+        worker thread - an oversized selection must be rejected up front,
+        not partially processed until a timeout."""
+        _make_geotiff(self.tif_path)
+        scene = RasterScene.objects.create(
+            project=self.project, corpus_path=self.tif_path
+        )
+        with mock.patch("raster_data.admin._MAX_RECOMPUTE_SCENES", 0):
+            response = self._run_action([scene.pk])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "processes at most 0 at a time")
+
+        scene.refresh_from_db()
+        self.assertEqual(
+            scene.crs, "", "scene must be untouched when the cap is exceeded"
+        )
+
+    def test_recompute_avoids_n_plus_one_for_data_source(self) -> None:
+        """tech debt R7: every message_user() call that reports a per-scene
+        warning/error formats the scene via RasterScene.__str__, which reads
+        self.data_source.name - without select_related, that's one extra
+        query per such scene. Using scenes with a missing corpus_path (the
+        "not reachable" warning path) reliably exercises __str__, unlike a
+        successful recompute, which never formats the scene at all."""
+        data_source = DataSource.objects.create(name="Sentinel-2")
+        scenes = [
+            RasterScene.objects.create(
+                project=self.project,
+                corpus_path=f"/no/such/path/does_not_exist_{i}.tif",
+                data_source=data_source,
+            )
+            for i in range(3)
+        ]
+        url = reverse("admin:raster_data_rasterscene_changelist")
+        data = {
+            "action": "recompute_metadata_from_file",
+            ACTION_CHECKBOX_NAME: [str(s.pk) for s in scenes],
+        }
+        # follow=False: only capture the POST that runs the action itself -
+        # following the redirect would also capture the changelist page's
+        # own (separate, pre-existing, out-of-scope-for-R7) re-render query.
+        # The N+1 signature is a per-row "WHERE data_source.id = <pk>"
+        # lookup, not just any query mentioning the table (autocomplete_
+        # fields and list_filter already issue their own unrelated bulk
+        # "SELECT ... ORDER BY name" query regardless of this fix).
+        with CaptureQueriesContext(connection) as ctx:
+            self.client.post(url, data, follow=False)
+        per_row_lookup_marker = 'raster_data_datasource"."id" = '
+        per_row_lookups = [
+            q
+            for q in ctx.captured_queries
+            if per_row_lookup_marker in q["sql"]
+        ]
+        self.assertEqual(
+            per_row_lookups,
+            [],
+            "select_related('data_source') should make the 3 scenes' "
+            f"data_source come from the JOIN, not per-row lookups: {per_row_lookups}",
+        )
 
 
 class RasterSceneAdminNonSuperuserAccessTest(TestCase):

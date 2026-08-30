@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +10,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 if TYPE_CHECKING:
+    from django.contrib.auth.models import User
     from django.db.models import QuerySet
 
 from prototype.mixins import _addable_projects
@@ -47,7 +48,7 @@ class ProjectViewSet(ReadOnlyModelViewSet):
 
     def get_queryset(self) -> QuerySet[Project]:
         """Return projects the user may add data to."""
-        user = self.request.user
+        user = cast("User", self.request.user)
         if user.is_superuser:
             return Project.objects.all()
         return _addable_projects(user)

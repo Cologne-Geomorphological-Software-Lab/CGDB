@@ -193,7 +193,13 @@ class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
     ) -> Response:
         """Return a JSON manifest of all scenes in this dataset.
 
-        Includes paths and factual metadata of each scene.
+        Includes paths and metadata of each scene. That metadata (crs,
+        n_bands, resolution_m, spatial_bbox, class_names, ...) is only as
+        reliable as its source: values set via RasterAdmin's "Recompute
+        metadata from file" action are GDAL-verified against the actual
+        file, but the write API (RasterSceneWriteSerializer) accepts these
+        same fields as plain, unverified caller input on create - nothing
+        here distinguishes the two (tech debt R5).
         Classification rasters (n_classes set) are identified at query time
         via spatial intersection — not as a separate list.
         """

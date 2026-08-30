@@ -1,10 +1,15 @@
 """Tests for CurrentUserMiddleware and get_current_user."""
 
+from typing import TYPE_CHECKING, cast
+
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, TestCase
 
 import prototype.middleware as _mw
 from prototype.middleware import CurrentUserMiddleware, get_current_user
+
+if TYPE_CHECKING:
+    from django.http import HttpResponse
 
 
 class CurrentUserMiddlewareTest(TestCase):
@@ -14,7 +19,9 @@ class CurrentUserMiddlewareTest(TestCase):
     def test_middleware_stores_user(self):
         request = self.rf.get("/")
         request.user = AnonymousUser()
-        sentinel = object()
+        # Not a real HttpResponse — this test only checks that the
+        # middleware passes get_response's return value through unchanged.
+        sentinel = cast("HttpResponse", object())
         mw = CurrentUserMiddleware(get_response=lambda r: sentinel)
         result = mw(request)
         self.assertIs(result, sentinel)
