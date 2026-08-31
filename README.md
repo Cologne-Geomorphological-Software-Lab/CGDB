@@ -8,14 +8,17 @@ The Cologne Geomorphological Database System (CGDB)  is a comprehensive informat
 ## Technology Stack
 
 CGDB is built with:
-- **[Django 6.0](https://www.djangoproject.com/)** - Web framework and ORM
+- **[Django 6.0](https://www.djangoproject.com/)** + **GeoDjango** - Web framework, ORM, and spatial data support (field data, landforms, raster scenes)
 - **[Django Unfold](https://github.com/unfoldadmin/django-unfold)** - Modern admin interface
-- **[Django REST Framework](https://www.django-rest-framework.org/)** - REST API (`/api/v1/`, see [REST API](#rest-api) below)
+- **[Django REST Framework](https://www.django-rest-framework.org/)** - REST API (`/api/v1/`, see [REST API](#rest-api) below), covering all apps including `geodata` (landforms) and `raster_data` (raster scenes/datasets)
+- **[Vite](https://vitejs.dev/)** - Frontend build for the `/map/` dashboard (`frontend/`, see [Frontend (map dashboard)](#frontend-map-dashboard) below)
+- **[DuckDB](https://duckdb.org/)** - OLAP export target for maintenance/analytics pipelines
 - **[Dagster](https://dagster.io/)** (optional) - Data orchestration and ETL pipelines, headless (no UI) — see [Data Orchestration](#data-orchestration-optional)
+- **[uv](https://docs.astral.sh/uv/)** - Python dependency management
 
 ## Requirements
 
-- Python 3.12+
+- Python 3.13+
 - GeoDjango dependencies (GDAL, PROJ, GEOS)
 - SpatiaLite or PostgreSQL/PostGIS
 - Node.js + npm (for the map dashboard's frontend — see "Frontend (map
