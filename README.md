@@ -5,6 +5,11 @@ The Cologne Geomorphological Database System (CGDB)  is a comprehensive informat
 ![admin_samples](admin_map.png)
 
 ![admin_samples](admin_samples.png)
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes, and
+[MIGRATING.md](MIGRATING.md) if you're upgrading an existing deployment
+across a major version.
+
 ## Technology Stack
 
 CGDB is built with:
@@ -405,17 +410,17 @@ setup needs the following, in order:
 
    [Service]
    Type=simple
-   User=www-data
-   Group=www-data
-   WorkingDirectory=/var/www/cgdb
-   Environment=DAGSTER_HOME=/var/www/cgdb/orchestration/dagster_home
+   User=<web-server-user>
+   Group=<web-server-user>
+   WorkingDirectory=<project-root>
+   Environment=DAGSTER_HOME=<project-root>/orchestration/dagster_home
    # The four lines below are only needed if you switched dagster.yaml to
    # PostgreSQL storage (see step 2/3 above) — omit them for the SQLite default.
    Environment=DAGSTER_PG_USER=...
    Environment=DAGSTER_PG_PASSWORD=...
    Environment=DAGSTER_PG_HOST=...
    Environment=DAGSTER_PG_DB=dagster
-   ExecStart=/var/www/cgdb/.venv/bin/dagster-daemon run
+   ExecStart=<project-root>/.venv/bin/dagster-daemon run
    Restart=on-failure
    RestartSec=5
 
