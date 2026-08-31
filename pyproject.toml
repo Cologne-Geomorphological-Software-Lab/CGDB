@@ -1,3 +1,11 @@
+[tool.dagster]
+# Lets `dagster-daemon run` resolve its code location with no CLI flags —
+# `dagster job launch` (orchestration/admin.py) passes `-m` explicitly and
+# doesn't need this, but the daemon (Procfile, systemd unit) previously ran
+# with neither, which fails outright: "No arguments given and no
+# [tool.dagster] block in pyproject.toml found."
+module_name = "orchestration.dagster_home.repository"
+
 [project]
 name = "cgdb"
 requires-python = ">=3.13"
