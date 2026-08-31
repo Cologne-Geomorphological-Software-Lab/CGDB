@@ -4,14 +4,19 @@
 # Run storage: SQLite by default — CGDB runs a single daemon process with
 # jobs triggered only manually (no scheduler, no multi-worker setup), which
 # is exactly the scenario Dagster's own docs consider SQLite storage safe
-# for. base_dir is relative to DAGSTER_HOME, so no extra environment
-# variable is needed — only DAGSTER_HOME itself. For higher-throughput
-# deployments (multiple concurrent workers, scheduled runs), switch to
-# PostgreSQL: comment out the sqlite block below, uncomment the postgres
-# block, and set the four DAGSTER_PG_* environment variables (see README.md).
+# for. base_dir must be an absolute path — Dagster resolves it relative to
+# the *calling process's* cwd, not to DAGSTER_HOME (a plain "storage" here
+# previously broke when launched from the Django admin, whose subprocess
+# inherits Apache's cwd rather than the project root). {env: DAGSTER_HOME}
+# pins it to the one env var every launch path already sets. For
+# higher-throughput deployments (multiple concurrent workers, scheduled
+# runs), switch to PostgreSQL: comment out the sqlite block below,
+# uncomment the postgres block, and set the four DAGSTER_PG_* environment
+# variables (see README.md).
 storage:
   sqlite:
-    base_dir: "storage"
+    base_dir:
+      env: DAGSTER_HOME
 #  postgres:
 #    postgres_db:
 #      username: { env: DAGSTER_PG_USER }
