@@ -117,6 +117,7 @@ def _submit_maintenance_run(run: MaintenanceRun) -> None:
     ]
     subprocess.run(  # noqa: S603 — cmd is built from static parts and this run's own pk/dump_format, no external user input
         cmd,
+        cwd=str(settings.BASE_DIR),
         env=env,
         check=True,
         capture_output=True,
