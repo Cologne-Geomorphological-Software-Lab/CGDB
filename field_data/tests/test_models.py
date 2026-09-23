@@ -416,10 +416,16 @@ class CampaignTest(_BaseSetup):
         self.assertEqual(campaign.label, "CAMP2024A")
         self.assertEqual(campaign.project, self.project)
 
-    def test_label_uniqueness_enforced(self):
+    def test_label_unique_per_project(self):
+        """A label is unique within a project, not across all campaigns.
+
+        Meta.unique_together = ("project", "label"), so project2 may reuse
+        a label that project already has.
+        """
         Campaign.objects.create(label="CAMP_UNIQ01", project=self.project)
+        Campaign.objects.create(label="CAMP_UNIQ01", project=self.project2)
         with self.assertRaises(IntegrityError):
-            Campaign.objects.create(label="CAMP_UNIQ01", project=self.project2)
+            Campaign.objects.create(label="CAMP_UNIQ01", project=self.project)
 
     def test_str_contains_label(self):
         campaign = Campaign.objects.create(
