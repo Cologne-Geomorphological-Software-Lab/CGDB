@@ -480,7 +480,11 @@ The module is intentionally minimal to avoid overhead while providing a complete
 ![admin_luminescence](admin_luminescence.png)
 ## References
 
+> Handy, D. and van der Meij, M.: CGDB: Cologne Geomorphological Database System, Zenodo [code], https://doi.org/10.5281/zenodo.17869730, 2026.
+
 > Handy, D., van der Meij, W. M., Zickel, M., and Reimann, T.: A database-driven research data framework for integrating and processing high-dimensional geoscientific data, Geosci. Instrum. Method. Data Syst., 15, 165–181, https://doi.org/10.5194/gi-15-165-2026, 2026.
+
+Citation metadata for the current release are in [CITATION.cff](CITATION.cff).
 
 **Framework Dependencies:**
 - Django - [https://www.djangoproject.com/](https://www.djangoproject.com/)

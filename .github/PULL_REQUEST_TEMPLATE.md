@@ -21,6 +21,7 @@
 ## Checklist
 
 - [ ] Migration included (if model changed)
+- [ ] `CHANGELOG.md` updated (and `MIGRATING.md` for breaking changes)
 - [ ] New behaviour is covered by tests
 - [ ] `python -m pytest` passes (note any pre-existing failures)
 - [ ] No new broad `except Exception` clauses
