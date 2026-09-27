@@ -1,0 +1,57 @@
+cff-version: 1.2.0
+message: >-
+  If you use CGDB, please cite it using the metadata below. The software is
+  described in the article listed under references.
+type: software
+title: "CGDB: Cologne Geomorphological Database System"
+abstract: >-
+  A database-driven research data framework for integrating and processing
+  high-dimensional geoscientific data, built on Django and GeoDjango.
+authors:
+  - family-names: Handy
+    given-names: Dennis
+    affiliation: University of Cologne
+    orcid: "https://orcid.org/0000-0002-8057-720X"
+  - family-names: van der Meij
+    given-names: Marijn
+    affiliation: University of Cologne
+    orcid: "https://orcid.org/0000-0001-8724-5120"
+version: 2.0.0
+date-released: "2026-08-31"
+license: MIT
+repository-code: "https://github.com/Cologne-Geomorphological-Software-Lab/CGDB"
+doi: 10.5281/zenodo.17869730
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.17869730
+    description: Concept DOI, resolves to the latest version
+  - type: doi
+    value: 10.5281/zenodo.22203564
+    description: Version 2.0.0
+keywords:
+  - geomorphology
+  - research data management
+  - FAIR
+  - Django
+  - GeoDjango
+  - geoscientific data
+references:
+  - type: article
+    title: >-
+      A database-driven research data framework for integrating and
+      processing high-dimensional geoscientific data
+    authors:
+      - family-names: Handy
+        given-names: D.
+      - family-names: van der Meij
+        given-names: W. M.
+      - family-names: Zickel
+        given-names: M.
+      - family-names: Reimann
+        given-names: T.
+    journal: Geoscientific Instrumentation, Methods and Data Systems
+    volume: 15
+    start: 165
+    end: 181
+    year: 2026
+    doi: 10.5194/gi-15-165-2026
