@@ -37,12 +37,11 @@ class ResearcherStrTest(SimpleTestCase):
         r = self._make_researcher("", "")
         self.assertEqual(str(r), ", ")
 
-    def test_str_with_none_user_raises(self):
-        """Documented bug: Researcher.__str__ raises AttributeError when user is None."""
+    def test_str_with_none_user(self):
+        """A researcher without a linked user gets a placeholder label."""
         r = Researcher()
         r.user = None
-        with self.assertRaises(AttributeError):
-            str(r)
+        self.assertEqual(str(r), "Researcher (no user)")
 
 
 # ===========================================================================
