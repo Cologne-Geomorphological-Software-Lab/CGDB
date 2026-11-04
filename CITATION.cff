@@ -16,8 +16,8 @@ authors:
     given-names: Marijn
     affiliation: University of Cologne
     orcid: "https://orcid.org/0000-0001-8724-5120"
-version: 2.0.0
-date-released: "2026-08-31"
+version: 2.0.1
+date-released: "2026-11-04"
 license: MIT
 repository-code: "https://github.com/Cologne-Geomorphological-Software-Lab/CGDB"
 doi: 10.5281/zenodo.17869730
