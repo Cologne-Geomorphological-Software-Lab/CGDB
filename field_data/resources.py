@@ -3,6 +3,8 @@
 from import_export import fields, resources
 from import_export.widgets import ForeignKeyWidget
 
+from prototype.mixins import ProjectScopedResourceMixin
+
 from .models import (
     Campaign,
     Country,
@@ -16,8 +18,10 @@ from .models import (
 )
 
 
-class LocationResource(resources.ModelResource):
+class LocationResource(ProjectScopedResourceMixin, resources.ModelResource):
     """Import/export resource for the Location model."""
+
+    project_path = "project"
 
     exposure_type = fields.Field(
         column_name="exposure_type",
@@ -120,8 +124,10 @@ class SampleTypeResource(resources.ModelResource):
         fields = ("id", "word", "label")
 
 
-class SiteResource(resources.ModelResource):
+class SiteResource(ProjectScopedResourceMixin, resources.ModelResource):
     """Import/export resource for the Site model."""
+
+    project_path = "study_area__project"
 
     study_area = fields.Field(
         column_name="study_area",

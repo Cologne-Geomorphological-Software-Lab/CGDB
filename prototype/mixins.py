@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from django.core.exceptions import FieldDoesNotExist, PermissionDenied
 from django.db.models import CharField, Q, QuerySet
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from django.db.models import ForeignKey, Model
     from django.forms import ModelChoiceField, ModelForm
     from django.http import HttpRequest
+    from import_export.resources import ModelResource as _ResourceBase
 
     from prototype.models import BaseModel
 
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
         user: User
 else:
     _AdminBase = object
+    _ResourceBase = object
 
 
 def _has_data_source_field(model: type) -> bool:
@@ -676,3 +678,81 @@ class HybridProjectPermissionMixin(_AdminBase):
                 msg = "You do not have permission to move this record into that project."
                 raise PermissionDenied(msg)
         super().save_model(request, obj, form, change)
+
+
+class ProjectScopedResourceMixin(_ResourceBase):
+    """Apply the admin's project rules to each row of a table import.
+
+    The admin's has_*_permission() methods and save_model() never run for an
+    import, because rows are saved by the resource. Set project_path to the
+    same lookup as the admin class. The import's `user` keyword comes from the
+    admin views; code that calls import_data() without one (management
+    commands, scripts) is not restricted.
+
+    A PermissionDenied raised here becomes an error on that row, so the
+    preview offers no confirm button, and the confirm step, which runs the
+    import again, rolls back.
+    """
+
+    project_path: str = "project"
+
+    def _project_of(self, instance: Model) -> Model | None:
+        """Follow project_path from *instance* to its project, if it has one."""
+        current: Model | None = instance
+        for attr in self.project_path.split("__"):
+            current = getattr(current, attr, None)
+            if current is None:
+                return None
+        return current
+
+    @staticmethod
+    def _deny_without_perm(
+        user: User | None, codename: str, project: Model | None, msg: str
+    ) -> None:
+        """Raise PermissionDenied unless *user* holds *codename* on *project*."""
+        if user is None or user.is_superuser:
+            return
+        if project is None or not user.has_perm(
+            f"prototype.{codename}_project", project
+        ):
+            raise PermissionDenied(msg)
+
+    def after_init_instance(
+        self, instance: Model, new: bool, row: dict[str, Any], **kwargs: object
+    ) -> None:
+        """Check an existing record before any of its values get overwritten.
+
+        Runs ahead of the import's diff, so that a refused row doesn't show
+        the record's current values in the preview.
+        """
+        super().after_init_instance(instance, new, row, **kwargs)
+        if new:
+            return
+        user = cast("User | None", kwargs.get("user"))
+        msg = "You do not have permission to change this record."
+        if (
+            user is not None
+            and not user.is_superuser
+            and getattr(instance, "data_source", None) == "literature"
+        ):
+            raise PermissionDenied(msg)
+        self._deny_without_perm(
+            user, "change", self._project_of(instance), msg
+        )
+
+    def before_save_instance(
+        self, instance: Model, row: dict[str, Any], **kwargs: object
+    ) -> None:
+        """Check the project that the row's values point the record at."""
+        super().before_save_instance(instance, row, **kwargs)
+        project = self._project_of(instance)
+        if not instance._state.adding:
+            stored = type(instance)._default_manager.get(pk=instance.pk)
+            if self._project_of(stored) == project:
+                return
+        self._deny_without_perm(
+            cast("User | None", kwargs.get("user")),
+            "add",
+            project,
+            "You do not have permission to add records to this project.",
+        )
