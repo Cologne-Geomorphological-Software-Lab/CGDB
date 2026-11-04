@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from django import forms as django_forms
 from django.contrib import messages
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis import admin
 from django.core.exceptions import PermissionDenied
@@ -350,6 +351,40 @@ class BulkTagActionMixin(_AdminBase):
 
     actions = ["add_tags_to_selected", "remove_tags_from_selected"]
 
+    def get_actions(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self,
+        request: AuthenticatedHttpRequest,
+    ) -> dict[str, Any]:
+        """Offer the tag actions only with the model-level change permission.
+
+        `@admin.action(permissions=["change"])` wouldn't do: the project
+        mixins' has_change_permission() returns True when called without an
+        object. Removing an action here also makes Django refuse a POST that
+        names it.
+        """
+        actions = super().get_actions(request)
+        opts = self.model._meta
+        if not request.user.has_perm(
+            f"{opts.app_label}.change_{opts.model_name}"
+        ):
+            actions.pop("add_tags_to_selected", None)
+            actions.pop("remove_tags_from_selected", None)
+        return actions
+
+    def _changeable(
+        self, request: AuthenticatedHttpRequest, queryset: QuerySet[Any]
+    ) -> QuerySet[Any]:
+        """Narrow *queryset* to the records the user may change."""
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(
+            pk__in=[
+                obj.pk
+                for obj in queryset
+                if self.has_change_permission(request, obj)
+            ]
+        )
+
     def _bulk_write_tags(
         self, queryset: QuerySet[Any], tags: list[Tag], verb: str
     ) -> None:
@@ -390,6 +425,18 @@ class BulkTagActionMixin(_AdminBase):
     ) -> HttpResponse | None:
         from django.template.response import TemplateResponse
 
+        selected_count = queryset.count()
+        queryset = self._changeable(request, queryset)
+        count = queryset.count()
+        skipped = selected_count - count
+        if not count:
+            self.message_user(
+                request,
+                "You have no permission to change the selected records.",
+                messages.WARNING,
+            )
+            return None
+
         ct = ContentType.objects.get_for_model(self.model)
         project_ids = queryset.values_list("project", flat=True).distinct()
         tag_qs = Tag.objects.filter(content_type=ct, project__in=project_ids)
@@ -398,14 +445,29 @@ class BulkTagActionMixin(_AdminBase):
             form = BulkTagForm(tag_qs, request.POST)
             if form.is_valid():
                 selected_tags = list(form.cleaned_data["tags"])
-                count = queryset.count()
                 self._bulk_write_tags(queryset, selected_tags, verb)
                 past = "added to" if verb == "add" else "removed from"
+                # The bulk writes bypass the model and its signals, so without
+                # this the change would leave no trace in the history.
+                words = ", ".join(tag.word for tag in selected_tags)
+                LogEntry.objects.log_actions(
+                    request.user.pk,
+                    queryset,
+                    CHANGE,
+                    change_message=f"Tags {past} record: {words}",
+                )
                 self.message_user(
                     request,
                     f"Tags {past} {count} record(s).",
                     messages.SUCCESS,
                 )
+                if skipped:
+                    self.message_user(
+                        request,
+                        f"{skipped} selected record(s) skipped: "
+                        "no permission to change them.",
+                        messages.WARNING,
+                    )
                 return None
         else:
             form = BulkTagForm(tag_qs)
