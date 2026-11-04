@@ -403,13 +403,14 @@ admin.site.register(Group, GroupAdmin)
 # API Token admin (unfold design)
 # ---------------------------------------------------------------------------
 
+from rest_framework.authtoken.admin import TokenAdmin  # noqa: E402
 from rest_framework.authtoken.models import TokenProxy  # noqa: E402
 
 admin.site.unregister(TokenProxy)
 
 
 @admin.register(TokenProxy)
-class AuthTokenAdmin(ModelAdmin):
+class AuthTokenAdmin(TokenAdmin, ModelAdmin):
     """Unfold-styled admin for DRF auth tokens.
 
     Superuser-only: this admin displays every user's plaintext bearer token
@@ -419,10 +420,15 @@ class AuthTokenAdmin(ModelAdmin):
     on TokenProxy (e.g. accidentally, via Django's standard per-app user
     permissions widget) would get full API-impersonation access to every
     user's token.
+
+    TokenAdmin comes first in the MRO because TokenProxy.pk is the user id,
+    while the concrete Token is keyed on `key`. Its changelist, get_object()
+    and `actions = None` keep URLs and object lookup on the user id.
     """
 
     list_fullwidth = True
     list_display = ("key", "user", "created")
+    list_filter = ()
     fields = ("user",)
     ordering = ("-created",)
 

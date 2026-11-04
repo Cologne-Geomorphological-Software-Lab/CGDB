@@ -8,6 +8,7 @@ from import_export import fields, resources
 from import_export.widgets import ForeignKeyWidget, JSONWidget
 
 from field_data.models import Sample
+from prototype.mixins import ProjectScopedResourceMixin
 
 from .models import (
     GRAIN_SIZE_INPUT_FIELDS,
@@ -19,8 +20,12 @@ from .models import (
 )
 
 
-class LuminescenceDatingResource(resources.ModelResource):
+class LuminescenceDatingResource(
+    ProjectScopedResourceMixin, resources.ModelResource
+):
     """Import/export resource for LuminescenceDating."""
+
+    project_path = "sample__location__project"
 
     sample = fields.Field(
         column_name="sample",
@@ -150,8 +155,12 @@ class LuminescenceDatingResource(resources.ModelResource):
         )
 
 
-class RadiocarbonDatingResource(resources.ModelResource):
+class RadiocarbonDatingResource(
+    ProjectScopedResourceMixin, resources.ModelResource
+):
     """Import/export resource for RadiocarbonDating."""
+
+    project_path = "sample__location__project"
 
     sample = fields.Field(
         column_name="sample",
@@ -183,7 +192,7 @@ class RadiocarbonDatingResource(resources.ModelResource):
         )
 
 
-class GrainSizeResource(resources.ModelResource):
+class GrainSizeResource(ProjectScopedResourceMixin, resources.ModelResource):
     """Import/export resource for GrainSize.
 
     tech debt A7: originally omitted raw_data/classes/measured_data, so a
@@ -193,6 +202,8 @@ class GrainSizeResource(resources.ModelResource):
     model (see GrainSize.source), so before_save_instance() forces it to
     "file" for every imported row instead of trusting a CSV column.
     """
+
+    project_path = "sample__location__project"
 
     sample = fields.Field(
         column_name="sample",

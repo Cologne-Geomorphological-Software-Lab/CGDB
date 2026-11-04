@@ -267,6 +267,16 @@ LOGGING = {
 }
 
 # ==============================================================================
+# IMPORT / EXPORT
+# ==============================================================================
+
+# Model-level gate on the admin's Import and Export views; without these,
+# django-import-export offers both to every staff user. Project rules for the
+# individual rows are in prototype.mixins.ProjectScopedResourceMixin.
+IMPORT_EXPORT_IMPORT_PERMISSION_CODE = "add"
+IMPORT_EXPORT_EXPORT_PERMISSION_CODE = "view"
+
+# ==============================================================================
 # DJANGO REST FRAMEWORK
 # ==============================================================================
 
