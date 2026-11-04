@@ -10,6 +10,8 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-04 "Arica"
+
 ### Added
 
 - `CHANGELOG.md`, `MIGRATING.md` and `CITATION.cff` (#210).
@@ -30,11 +32,18 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 
 ### Security
 
+- Admin table imports now follow project permissions: they require the
+  model's `add` permission, and each row is checked against the project.
+  Staff users without a permission group lose import and export (#280).
+- Bulk tag actions require change permission on each record and write to
+  the admin log (#280).
+- API tokens can be deleted in the admin; URLs use the user ID instead of
+  the token key, and the bulk delete action was removed (#280).
 - Dependency updates for known vulnerabilities: Django 6.0.10 (now capped
   below 6.1), Django REST Framework 3.18.3, Pillow 13.0.0, urllib3 2.8.0,
   certifi 2026.10.23, filelock 4.2.8, multidict 7.2.1, graphql-core 3.2.13,
   Vite 8.3.5, source-map-js 1.2.2; development tools pylint 4.1.3 and
-  virtualenv 21.15.5.
+  virtualenv 21.15.5 (#277).
 
 ## [2.0.0] - 2026-08-31 "Arica"
 
@@ -176,7 +185,8 @@ Initial release, accompanying Handy et al. (2026),
 - Admin interface based on django-unfold, object-level permissions with
   django-guardian, import/export with django-import-export.
 
-[Unreleased]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/releases/tag/v1.0.0
