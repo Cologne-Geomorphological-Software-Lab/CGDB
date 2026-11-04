@@ -28,6 +28,14 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   placeholder returned by `Researcher.__str__` for researchers without a
   user (#227).
 
+### Security
+
+- Dependency updates for known vulnerabilities: Django 6.0.10 (now capped
+  below 6.1), Django REST Framework 3.18.3, Pillow 13.0.0, urllib3 2.8.0,
+  certifi 2026.10.23, filelock 4.2.8, multidict 7.2.1, graphql-core 3.2.13,
+  Vite 8.3.5, source-map-js 1.2.2; development tools pylint 4.1.3 and
+  virtualenv 21.15.5.
+
 ## [2.0.0] - 2026-08-31 "Arica"
 
 > **Breaking changes.** Dependency management moved from pip to uv,
