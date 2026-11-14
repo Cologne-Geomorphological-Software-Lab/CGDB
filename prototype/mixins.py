@@ -8,6 +8,14 @@ from django.core.exceptions import FieldDoesNotExist, PermissionDenied
 from django.db.models import CharField, Q, QuerySet
 from guardian.shortcuts import get_objects_for_user
 
+from prototype.access import (
+    accessible_projects,
+    addable_projects,
+    has_project_perm,
+    is_literature,
+    require_project_perm,
+    resolve_project,
+)
 from prototype.models import Project
 
 if TYPE_CHECKING:
@@ -52,32 +60,6 @@ def _has_data_source_field(model: type) -> bool:
         return isinstance(field, CharField)
 
 
-def _accessible_projects(user: object) -> QuerySet:
-    """Return projects for which the user has view_project permission."""
-    return get_objects_for_user(
-        user,
-        "prototype.view_project",
-        klass=Project,
-        use_groups=True,
-        any_perm=False,
-        with_superuser=False,
-        accept_global_perms=False,
-    )
-
-
-def _addable_projects(user: object) -> QuerySet:
-    """Projects where the user has add_project permission (can create data within)."""
-    return get_objects_for_user(
-        user,
-        "prototype.add_project",
-        klass=Project,
-        use_groups=True,
-        any_perm=False,
-        with_superuser=False,
-        accept_global_perms=False,
-    )
-
-
 AUDIT_READONLY_FIELDS = [
     "created_at",
     "created_by",
@@ -106,7 +88,7 @@ def _project_scoped_queryset(
     already is Project itself, otherwise an ORM lookup like "project" or
     "location__project").
     """
-    addable_ids = _addable_projects(request.user).values_list("id", flat=True)
+    addable_ids = addable_projects(request.user).values_list("id", flat=True)
     allowed = related_model.objects.filter(
         **{f"{project_lookup}__in": addable_ids}
     )
@@ -155,7 +137,7 @@ class ProjectBasedPermissionMixin(_AdminBase):
         if request.user.is_superuser:
             return super().get_queryset(request)
 
-        accessible_project_ids = _accessible_projects(
+        accessible_project_ids = accessible_projects(
             request.user,
         ).values_list("id", flat=True)
         qs = super().get_queryset(request)
@@ -188,7 +170,7 @@ class ProjectBasedPermissionMixin(_AdminBase):
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
-        return _addable_projects(request.user).exists()
+        return addable_projects(request.user).exists()
 
     def has_change_permission(
         self,
@@ -206,15 +188,12 @@ class ProjectBasedPermissionMixin(_AdminBase):
         if request.user.is_superuser:
             return True
 
-        if getattr(obj, "data_source", None) == "literature":
+        if is_literature(obj):
             return False
 
-        project: Model | None = getattr(obj, "project", None)
+        project: Project | None = getattr(obj, "project", None)
         if project:
-            return request.user.has_perm(
-                "prototype.change_project",
-                project,
-            )
+            return has_project_perm(request.user, "change", project)
 
         return super().has_change_permission(request, obj)
 
@@ -229,9 +208,9 @@ class ProjectBasedPermissionMixin(_AdminBase):
         if request.user.is_superuser:
             return True
 
-        project: Model | None = getattr(obj, "project", None)
+        project: Project | None = getattr(obj, "project", None)
         if project:
-            return request.user.has_perm("prototype.view_project", project)
+            return has_project_perm(request.user, "view", project)
 
         return super().has_view_permission(request, obj)
 
@@ -246,15 +225,12 @@ class ProjectBasedPermissionMixin(_AdminBase):
         if request.user.is_superuser:
             return True
 
-        if getattr(obj, "data_source", None) == "literature":
+        if is_literature(obj):
             return False
 
-        project: Model | None = getattr(obj, "project", None)
+        project: Project | None = getattr(obj, "project", None)
         if project:
-            return request.user.has_perm(
-                "prototype.delete_project",
-                project,
-            )
+            return has_project_perm(request.user, "delete", project)
 
         return super().has_delete_permission(request, obj)
 
@@ -281,9 +257,7 @@ class ProjectBasedPermissionMixin(_AdminBase):
             if (
                 new_project is not None
                 and new_project != old_project
-                and not request.user.has_perm(
-                    "prototype.add_project", new_project
-                )
+                and not has_project_perm(request.user, "add", new_project)
             ):
                 msg = "You do not have permission to move this record into that project."
                 raise PermissionDenied(msg)
@@ -414,15 +388,10 @@ class NestedProjectPermissionMixin(_AdminBase):
         msg = "project_path must be defined or get_project_filter_path must be overridden"
         raise NotImplementedError(msg)
 
-    def get_project_from_obj(self, obj: Model) -> Model | None:
+    def get_project_from_obj(self, obj: Model) -> Project | None:
         """Traverse project_path attributes on obj and return the project instance."""
         if self.project_path:
-            current_obj: Model | None = obj
-            for attr in self.project_path.split("__"):
-                if current_obj is None:
-                    return None
-                current_obj = getattr(current_obj, attr, None)
-            return current_obj
+            return resolve_project(obj, (self.project_path,))
         msg = "project_path must be defined or get_project_from_obj must be overridden"
         raise NotImplementedError(msg)
 
@@ -431,7 +400,7 @@ class NestedProjectPermissionMixin(_AdminBase):
         if request.user.is_superuser:
             return super().get_queryset(request)
 
-        accessible_project_ids = _accessible_projects(
+        accessible_project_ids = accessible_projects(
             request.user,
         ).values_list("id", flat=True)
         qs = super().get_queryset(request)
@@ -472,7 +441,7 @@ class NestedProjectPermissionMixin(_AdminBase):
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
-        return _addable_projects(request.user).exists()
+        return addable_projects(request.user).exists()
 
     def has_change_permission(
         self,
@@ -491,7 +460,7 @@ class NestedProjectPermissionMixin(_AdminBase):
             return True
         project = self.get_project_from_obj(obj)
         if project:
-            return request.user.has_perm("prototype.change_project", project)
+            return has_project_perm(request.user, "change", project)
         return super().has_change_permission(request, obj)
 
     def has_view_permission(
@@ -506,7 +475,7 @@ class NestedProjectPermissionMixin(_AdminBase):
             return True
         project = self.get_project_from_obj(obj)
         if project:
-            return request.user.has_perm("prototype.view_project", project)
+            return has_project_perm(request.user, "view", project)
         return super().has_view_permission(request, obj)
 
     def has_delete_permission(
@@ -521,7 +490,7 @@ class NestedProjectPermissionMixin(_AdminBase):
             return True
         project = self.get_project_from_obj(obj)
         if project:
-            return request.user.has_perm("prototype.delete_project", project)
+            return has_project_perm(request.user, "delete", project)
         return super().has_delete_permission(request, obj)
 
     def save_model(
@@ -545,9 +514,7 @@ class NestedProjectPermissionMixin(_AdminBase):
             if (
                 new_project is not None
                 and new_project != old_project
-                and not request.user.has_perm(
-                    "prototype.add_project", new_project
-                )
+                and not has_project_perm(request.user, "add", new_project)
             ):
                 msg = "You do not have permission to move this record into that project."
                 raise PermissionDenied(msg)
@@ -565,7 +532,7 @@ class HybridProjectPermissionMixin(_AdminBase):
         if request.user.is_superuser:
             return super().get_queryset(request)
 
-        accessible_project_ids = _accessible_projects(
+        accessible_project_ids = accessible_projects(
             request.user,
         ).values_list("id", flat=True)
         qs = super().get_queryset(request)
@@ -596,16 +563,12 @@ class HybridProjectPermissionMixin(_AdminBase):
         """Allow add only when the user has add_project permission on at least one project."""
         if request.user.is_superuser:
             return True
-        return _addable_projects(request.user).exists()
+        return addable_projects(request.user).exists()
 
-    def _get_project(self, obj: Model) -> Model | None:
-        project: Model | None = getattr(obj, "project", None)
-        if project:
-            return project
-        location: Model | None = getattr(obj, "location", None)
-        if location is not None:
-            return getattr(location, "project", None)
-        return None
+    project_paths: tuple[str, ...] = ("project", "location__project")
+
+    def _get_project(self, obj: Model) -> Project | None:
+        return resolve_project(obj, self.project_paths)
 
     def has_change_permission(
         self,
@@ -619,7 +582,7 @@ class HybridProjectPermissionMixin(_AdminBase):
             return True
         project = self._get_project(obj)
         if project:
-            return request.user.has_perm("prototype.change_project", project)
+            return has_project_perm(request.user, "change", project)
         return super().has_change_permission(request, obj)
 
     def has_view_permission(
@@ -634,7 +597,7 @@ class HybridProjectPermissionMixin(_AdminBase):
             return True
         project = self._get_project(obj)
         if project:
-            return request.user.has_perm("prototype.view_project", project)
+            return has_project_perm(request.user, "view", project)
         return super().has_view_permission(request, obj)
 
     def has_delete_permission(
@@ -649,7 +612,7 @@ class HybridProjectPermissionMixin(_AdminBase):
             return True
         project = self._get_project(obj)
         if project:
-            return request.user.has_perm("prototype.delete_project", project)
+            return has_project_perm(request.user, "delete", project)
         return super().has_delete_permission(request, obj)
 
     def save_model(
@@ -671,9 +634,7 @@ class HybridProjectPermissionMixin(_AdminBase):
             if (
                 new_project is not None
                 and new_project != old_project
-                and not request.user.has_perm(
-                    "prototype.add_project", new_project
-                )
+                and not has_project_perm(request.user, "add", new_project)
             ):
                 msg = "You do not have permission to move this record into that project."
                 raise PermissionDenied(msg)
@@ -696,26 +657,22 @@ class ProjectScopedResourceMixin(_ResourceBase):
 
     project_path: str = "project"
 
-    def _project_of(self, instance: Model) -> Model | None:
+    def _project_of(self, instance: Model) -> Project | None:
         """Follow project_path from *instance* to its project, if it has one."""
-        current: Model | None = instance
-        for attr in self.project_path.split("__"):
-            current = getattr(current, attr, None)
-            if current is None:
-                return None
-        return current
+        return resolve_project(instance, (self.project_path,))
 
     @staticmethod
     def _deny_without_perm(
-        user: User | None, codename: str, project: Model | None, msg: str
+        user: User | None, codename: str, project: Project | None, msg: str
     ) -> None:
-        """Raise PermissionDenied unless *user* holds *codename* on *project*."""
-        if user is None or user.is_superuser:
+        """Raise PermissionDenied unless *user* holds *codename* on *project*.
+
+        No user means the import was started from code (a management command
+        or script), not from the admin: that path stays unrestricted.
+        """
+        if user is None:
             return
-        if project is None or not user.has_perm(
-            f"prototype.{codename}_project", project
-        ):
-            raise PermissionDenied(msg)
+        require_project_perm(user, codename, project, msg)
 
     def after_init_instance(
         self, instance: Model, new: bool, row: dict[str, Any], **kwargs: object
@@ -733,7 +690,7 @@ class ProjectScopedResourceMixin(_ResourceBase):
         if (
             user is not None
             and not user.is_superuser
-            and getattr(instance, "data_source", None) == "literature"
+            and is_literature(instance)
         ):
             raise PermissionDenied(msg)
         self._deny_without_perm(

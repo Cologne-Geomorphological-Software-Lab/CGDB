@@ -15,10 +15,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 if TYPE_CHECKING:
-    from django.contrib.auth.base_user import AbstractBaseUser
-    from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
 
+from prototype.access import scope_to_accessible_projects
 from prototype.api_permissions import (
     CountingScopedPermission,
     IsProjectMember,
@@ -26,7 +25,6 @@ from prototype.api_permissions import (
     RawMeasurementScopedPermission,
     SampleScopedPermission,
 )
-from prototype.mixins import _accessible_projects
 
 from .models import (
     Algorithm,
@@ -64,16 +62,6 @@ from .serializers import (
 )
 
 
-def _project_qs(
-    user: AbstractBaseUser | AnonymousUser, qs: QuerySet, field: str
-) -> QuerySet:
-    """Filter a queryset by accessible projects, reached via *field* (e.g. "project", "sample__project")."""
-    if getattr(user, "is_superuser", False):
-        return qs
-    project_ids = _accessible_projects(user).values_list("id", flat=True)
-    return qs.filter(**{f"{field}__in": project_ids})
-
-
 class AlgorithmViewSet(ReadOnlyModelViewSet):
     """Lookup table — no project scoping needed."""
 
@@ -100,7 +88,9 @@ class RawMeasurementViewSet(ReadOnlyModelViewSet):
         qs = RawMeasurement.objects.select_related(
             "project", "device", "accessories", "researcher"
         )
-        return _project_qs(self.request.user, qs, "project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "project_id"
+        )
 
 
 class RawProcessingViewSet(ReadOnlyModelViewSet):
@@ -117,7 +107,7 @@ class RawProcessingViewSet(ReadOnlyModelViewSet):
         qs = RawProcessing.objects.select_related(
             "raw_measurement__project", "processed_by"
         )
-        return _project_qs(
+        return scope_to_accessible_projects(
             self.request.user, qs, "raw_measurement__project_id"
         )
 
@@ -134,7 +124,9 @@ class CountingViewSet(ReadOnlyModelViewSet):
     def get_queryset(self) -> QuerySet[Counting]:
         """Return counting events for projects the user can access."""
         qs = Counting.objects.select_related("sample__project")
-        return _project_qs(self.request.user, qs, "sample__project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "sample__project_id"
+        )
 
 
 class PollenViewSet(ReadOnlyModelViewSet):
@@ -162,7 +154,7 @@ class PollenCountViewSet(ReadOnlyModelViewSet):
         qs = PollenCount.objects.select_related(
             "counting__sample__project", "pollen"
         )
-        return _project_qs(
+        return scope_to_accessible_projects(
             self.request.user, qs, "counting__sample__project_id"
         )
 
@@ -180,7 +172,9 @@ class LuminescenceDatingViewSet(ReadOnlyModelViewSet):
     def get_queryset(self) -> QuerySet[LuminescenceDating]:
         """Return luminescence dating results for projects the user can access."""
         qs = LuminescenceDating.objects.select_related("sample__project")
-        return _project_qs(self.request.user, qs, "sample__project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "sample__project_id"
+        )
 
 
 class RadiocarbonDatingViewSet(ReadOnlyModelViewSet):
@@ -196,7 +190,9 @@ class RadiocarbonDatingViewSet(ReadOnlyModelViewSet):
     def get_queryset(self) -> QuerySet[RadiocarbonDating]:
         """Return radiocarbon dating results for projects the user can access."""
         qs = RadiocarbonDating.objects.select_related("sample__project")
-        return _project_qs(self.request.user, qs, "sample__project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "sample__project_id"
+        )
 
 
 class CosmogenicNuclideDatingViewSet(ReadOnlyModelViewSet):
@@ -212,7 +208,9 @@ class CosmogenicNuclideDatingViewSet(ReadOnlyModelViewSet):
     def get_queryset(self) -> QuerySet[CosmogenicNuclideDating]:
         """Return cosmogenic nuclide dating results for projects the user can access."""
         qs = CosmogenicNuclideDating.objects.select_related("sample__project")
-        return _project_qs(self.request.user, qs, "sample__project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "sample__project_id"
+        )
 
 
 class ParameterViewSet(ReadOnlyModelViewSet):
@@ -251,7 +249,9 @@ class GenericMeasurementViewSet(ReadOnlyModelViewSet):
         qs = GenericMeasurement.objects.select_related(
             "sample__project", "method", "parameter"
         )
-        return _project_qs(self.request.user, qs, "sample__project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "sample__project_id"
+        )
 
 
 class GrainSizeViewSet(ReadOnlyModelViewSet):
@@ -266,7 +266,9 @@ class GrainSizeViewSet(ReadOnlyModelViewSet):
     def get_queryset(self) -> QuerySet[GrainSize]:
         """Return grain size measurements for projects the user can access."""
         qs = GrainSize.objects.select_related("sample__project")
-        return _project_qs(self.request.user, qs, "sample__project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "sample__project_id"
+        )
 
 
 class MicroXRFMeasurementViewSet(ReadOnlyModelViewSet):
@@ -283,7 +285,9 @@ class MicroXRFMeasurementViewSet(ReadOnlyModelViewSet):
         qs = MicroXRFMeasurement.objects.select_related(
             "sample__project", "method"
         )
-        return _project_qs(self.request.user, qs, "sample__project_id")
+        return scope_to_accessible_projects(
+            self.request.user, qs, "sample__project_id"
+        )
 
 
 class MicroXRFElementMapViewSet(ReadOnlyModelViewSet):
@@ -300,6 +304,6 @@ class MicroXRFElementMapViewSet(ReadOnlyModelViewSet):
         qs = MicroXRFElementMap.objects.select_related(
             "measurement__sample__project"
         )
-        return _project_qs(
+        return scope_to_accessible_projects(
             self.request.user, qs, "measurement__sample__project_id"
         )

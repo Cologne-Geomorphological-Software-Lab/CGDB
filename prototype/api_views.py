@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from django.contrib.auth.models import User
     from django.db.models import QuerySet
 
-from prototype.mixins import _addable_projects
+from prototype.access import addable_projects
 
 from .models import Project
 from .serializers import ProjectSerializer
@@ -51,4 +51,4 @@ class ProjectViewSet(ReadOnlyModelViewSet):
         user = cast("User", self.request.user)
         if user.is_superuser:
             return Project.objects.all()
-        return _addable_projects(user)
+        return addable_projects(user)

@@ -8,13 +8,13 @@ from rest_framework.request import Request
 from guardian.shortcuts import assign_perm
 
 from field_data.models import Location
+from prototype.access import is_literature as _is_literature_object
 from prototype.api_permissions import (
     CountingScopedPermission,
     IsProjectMember,
     MeasurementScopedPermission,
     ProjectPathPermission,
     SampleScopedPermission,
-    _is_literature_object,
 )
 from prototype.models import Project
 
@@ -28,7 +28,7 @@ def _make_request(user) -> Request:
 class IsLiteratureObjectTest(TestCase):
     """Architecture-review fix (F22): _is_literature_object() replaced the
     old getattr(obj, "data_source", None) == "literature" fallback with an
-    explicit allowlist (_LITERATURE_ELIGIBLE_MODELS), so an object merely
+    explicit allowlist (LITERATURE_ELIGIBLE_MODELS, now in prototype.access), so an object merely
     *presenting* a matching data_source attribute isn't enough on its own —
     it must also be a model the exception is actually meant to cover."""
 

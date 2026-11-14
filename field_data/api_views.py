@@ -20,11 +20,14 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
     from rest_framework.serializers import BaseSerializer
 
-    from prototype.models import Project
 
 from analysis.selectors import LOCATION_MEASUREMENT_COUNTS
+from prototype.access import (
+    accessible_projects,
+    require_project_perm,
+    scope_to_accessible_projects,
+)
 from prototype.api_permissions import IsProjectMember
-from prototype.mixins import _accessible_projects
 
 from .models import (
     Campaign,
@@ -52,15 +55,6 @@ from .serializers import (
     TransectSerializer,
     TransectWriteSerializer,
 )
-
-
-def _project_qs(user: User, qs: QuerySet) -> QuerySet:
-    """Filter a queryset by accessible projects for the given user."""
-    if user.is_superuser:
-        return qs
-    project_ids = _accessible_projects(user).values_list("id", flat=True)
-    return qs.filter(project_id__in=project_ids)
-
 
 _MAX_MAP_FEATURES = 5000
 
@@ -119,42 +113,6 @@ def _location_count_subquery(qs: QuerySet, location_lookup: str) -> Subquery:
     )
 
 
-def _assert_can_add(user: User, project: Project) -> None:
-    """Raise PermissionDenied unless the user may add data to the project.
-
-    Takes the Project instance (not a pk) so this can do a direct
-    has_perm() object check — same shape as _assert_can_change below —
-    instead of building the user's whole addable-projects queryset via
-    guardian's get_objects_for_user() just to test membership of one pk.
-    Mirrors raster_data/api_views.py's helper of the same name/shape — the
-    duplication matches the existing pattern (_project_qs is also
-    independently duplicated between field_data and raster_data) rather
-    than a cross-app refactor for this phase.
-    """
-    if user.is_superuser:
-        return
-    if not user.has_perm("prototype.add_project", project):
-        msg = "You do not have permission to add data to this project."
-        raise PermissionDenied(msg)
-
-
-def _assert_can_change(user: User, project: Project | None) -> None:
-    """Raise PermissionDenied unless the user may change data in the project.
-
-    Same has_perm("prototype.change_project", ...) check already used
-    throughout the admin layer (prototype/mixins.py's
-    ProjectBasedPermissionMixin etc.) via guardian's ObjectPermissionBackend
-    — this is its first use from a DRF view.
-    """
-    if user.is_superuser:
-        return
-    if project is None or not user.has_perm(
-        "prototype.change_project", project
-    ):
-        msg = "You do not have permission to change data in this project."
-        raise PermissionDenied(msg)
-
-
 class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
     """Paginated, filterable list of accessible locations.
 
@@ -200,7 +158,7 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
         )
         if user.is_superuser:
             return qs
-        project_ids = _accessible_projects(user).values_list("id", flat=True)
+        project_ids = accessible_projects(user).values_list("id", flat=True)
         return qs.filter(
             Q(project_id__in=project_ids) | Q(data_source="literature")
         )
@@ -237,7 +195,7 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
         ):
             msg = "Literature data cannot be edited."
             raise PermissionDenied(msg)
-        _assert_can_change(user, instance.project)
+        require_project_perm(user, "change", instance.project)
         serializer.save()
 
     @action(detail=False, methods=["get"], url_path="map")
@@ -281,7 +239,7 @@ class CampaignViewSet(ReadOnlyModelViewSet):
 
     def get_queryset(self) -> QuerySet[Campaign]:
         """Return campaigns for projects the user can access."""
-        return _project_qs(
+        return scope_to_accessible_projects(
             cast("User", self.request.user),
             Campaign.objects.select_related("project"),
         )
@@ -307,7 +265,7 @@ class StudyAreaViewSet(
 
     def get_queryset(self) -> QuerySet[StudyArea]:
         """Return study areas for projects the user can access."""
-        return _project_qs(
+        return scope_to_accessible_projects(
             cast("User", self.request.user),
             StudyArea.objects.select_related("project"),
         )
@@ -322,7 +280,7 @@ class StudyAreaViewSet(
         """Reject the write unless the user may add data to the target project."""
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         project = validated_data["project"]
-        _assert_can_add(cast("User", self.request.user), project)
+        require_project_perm(cast("User", self.request.user), "add", project)
         serializer.save()
 
     def perform_update(self, serializer: BaseSerializer) -> None:
@@ -334,11 +292,15 @@ class StudyAreaViewSet(
         own add permission entirely.
         """
         instance = cast("StudyArea", serializer.instance)
-        _assert_can_change(cast("User", self.request.user), instance.project)
+        require_project_perm(
+            cast("User", self.request.user), "change", instance.project
+        )
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         new_project = validated_data.get("project", instance.project)
         if new_project.pk != instance.project.pk:
-            _assert_can_add(cast("User", self.request.user), new_project)
+            require_project_perm(
+                cast("User", self.request.user), "add", new_project
+            )
         serializer.save()
 
     @action(detail=False, methods=["get"], url_path="map")
@@ -373,7 +335,7 @@ class TransectViewSet(
         qs = Transect.objects.select_related("study_area__project", "campaign")
         if user.is_superuser:
             return qs
-        project_ids = _accessible_projects(user).values_list("id", flat=True)
+        project_ids = accessible_projects(user).values_list("id", flat=True)
         return qs.filter(study_area__project_id__in=project_ids)
 
     def get_serializer_class(self) -> type[BaseSerializer]:
@@ -386,7 +348,9 @@ class TransectViewSet(
         """Reject the write unless the user may add data to the transect's study area's project."""
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         study_area = validated_data["study_area"]
-        _assert_can_add(cast("User", self.request.user), study_area.project)
+        require_project_perm(
+            cast("User", self.request.user), "add", study_area.project
+        )
         serializer.save()
 
     def perform_update(self, serializer: BaseSerializer) -> None:
@@ -395,14 +359,16 @@ class TransectViewSet(
         See StudyAreaViewSet.perform_update for why.
         """
         instance = cast("Transect", serializer.instance)
-        _assert_can_change(
-            cast("User", self.request.user), instance.study_area.project
+        require_project_perm(
+            cast("User", self.request.user),
+            "change",
+            instance.study_area.project,
         )
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         new_study_area = validated_data.get("study_area", instance.study_area)
         if new_study_area.project.pk != instance.study_area.project.pk:
-            _assert_can_add(
-                cast("User", self.request.user), new_study_area.project
+            require_project_perm(
+                cast("User", self.request.user), "add", new_study_area.project
             )
         serializer.save()
 
@@ -431,7 +397,7 @@ class LayerViewSet(ReadOnlyModelViewSet):
         qs = Layer.objects.select_related("location__project")
         if user.is_superuser:
             return qs
-        project_ids = _accessible_projects(user).values_list("id", flat=True)
+        project_ids = accessible_projects(user).values_list("id", flat=True)
         return qs.filter(
             Q(location__project_id__in=project_ids)
             | Q(location__data_source="literature")
@@ -456,7 +422,7 @@ class SampleViewSet(ReadOnlyModelViewSet):
         )
         if user.is_superuser:
             return qs
-        project_ids = _accessible_projects(user).values_list("id", flat=True)
+        project_ids = accessible_projects(user).values_list("id", flat=True)
         return qs.filter(
             Q(project_id__in=project_ids)
             | Q(location__data_source="literature")

@@ -13,15 +13,16 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 if TYPE_CHECKING:
-    from django.contrib.auth.base_user import AbstractBaseUser
-    from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
     from rest_framework.request import Request
     from rest_framework.serializers import BaseSerializer
 
-    from prototype.models import Project
 
-from prototype.mixins import _accessible_projects
+from prototype.access import (
+    accessible_projects,
+    require_project_perm,
+    scope_to_accessible_projects,
+)
 
 from .models import DataSource, RasterDataset, RasterScene
 from .serializers import (
@@ -33,17 +34,6 @@ from .serializers import (
     _ManifestSceneSerializer,
 )
 
-
-def _project_qs[T: Model](
-    user: AbstractBaseUser | AnonymousUser, qs: QuerySet[T]
-) -> QuerySet[T]:
-    """Filter a queryset by accessible projects for the given user."""
-    if getattr(user, "is_superuser", False):
-        return qs
-    project_ids = _accessible_projects(user).values_list("id", flat=True)
-    return qs.filter(project_id__in=project_ids)
-
-
 _MAX_MANIFEST_SCENES = 2000
 
 
@@ -54,7 +44,7 @@ def _capped_list[T: Model](
 
     See field_data/api_views.py's identical helper for the full rationale
     (independently duplicated here rather than shared cross-app, matching
-    this module's existing _project_qs/_assert_can_add precedent). *limit*
+    the prototype.access helpers used here). *limit*
     defaults to _MAX_MANIFEST_SCENES, read at call time so tests can patch it.
     """
     if limit is None:
@@ -67,24 +57,6 @@ def _capped_list[T: Model](
         )
         raise ValidationError(msg)
     return capped
-
-
-def _assert_can_add(
-    user: AbstractBaseUser | AnonymousUser, project: Project
-) -> None:
-    """Raise PermissionDenied unless the user may add data to the project.
-
-    Takes the Project instance (not a pk) for a direct has_perm() object
-    check, instead of building the user's whole addable-projects queryset
-    via guardian's get_objects_for_user() just to test membership of one pk.
-    """
-    if getattr(user, "is_superuser", False):
-        return
-    # AbstractBaseUser lacks has_perm in django-stubs (PermissionsMixin adds
-    # it) — same accepted gap as field_data.api_views (mypy-ignored there).
-    if not user.has_perm("prototype.add_project", project):  # type: ignore[union-attr]
-        msg = "You do not have permission to add data to this project."
-        raise PermissionDenied(msg)
 
 
 class DataSourceViewSet(ReadOnlyModelViewSet):
@@ -110,7 +82,7 @@ class RasterSceneViewSet(CreateModelMixin, ReadOnlyModelViewSet):
 
     def get_queryset(self) -> QuerySet[RasterScene]:
         """Return raster scenes for projects the user can access."""
-        return _project_qs(
+        return scope_to_accessible_projects(
             self.request.user,
             RasterScene.objects.select_related("data_source", "project"),
         )
@@ -125,7 +97,7 @@ class RasterSceneViewSet(CreateModelMixin, ReadOnlyModelViewSet):
         """Save the scene after checking the user may add to its project."""
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         project = validated_data["project"]
-        _assert_can_add(self.request.user, project)
+        require_project_perm(self.request.user, "add", project)
         serializer.save()
 
 
@@ -145,7 +117,7 @@ class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
         RasterDatasetSerializer.get_scene_count can read it instead of
         issuing one extra COUNT query per row on every list page.
         """
-        return _project_qs(
+        return scope_to_accessible_projects(
             self.request.user,
             RasterDataset.objects.select_related("project").annotate(
                 scene_count=Count("scenes")
@@ -170,12 +142,12 @@ class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
         validated_data = cast("dict[str, Any]", serializer.validated_data)
         project = validated_data["project"]
         user = self.request.user
-        _assert_can_add(user, project)
+        require_project_perm(user, "add", project)
 
         scenes = validated_data.get("scenes", [])
         if scenes and not getattr(user, "is_superuser", False):
             accessible_ids = set(
-                _accessible_projects(user).values_list("id", flat=True)
+                accessible_projects(user).values_list("id", flat=True)
             )
             if any(scene.project_id not in accessible_ids for scene in scenes):
                 msg = (

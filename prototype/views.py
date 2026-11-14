@@ -31,7 +31,7 @@ from analysis.models import (
     RadiocarbonDating,
 )
 from field_data.models import Location, Sample
-from prototype.mixins import _accessible_projects
+from prototype.access import accessible_projects
 from prototype.models import Project
 
 if TYPE_CHECKING:
@@ -62,7 +62,7 @@ def map_dashboard(request: AuthenticatedHttpRequest) -> HttpResponse:
     """Render the full-screen map dashboard page."""
     from django.contrib import admin as _admin
 
-    from prototype.mixins import _addable_projects
+    from prototype.access import addable_projects
 
     context = _admin.site.each_context(request)
     geojson_urls = {
@@ -76,7 +76,7 @@ def map_dashboard(request: AuthenticatedHttpRequest) -> HttpResponse:
     # (ProjectBasedPermissionMixin.has_add_permission) — the edit toolbar
     # is only worth showing to users who could actually save anything.
     can_edit = (
-        request.user.is_superuser or _addable_projects(request.user).exists()
+        request.user.is_superuser or addable_projects(request.user).exists()
     )
     context["map_config"] = {
         "geojsonUrls": geojson_urls,
@@ -212,7 +212,7 @@ def stat_data(period_days: int = 30, user: object = None) -> dict:
     the existence/scale of projects and data they can't otherwise see. When
     *user* is set and isn't a superuser, every query below is scoped to
     that user's accessible projects, matching the scoping already applied
-    everywhere else in the admin/API (see prototype.mixins._accessible_projects).
+    everywhere else in the admin/API (see prototype.access.accessible_projects).
     *user=None* (e.g. dashboard_callback's request=None case) is treated
     like a superuser — unscoped — since there's no user to scope against.
     """
@@ -222,7 +222,7 @@ def stat_data(period_days: int = 30, user: object = None) -> dict:
 
     scoped = user is not None and not getattr(user, "is_superuser", False)
     project_ids = (
-        _accessible_projects(user).values_list("id", flat=True)
+        accessible_projects(user).values_list("id", flat=True)
         if scoped
         else None
     )
