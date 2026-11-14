@@ -25,6 +25,7 @@ from analysis.admin import CosmogenicNuclideDatingAdmin
 from analysis.models import CosmogenicNuclideDating, current_year
 from field_data.models import Location, Sample
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 # ===========================================================================
 # Shared fixture
@@ -35,6 +36,7 @@ class _CosmogenicSetup(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(username="cosmo_user", password="pw")
+        give_role(cls.user)
         cls.project = Project.objects.create(
             title="Cosmogenic Project", label="CNP01", status="ACTIVE"
         )
@@ -248,9 +250,11 @@ class CosmogenicNuclideDatingViewSetTest(TestCase):
         cls.member = User.objects.create_user(
             username="cosmo_api_member", password="pw"
         )
+        give_role(cls.member)
         cls.non_member = User.objects.create_user(
             username="cosmo_api_non_member", password="pw"
         )
+        give_role(cls.non_member)
         cls.project = Project.objects.create(
             title="Cosmogenic API Project", label="CAP01", status="ACTIVE"
         )

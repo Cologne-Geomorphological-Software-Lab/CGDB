@@ -27,7 +27,7 @@ from prototype.access import (
     require_project_perm,
     scope_to_accessible_projects,
 )
-from prototype.api_permissions import IsProjectMember
+from prototype.api_permissions import IsProjectMember, RoleModelPermission
 
 from .models import (
     Campaign,
@@ -127,7 +127,7 @@ class LocationViewSet(UpdateModelMixin, ReadOnlyModelViewSet):
     does the real write-permission check (change_project).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     # GeoJsonPagination wraps the page in a proper FeatureCollection shape
     # instead of DRF's generic {"results": [...]} — required since the
     # default read serializer (LocationGeoSerializer) is GeoJSON.
@@ -231,7 +231,7 @@ class CampaignViewSet(ReadOnlyModelViewSet):
     """Read-only list of campaigns scoped to accessible projects."""
 
     serializer_class = CampaignSerializer
-    permission_classes = [IsProjectMember]
+    permission_classes = [RoleModelPermission, IsProjectMember]
     filterset_fields = ["project"]
     search_fields = ["label"]
     ordering_fields = ["label", "date_start"]
@@ -256,7 +256,7 @@ class StudyAreaViewSet(
     """
 
     serializer_class = StudyAreaGeoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     pagination_class = GeoJsonPagination
     filterset_fields = ["project"]
     search_fields = ["label"]
@@ -323,7 +323,7 @@ class TransectViewSet(
     """
 
     serializer_class = TransectSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["study_area", "campaign"]
     search_fields = ["identifier"]
     ordering_fields = ["identifier"]
@@ -386,7 +386,7 @@ class LayerViewSet(ReadOnlyModelViewSet):
     """Read-only list of stratigraphic layers scoped to accessible projects."""
 
     serializer_class = LayerSerializer
-    permission_classes = [IsProjectMember]
+    permission_classes = [RoleModelPermission, IsProjectMember]
     filterset_fields = ["location"]
     ordering_fields = ["location", "depth_top"]
     ordering = ["location", "depth_top"]
@@ -408,7 +408,7 @@ class SampleViewSet(ReadOnlyModelViewSet):
     """Read-only list of samples scoped to accessible projects."""
 
     serializer_class = SampleSerializer
-    permission_classes = [IsProjectMember]
+    permission_classes = [RoleModelPermission, IsProjectMember]
     filterset_fields = ["project", "location", "layer", "type"]
     search_fields = ["identifier", "igsn"]
     ordering_fields = ["identifier", "date", "created_at"]
@@ -432,6 +432,7 @@ class SampleViewSet(ReadOnlyModelViewSet):
 class ExposureTypeViewSet(ReadOnlyModelViewSet):
     """Lookup table — no project scoping needed."""
 
+    permission_classes = [RoleModelPermission]
     queryset = ExposureType.objects.all()
     serializer_class = ExposureTypeSerializer
     ordering_fields = ["name_en"]
@@ -441,6 +442,7 @@ class ExposureTypeViewSet(ReadOnlyModelViewSet):
 class SampleTypeViewSet(ReadOnlyModelViewSet):
     """Lookup table — no project scoping needed."""
 
+    permission_classes = [RoleModelPermission]
     queryset = SampleType.objects.all()
     serializer_class = SampleTypeSerializer
     ordering_fields = ["word"]

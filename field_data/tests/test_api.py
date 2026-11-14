@@ -24,6 +24,7 @@ from analysis.models import GrainSize, LuminescenceDating
 from bibliography.models import Author, Reference
 from field_data.models import Location, Sample, StudyArea, Transect
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -76,6 +77,7 @@ class _BaseApiTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = User.objects.create_user(username="fd_api_user", password="pw")
+        give_role(cls.user)
         cls.project = Project.objects.create(
             title="Field Data API Project", label="FDAP01", status="ACTIVE"
         )
@@ -303,6 +305,7 @@ class _WritePermissionApiTest(_BaseApiTest):
     def setUpTestData(cls) -> None:
         super().setUpTestData()
         cls.editor = User.objects.create_user(username="fd_api_editor", password="pw")
+        give_role(cls.editor)
         assign_perm("add_project", cls.editor, cls.project)
         assign_perm("change_project", cls.editor, cls.project)
         assign_perm("view_project", cls.editor, cls.project)

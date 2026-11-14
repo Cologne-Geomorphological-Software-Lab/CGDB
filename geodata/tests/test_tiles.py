@@ -14,6 +14,7 @@ from django.test import Client, TestCase
 from rest_framework.throttling import SimpleRateThrottle
 
 from geodata.models import Landform
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -39,6 +40,7 @@ class _BaseTileTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = User.objects.create_user(username="tile_user", password="pw")
+        give_role(cls.user)
         Landform.objects.create(
             geometry=GEOSGeometry(_MULTIPOLYGON_WKT, srid=4326),
             brid_nam="Test Region",

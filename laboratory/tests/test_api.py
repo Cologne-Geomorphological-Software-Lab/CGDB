@@ -24,6 +24,7 @@ from laboratory.models import (
     Method,
 )
 from prototype.models import Researcher
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -57,6 +58,7 @@ class _BaseApiTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = User.objects.create_user(username="lab_api_user", password="pw")
+        give_role(cls.user)
         cls.manufacturer = Manufacturer.objects.create(
             name="Lexsyg", website="https://example.org"
         )
@@ -77,6 +79,7 @@ class _BaseApiTest(TestCase):
             parameter_unit="%",
         )
         auth_user = User.objects.create_user(username="lab_researcher", password="pw")
+        give_role(auth_user)
         cls.researcher = Researcher.objects.create(user=auth_user)
         cls.calibration = Calibration.objects.create(
             device=cls.device,

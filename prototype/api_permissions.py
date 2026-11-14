@@ -5,9 +5,9 @@ The rules themselves live in prototype.access, shared with the admin.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, DjangoModelPermissions
 
 from prototype.access import has_project_perm, is_literature, resolve_project
 
@@ -15,6 +15,22 @@ if TYPE_CHECKING:
     from rest_framework.request import Request
 
     from prototype.models import Project
+
+
+class RoleModelPermission(DjangoModelPermissions):
+    """The user's role must allow the request's action on the view's model.
+
+    The first half of "role AND project": put it before the project-level
+    permission class of every viewset whose model is in the role groups.
+    Unlike DRF's DjangoModelPermissions, reading needs the view permission
+    too, so a user without any role group cannot read project data either.
+    """
+
+    perms_map: ClassVar[dict[str, list[str]]] = {
+        **DjangoModelPermissions.perms_map,
+        "GET": ["%(app_label)s.view_%(model_name)s"],
+        "HEAD": ["%(app_label)s.view_%(model_name)s"],
+    }
 
 
 class IsProjectMember(BasePermission):

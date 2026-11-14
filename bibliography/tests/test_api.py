@@ -16,6 +16,7 @@ from rest_framework.test import APIClient
 
 from bibliography.models import Author, Reference, ReferenceKeyword
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -45,6 +46,7 @@ class _BaseApiTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = User.objects.create_user(username="bib_api_user", password="pw")
+        give_role(cls.user)
         cls.author = Author.objects.create(last_name="Doe", first_name="Jane")
         cls.keyword = ReferenceKeyword.objects.create(keyword="Loess")
         cls.project = Project.objects.create(
@@ -107,6 +109,7 @@ class ReferenceViewSetTest(_BaseApiTest):
         a member of is still visible — bibliography is a shared catalog,
         not project-scoped data (see F4's design decision)."""
         other_user = User.objects.create_user(username="bib_no_perm", password="pw")
+        give_role(other_user)
         client = _make_client()
         client.force_authenticate(user=other_user)
         resp = client.get(f"/api/v1/references/{self.reference.pk}/")

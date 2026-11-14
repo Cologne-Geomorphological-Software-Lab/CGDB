@@ -11,6 +11,8 @@ from __future__ import annotations
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
+from prototype.api_permissions import RoleModelPermission
+
 from .models import (
     Accessory,
     AccessoryParameter,
@@ -36,7 +38,7 @@ class ManufacturerViewSet(ReadOnlyModelViewSet):
 
     queryset = Manufacturer.objects.all()
     serializer_class = ManufacturerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     search_fields = ["name"]
     ordering_fields = ["name"]
     ordering = ["name"]
@@ -47,7 +49,7 @@ class DeviceViewSet(ReadOnlyModelViewSet):
 
     queryset = Device.objects.select_related("manufacturer")
     serializer_class = DeviceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["manufacturer"]
     search_fields = ["name", "description", "token"]
     ordering_fields = ["name", "manufacturer"]
@@ -59,7 +61,7 @@ class AccessoryViewSet(ReadOnlyModelViewSet):
 
     queryset = Accessory.objects.select_related("device")
     serializer_class = AccessorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["device"]
     search_fields = ["name", "description"]
     ordering_fields = ["device", "name"]
@@ -71,7 +73,7 @@ class AccessoryParameterViewSet(ReadOnlyModelViewSet):
 
     queryset = AccessoryParameter.objects.select_related("accessory")
     serializer_class = AccessoryParameterSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["accessory", "method"]
     search_fields = ["parameter_name"]
     ordering_fields = ["accessory", "parameter_name"]
@@ -83,7 +85,7 @@ class MethodViewSet(ReadOnlyModelViewSet):
 
     queryset = Method.objects.select_related("device")
     serializer_class = MethodSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["category", "laboratory", "available", "device"]
     search_fields = ["name", "description", "token"]
     ordering_fields = ["name", "category", "laboratory"]
@@ -95,7 +97,7 @@ class CalibrationViewSet(ReadOnlyModelViewSet):
 
     queryset = Calibration.objects.select_related("device", "researcher")
     serializer_class = CalibrationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["device", "researcher"]
     ordering_fields = ["date"]
     ordering = ["-date"]
@@ -106,7 +108,7 @@ class FirmwareViewSet(ReadOnlyModelViewSet):
 
     queryset = Firmware.objects.select_related("device")
     serializer_class = FirmwareSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["device"]
     ordering_fields = ["installation_date"]
     ordering = ["-installation_date"]

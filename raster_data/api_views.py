@@ -23,6 +23,7 @@ from prototype.access import (
     require_project_perm,
     scope_to_accessible_projects,
 )
+from prototype.api_permissions import RoleModelPermission
 
 from .models import DataSource, RasterDataset, RasterScene
 from .serializers import (
@@ -64,7 +65,7 @@ class DataSourceViewSet(ReadOnlyModelViewSet):
 
     queryset = DataSource.objects.all()
     serializer_class = DataSourceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["provider", "product_type"]
     search_fields = ["name", "provider", "platform", "product_type"]
     ordering_fields = ["name", "provider"]
@@ -74,7 +75,7 @@ class DataSourceViewSet(ReadOnlyModelViewSet):
 class RasterSceneViewSet(CreateModelMixin, ReadOnlyModelViewSet):
     """API for georeferenced raster scenes (read + create)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["project", "data_source", "crs"]
     search_fields = ["corpus_path", "crs"]
     ordering_fields = ["acquisition_date", "data_source__name"]
@@ -104,7 +105,7 @@ class RasterSceneViewSet(CreateModelMixin, ReadOnlyModelViewSet):
 class RasterDatasetViewSet(CreateModelMixin, ReadOnlyModelViewSet):
     """API for named raster datasets (read + create), with a manifest action."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["project"]
     search_fields = ["name", "slug", "description"]
     ordering_fields = ["name", "modified_at"]

@@ -33,6 +33,7 @@ from guardian.shortcuts import assign_perm
 from field_data.admin import CampaignAdmin, SampleAdmin, SiteAdmin
 from field_data.models import Campaign, Location, Sample, Site, StudyArea
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.forms import ModelForm
@@ -103,6 +104,7 @@ class _ReparentingSetup(TestCase):
         cls.editor = User.objects.create_user(
             username="reparent_editor", password="pw", is_staff=True
         )
+        give_role(cls.editor)
         assign_perm("view_project", cls.editor, cls.project_a)
         assign_perm("change_project", cls.editor, cls.project_a)
         assign_perm("view_project", cls.editor, cls.project_c)

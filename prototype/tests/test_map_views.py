@@ -20,6 +20,7 @@ from guardian.shortcuts import assign_perm
 from bibliography.models import Author, Reference
 from field_data.models import Location
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 _LOCATIONS_MAP_URL = "/api/v1/locations/map/"
 
@@ -51,6 +52,7 @@ class MapDashboardAuthTest(TestCase):
         cls.staff = User.objects.create_user(
             username="map_staff", password="pw", is_staff=True
         )
+        give_role(cls.staff)
 
     def test_unauthenticated_redirects_to_login(self):
         resp = Client().get("/map/")
@@ -102,6 +104,7 @@ class LocationsMapAuthTest(TestCase):
         cls.staff = User.objects.create_user(
             username="geo_staff", password="pw", is_staff=True
         )
+        give_role(cls.staff)
 
     def test_unauthenticated_returns_401_or_403(self):
         resp = Client().get(_LOCATIONS_MAP_URL)
@@ -211,9 +214,11 @@ class LocationsMapPermissionTest(TestCase):
         cls.user_a = User.objects.create_user(
             username="geo_user_a", password="pw", is_staff=True
         )
+        give_role(cls.user_a)
         cls.user_no_perm = User.objects.create_user(
             username="geo_user_none", password="pw", is_staff=True
         )
+        give_role(cls.user_no_perm)
 
         cls.project_a = Project.objects.create(
             title="Geo Perm Project A", label="GPA01", status="ACTIVE"

@@ -10,6 +10,17 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 
 ## [Unreleased]
 
+### Security
+
+- Working with project data now needs both the permission from the user's
+  role group and the permission on the project, in the admin, the REST API,
+  table imports, photo downloads, landform tiles and the map dashboard.
+  Before this, membership in a project was enough to edit its data, even for
+  users in the "Viewer" group, who were also offered "Delete selected" in
+  the admin (#245). Staff users without a role group lose access to project
+  data: assign each of them "Viewer", "Researcher" or "Principal
+  Investigator" before upgrading.
+
 ### Fixed
 
 - The permission groups now cover cosmogenic nuclide dating, pollen

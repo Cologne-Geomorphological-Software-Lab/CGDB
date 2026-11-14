@@ -19,6 +19,7 @@ from rest_framework.test import APIClient
 from analysis.models import Algorithm, Counting, GrainSize, Pollen, PollenCount
 from field_data.models import Location, Sample
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -50,9 +51,11 @@ class _BaseApiTest(TestCase):
         cls.member = User.objects.create_user(
             username="analysis_member", password="pw"
         )
+        give_role(cls.member)
         cls.non_member = User.objects.create_user(
             username="analysis_non_member", password="pw"
         )
+        give_role(cls.non_member)
         cls.project = Project.objects.create(
             title="Analysis API Project", label="AAP01", status="ACTIVE"
         )

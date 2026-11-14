@@ -12,6 +12,7 @@ from django.test import Client, TestCase
 from rest_framework.test import APIClient
 
 from geodata.models import Landform
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -42,6 +43,7 @@ class _BaseApiTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = User.objects.create_user(username="api_user", password="pw")
+        give_role(cls.user)
         cls.landform = Landform.objects.create(
             geometry=GEOSGeometry(_MULTIPOLYGON_WKT, srid=4326),
             brid_nam="Test Region",

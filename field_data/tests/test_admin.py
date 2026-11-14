@@ -33,6 +33,7 @@ from field_data.models import (
     Transect,
 )
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 ANALYSIS_SLUGS = [
     "genericmeasurement",
@@ -390,9 +391,11 @@ class FieldPhotoDownloadViewTests(TestCase):
         cls.member = User.objects.create_user(
             username="fp_member", password="pw", is_staff=True
         )
+        give_role(cls.member)
         cls.non_member = User.objects.create_user(
             username="fp_non_member", password="pw", is_staff=True
         )
+        give_role(cls.non_member)
         cls.superuser = User.objects.create_superuser(
             "fp_super", "fps@test.com", "pw"
         )

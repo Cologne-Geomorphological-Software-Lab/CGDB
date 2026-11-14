@@ -30,6 +30,7 @@ from prototype.mixins import (
     ProjectBasedPermissionMixin,
 )
 from prototype.models import Project
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.forms import ModelForm
@@ -86,9 +87,11 @@ class _MixinSetup(TestCase):
         cls.regular_user = User.objects.create_user(
             username="mixin_regular", password="pw"
         )
+        give_role(cls.regular_user)
         cls.other_user = User.objects.create_user(
             username="mixin_other", password="pw"
         )
+        give_role(cls.other_user)
         cls.project = Project.objects.create(
             title="Mixin Test Project", label="MXP01", status="ACTIVE"
         )

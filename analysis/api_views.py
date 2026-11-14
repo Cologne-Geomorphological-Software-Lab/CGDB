@@ -23,6 +23,7 @@ from prototype.api_permissions import (
     IsProjectMember,
     MeasurementScopedPermission,
     RawMeasurementScopedPermission,
+    RoleModelPermission,
     SampleScopedPermission,
 )
 
@@ -67,7 +68,7 @@ class AlgorithmViewSet(ReadOnlyModelViewSet):
 
     queryset = Algorithm.objects.all()
     serializer_class = AlgorithmSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["programming_language"]
     search_fields = ["name", "description"]
     ordering_fields = ["name", "version"]
@@ -78,7 +79,7 @@ class RawMeasurementViewSet(ReadOnlyModelViewSet):
     """Read-only list of raw measurement uploads, scoped to accessible projects."""
 
     serializer_class = RawMeasurementSerializer
-    permission_classes = [IsProjectMember]
+    permission_classes = [RoleModelPermission, IsProjectMember]
     filterset_fields = ["project", "device", "researcher"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
@@ -97,7 +98,7 @@ class RawProcessingViewSet(ReadOnlyModelViewSet):
     """Read-only list of processed-data records, scoped via raw_measurement.project."""
 
     serializer_class = RawProcessingSerializer
-    permission_classes = [RawMeasurementScopedPermission]
+    permission_classes = [RoleModelPermission, RawMeasurementScopedPermission]
     filterset_fields = ["raw_measurement", "processed_by"]
     ordering_fields = ["processing_date"]
     ordering = ["-processing_date"]
@@ -116,7 +117,7 @@ class CountingViewSet(ReadOnlyModelViewSet):
     """Read-only list of paleobotany counting events, scoped via sample.project."""
 
     serializer_class = CountingSerializer
-    permission_classes = [SampleScopedPermission]
+    permission_classes = [RoleModelPermission, SampleScopedPermission]
     filterset_fields = ["sample", "type"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
@@ -134,7 +135,7 @@ class PollenViewSet(ReadOnlyModelViewSet):
 
     queryset = Pollen.objects.all()
     serializer_class = PollenSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     search_fields = ["name", "name_en", "name_german", "name_nor", "token"]
     ordering_fields = ["name", "token"]
     ordering = ["name"]
@@ -144,7 +145,7 @@ class PollenCountViewSet(ReadOnlyModelViewSet):
     """Read-only list of pollen counts, scoped via counting.sample.project."""
 
     serializer_class = PollenCountSerializer
-    permission_classes = [CountingScopedPermission]
+    permission_classes = [RoleModelPermission, CountingScopedPermission]
     filterset_fields = ["counting", "pollen"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
@@ -163,7 +164,7 @@ class LuminescenceDatingViewSet(ReadOnlyModelViewSet):
     """Read-only list of luminescence dating results, scoped via sample.project."""
 
     serializer_class = LuminescenceDatingSerializer
-    permission_classes = [SampleScopedPermission]
+    permission_classes = [RoleModelPermission, SampleScopedPermission]
     filterset_fields = ["sample", "mineral", "dating_approach", "published"]
     search_fields = ["laboratory_id", "sample_id_cll"]
     ordering_fields = ["luminescence_age", "year_of_publication"]
@@ -181,7 +182,7 @@ class RadiocarbonDatingViewSet(ReadOnlyModelViewSet):
     """Read-only list of radiocarbon dating results, scoped via sample.project."""
 
     serializer_class = RadiocarbonDatingSerializer
-    permission_classes = [SampleScopedPermission]
+    permission_classes = [RoleModelPermission, SampleScopedPermission]
     filterset_fields = ["sample", "lab"]
     search_fields = ["lab_id"]
     ordering_fields = ["age"]
@@ -199,7 +200,7 @@ class CosmogenicNuclideDatingViewSet(ReadOnlyModelViewSet):
     """Read-only list of cosmogenic nuclide dating results, scoped via sample.project."""
 
     serializer_class = CosmogenicNuclideDatingSerializer
-    permission_classes = [SampleScopedPermission]
+    permission_classes = [RoleModelPermission, SampleScopedPermission]
     filterset_fields = ["sample", "nuclide", "mineral", "dating_approach"]
     search_fields = ["lab_id"]
     ordering_fields = ["exposure_age", "burial_age"]
@@ -218,7 +219,7 @@ class ParameterViewSet(ReadOnlyModelViewSet):
 
     queryset = Parameter.objects.all()
     serializer_class = ParameterSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["unit"]
     search_fields = ["name", "token"]
     ordering_fields = ["name", "token"]
@@ -230,7 +231,7 @@ class MeasurementSeriesViewSet(ReadOnlyModelViewSet):
 
     queryset = MeasurementSeries.objects.all()
     serializer_class = MeasurementSeriesSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     ordering_fields = ["datetime"]
     ordering = ["-datetime"]
 
@@ -239,7 +240,7 @@ class GenericMeasurementViewSet(ReadOnlyModelViewSet):
     """Read-only list of generic measurements, scoped via sample.project."""
 
     serializer_class = GenericMeasurementSerializer
-    permission_classes = [SampleScopedPermission]
+    permission_classes = [RoleModelPermission, SampleScopedPermission]
     filterset_fields = ["sample", "method", "parameter"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
@@ -258,7 +259,7 @@ class GrainSizeViewSet(ReadOnlyModelViewSet):
     """Read-only list of grain size measurements, scoped via sample.project."""
 
     serializer_class = GrainSizeSerializer
-    permission_classes = [SampleScopedPermission]
+    permission_classes = [RoleModelPermission, SampleScopedPermission]
     filterset_fields = ["sample", "method"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
@@ -275,7 +276,7 @@ class MicroXRFMeasurementViewSet(ReadOnlyModelViewSet):
     """Read-only list of MicroXRF measurements, scoped via sample.project."""
 
     serializer_class = MicroXRFMeasurementSerializer
-    permission_classes = [SampleScopedPermission]
+    permission_classes = [RoleModelPermission, SampleScopedPermission]
     filterset_fields = ["sample", "method"]
     ordering_fields = ["measurement_date"]
     ordering = ["-measurement_date"]
@@ -294,7 +295,7 @@ class MicroXRFElementMapViewSet(ReadOnlyModelViewSet):
     """Read-only list of MicroXRF element maps, scoped via measurement.sample.project."""
 
     serializer_class = MicroXRFElementMapSerializer
-    permission_classes = [MeasurementScopedPermission]
+    permission_classes = [RoleModelPermission, MeasurementScopedPermission]
     filterset_fields = ["measurement", "element"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]

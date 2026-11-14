@@ -30,6 +30,7 @@ from unfold.contrib.filters.admin import (
 )
 from unfold.decorators import display
 
+from prototype.access import has_model_perm, has_project_perm
 from prototype.mixins import (
     AUDIT_READONLY_FIELDS,
     HybridProjectPermissionMixin,
@@ -187,8 +188,10 @@ class FieldPhotoAdmin(ModelAdmin):
             raise Http404
         if not request.user.is_superuser:
             project = _project_for_field_photo_target(photo.content_object)
-            if project is None or not request.user.has_perm(
-                "prototype.view_project", project
+            if (
+                project is None
+                or not has_model_perm(request.user, "view", FieldPhoto)
+                or not has_project_perm(request.user, "view", project)
             ):
                 raise Http404
         filename = (photo.file.name or "").rsplit("/", 1)[-1]
@@ -357,10 +360,8 @@ class BulkTagActionMixin(_AdminBase):
     ) -> dict[str, Any]:
         """Offer the tag actions only with the model-level change permission.
 
-        `@admin.action(permissions=["change"])` wouldn't do: the project
-        mixins' has_change_permission() returns True when called without an
-        object. Removing an action here also makes Django refuse a POST that
-        names it.
+        Removing an action here also makes Django refuse a POST that names
+        it. Each selected record is checked again in _changeable().
         """
         actions = super().get_actions(request)
         opts = self.model._meta

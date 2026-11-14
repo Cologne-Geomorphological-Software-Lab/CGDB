@@ -10,6 +10,8 @@ from __future__ import annotations
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
+from prototype.api_permissions import RoleModelPermission
+
 from .models import Author, Reference, ReferenceKeyword
 from .serializers import (
     AuthorSerializer,
@@ -23,7 +25,7 @@ class AuthorViewSet(ReadOnlyModelViewSet):
 
     queryset = Author.objects.select_related("user")
     serializer_class = AuthorSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     search_fields = ["last_name", "first_name"]
     ordering_fields = ["last_name", "first_name"]
     ordering = ["last_name", "first_name"]
@@ -34,7 +36,7 @@ class ReferenceKeywordViewSet(ReadOnlyModelViewSet):
 
     queryset = ReferenceKeyword.objects.all()
     serializer_class = ReferenceKeywordSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     search_fields = ["keyword", "keyword_ger"]
     ordering_fields = ["keyword"]
     ordering = ["keyword"]
@@ -47,7 +49,7 @@ class ReferenceViewSet(ReadOnlyModelViewSet):
         "lead_author"
     ).prefetch_related("second_author", "supervisor", "project", "keywords")
     serializer_class = ReferenceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     filterset_fields = ["type", "year", "lead_author", "published"]
     search_fields = ["title", "abstract", "journal", "doi"]
     ordering_fields = ["year", "title"]

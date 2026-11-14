@@ -17,6 +17,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
+from prototype.access import has_model_perm
+from prototype.api_permissions import RoleModelPermission
+
 from .models import Landform
 from .serializers import LandformGeoSerializer, LandformListSerializer
 
@@ -70,7 +73,7 @@ class LandformViewSet(ReadOnlyModelViewSet):
     Morphogrid usage: GET /api/v1/landforms/?bbox=6.0,50.0,8.0,52.0
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RoleModelPermission, IsAuthenticated]
     pagination_class = _LandformPagination
     filterset_fields = ["continent", "murphy_code"]
     search_fields = [
@@ -265,7 +268,11 @@ def landform_tile(
     class the "login" scope already uses (prototype/api_views.py), just
     invoked directly instead of through APIView.check_throttles().
     """
-    if not request.user.is_authenticated:
+    # Same rule as LandformViewSet (RoleModelPermission): the user's role
+    # must allow viewing landforms, a bare login is not enough.
+    if not request.user.is_authenticated or not has_model_perm(
+        request.user, "view", Landform
+    ):
         return HttpResponse(status=403)
 
     throttle = ScopedRateThrottle()

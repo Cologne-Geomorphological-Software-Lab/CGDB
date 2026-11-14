@@ -1,6 +1,9 @@
 """Project-based access checks shared by the admin, the REST API and imports.
 
-Every write or read of project-owned data is decided here, so the admin
+Access to project data needs two permissions: the model permission from
+the user's role group (what the user may do with this kind of record) and
+the object permission on the project (which project's data). Every write or
+read of project-owned data is decided here, so the admin
 mixins (prototype.mixins), the DRF permission classes
 (prototype.api_permissions), the import resources and the API views apply
 the same rules instead of each re-implementing them.
@@ -100,6 +103,22 @@ def is_literature(obj: object) -> bool:
     )
 
 
+def has_model_perm(user: object, action: str, model: type[Model]) -> bool:
+    """Return True if the user's role allows *action* on *model*.
+
+    Model-level permissions come from the role and domain groups
+    (prototype.permissions). They are the first half of every check on
+    project data; the project permission is the second.
+    """
+    if is_superuser(user):
+        return True
+    opts = model._meta
+    has_perm = getattr(user, "has_perm", None)
+    return bool(
+        has_perm and has_perm(f"{opts.app_label}.{action}_{opts.model_name}")
+    )
+
+
 def has_project_perm(user: object, action: str, project: Project) -> bool:
     """Return True if *user* may perform *action* on data of *project*.
 
@@ -125,13 +144,20 @@ def require_project_perm(
     action: str,
     project: Project | None,
     msg: str | None = None,
+    *,
+    model: type[Model] | None = None,
 ) -> None:
     """Raise PermissionDenied unless *user* may perform *action* on *project*.
 
+    With *model*, the user's role must also allow *action* on that model.
     A missing project denies (fail closed) for everyone but superusers. DRF
     turns the exception into a 403 with *msg* as its detail.
     """
     if is_superuser(user):
         return
-    if project is None or not has_project_perm(user, action, project):
+    if (
+        project is None
+        or (model is not None and not has_model_perm(user, action, model))
+        or not has_project_perm(user, action, project)
+    ):
         raise PermissionDenied(msg or _DENIED_MESSAGES[action])

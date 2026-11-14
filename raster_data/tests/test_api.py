@@ -13,6 +13,7 @@ from rest_framework.test import APIClient
 
 from prototype.models import Project
 from raster_data.models import DataSource, RasterDataset, RasterScene
+from prototype.tests.roles import give_role
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -54,6 +55,7 @@ class _BaseApiTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.user = User.objects.create_user(username="api_user", password="pw")
+        give_role(cls.user)
         cls.project = Project.objects.create(
             title="API Project", label="AP01", status="ACTIVE"
         )
@@ -284,6 +286,7 @@ class RasterSceneCreateTest(_BaseApiTest):
 
     def test_create_scene_without_add_perm_returns_403(self) -> None:
         other_user = User.objects.create_user(username="noperms", password="pw")
+        give_role(other_user)
         assign_perm("view_project", other_user, self.project)
         client = _make_client()
         client.force_authenticate(user=other_user)
@@ -332,6 +335,7 @@ class RasterDatasetCreateTest(_BaseApiTest):
 
     def test_create_dataset_without_add_perm_returns_403(self) -> None:
         other_user = User.objects.create_user(username="noperms2", password="pw")
+        give_role(other_user)
         assign_perm("view_project", other_user, self.project)
         client = _make_client()
         client.force_authenticate(user=other_user)
@@ -416,6 +420,7 @@ class RasterSceneCreatedByAuditTest(TestCase):
         cls.user = User.objects.create_user(
             username="audit_api_user", password="pw"
         )
+        give_role(cls.user)
         cls.project = Project.objects.create(
             title="Audit API Project", label="AUDAPI01", status="ACTIVE"
         )

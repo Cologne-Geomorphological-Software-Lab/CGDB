@@ -62,7 +62,8 @@ def map_dashboard(request: AuthenticatedHttpRequest) -> HttpResponse:
     """Render the full-screen map dashboard page."""
     from django.contrib import admin as _admin
 
-    from prototype.access import addable_projects
+    from field_data.models import Location, StudyArea, Transect
+    from prototype.access import addable_projects, has_model_perm
 
     context = _admin.site.each_context(request)
     geojson_urls = {
@@ -72,11 +73,17 @@ def map_dashboard(request: AuthenticatedHttpRequest) -> HttpResponse:
         "landforms": reverse("api_v1:landform-list"),
     }
     context["geojson_urls"] = geojson_urls
-    # Same check the admin layer already uses to decide add access
-    # (ProjectBasedPermissionMixin.has_add_permission) — the edit toolbar
-    # is only worth showing to users who could actually save anything.
-    can_edit = (
-        request.user.is_superuser or addable_projects(request.user).exists()
+    # The edit toolbar is only worth showing to users who could actually
+    # save something: a role that may add or change one of the editable
+    # layers, and a project they may add to (same rule as the admin's
+    # ProjectBasedPermissionMixin.has_add_permission and the write API).
+    role_can_edit = any(
+        has_model_perm(request.user, action, model)
+        for model in (Location, StudyArea, Transect)
+        for action in ("add", "change")
+    )
+    can_edit = request.user.is_superuser or (
+        role_can_edit and addable_projects(request.user).exists()
     )
     context["map_config"] = {
         "geojsonUrls": geojson_urls,
