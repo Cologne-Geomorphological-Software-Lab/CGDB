@@ -288,3 +288,64 @@ class DeployCommandTests(TestCase):
         assert "apache2: active" in stdout
         assert "cgdb-dagster-daemon: active" in stdout
         assert stderr_io.getvalue() == ""
+
+
+class StaffWithoutRoleWarningTests(TestCase):
+    """Since 2.0.2, access to project data needs a role group (Viewer,
+    Researcher or Principal Investigator). deploy names the staff users who
+    would lose access, before the operator confirms."""
+
+    def _deploy_output(self, *, answer: str = "n") -> str:
+        stdout_io = StringIO()
+        with (
+            patch(
+                "prototype.management.commands.deploy.subprocess.run",
+                MagicMock(side_effect=_subprocess_side_effect()),
+            ),
+            patch("prototype.management.commands.deploy.call_command"),
+            patch("builtins.input", return_value=answer),
+        ):
+            call_command("deploy", stdout=stdout_io, stderr=StringIO())
+        return stdout_io.getvalue()
+
+    def test_staff_without_any_group_is_listed_before_confirmation(self):
+        from django.contrib.auth.models import User
+
+        User.objects.create_user(username="orphan_staff", is_staff=True)
+        output = self._deploy_output(answer="n")
+        assert "orphan_staff" in output
+        assert "lose access" in output
+        # Shown before the prompt, so the operator can still abort.
+        assert output.index("orphan_staff") < output.index("Aborted")
+
+    def test_users_who_keep_access_are_not_listed(self):
+        from django.contrib.auth.models import Group, Permission, User
+
+        from prototype.permissions import create_permission_groups
+
+        create_permission_groups()
+        viewer = User.objects.create_user(username="has_role", is_staff=True)
+        viewer.groups.add(Group.objects.get(name="Viewer"))
+        domain = User.objects.create_user(username="has_domain", is_staff=True)
+        domain.groups.add(Group.objects.get(name="Luminescence"))
+        direct = User.objects.create_user(username="has_direct", is_staff=True)
+        direct.user_permissions.add(
+            Permission.objects.get(codename="view_location")
+        )
+        User.objects.create_superuser(username="root", password="pw")
+        User.objects.create_user(username="not_staff")
+        User.objects.create_user(
+            username="inactive_staff", is_staff=True, is_active=False
+        )
+
+        output = self._deploy_output()
+        for name in (
+            "has_role",
+            "has_domain",
+            "has_direct",
+            "root",
+            "not_staff",
+            "inactive_staff",
+        ):
+            assert name not in output, name
+        assert "lose access" not in output

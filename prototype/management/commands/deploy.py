@@ -70,6 +70,9 @@ class Command(BaseCommand):
         """Run the deploy sequence: backup, sync, build, migrate, restart, verify."""
         dry_run: bool = options["dry_run"]  # type: ignore[assignment]
 
+        # Before the prompt, so the operator can still abort and assign roles.
+        self._warn_about_staff_without_role()
+
         if not dry_run and not options["yes"] and not self._confirm():
             self.stdout.write("Aborted.")
             return
@@ -137,6 +140,39 @@ class Command(BaseCommand):
                 ["sudo", "systemctl", "restart", service], dry_run=dry_run
             )
         return services
+
+    def _warn_about_staff_without_role(self) -> None:
+        """Name the staff users who have no access to project data.
+
+        Access needs a model permission from a permission group (or a
+        directly assigned one) on top of the project permission. Staff users
+        with neither can log in but no longer see or edit any project data.
+        Read-only: nothing is changed, the operator decides.
+        """
+        from django.contrib.auth.models import User
+
+        from prototype.permissions import GROUPS
+
+        usernames = list(
+            User.objects.filter(
+                is_staff=True, is_active=True, is_superuser=False
+            )
+            .exclude(groups__name__in=GROUPS)
+            .exclude(user_permissions__isnull=False)
+            .distinct()
+            .order_by("username")
+            .values_list("username", flat=True)
+        )
+        if not usernames:
+            return
+        self.stdout.write(
+            self.style.WARNING(
+                f"{len(usernames)} staff user(s) have no permission group and "
+                "lose access to project data: "
+                f"{', '.join(usernames)}. Assign each a role group (Viewer, "
+                "Researcher or Principal Investigator) in the admin."
+            )
+        )
 
     def _confirm(self) -> bool:
         """Ask for interactive confirmation before any effectful step runs."""

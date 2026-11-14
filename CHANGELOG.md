@@ -19,7 +19,8 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   users in the "Viewer" group, who were also offered "Delete selected" in
   the admin (#245). Staff users without a role group lose access to project
   data: assign each of them "Viewer", "Researcher" or "Principal
-  Investigator" before upgrading.
+  Investigator" before upgrading. `manage.py deploy` names these users
+  before it asks for confirmation.
 
 ### Fixed
 
