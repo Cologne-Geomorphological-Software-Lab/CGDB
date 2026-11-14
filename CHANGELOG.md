@@ -10,6 +10,15 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- The permission groups now cover cosmogenic nuclide dating, pollen
+  counts, micro-XRF element maps, field photos, accessory parameters and
+  raster data, with new domain groups "Cosmogenic Nuclides" and "Raster
+  Data". Landforms can be viewed by every role. Before this, only
+  superusers could open these records. Existing installations get the new
+  permissions on the next `migrate` (#245).
+
 ## [2.0.1] - 2026-11-04 "Arica"
 
 ### Added

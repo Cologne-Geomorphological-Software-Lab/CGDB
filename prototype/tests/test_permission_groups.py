@@ -129,6 +129,93 @@ class CreatePermissionGroupsTest(TestCase):
         self.assertIn("author", models)
         self.assertIn("referencekeyword", models)
 
+    def test_every_model_is_covered_by_role_groups_or_excluded(self):
+        """A new model must get role permissions or a documented exclusion.
+
+        Without this, a model added later is invisible to every non-superuser
+        until someone notices (as happened with CosmogenicNuclideDating).
+        """
+        from django.apps import apps
+
+        from prototype.permissions import (
+            _ALL_DOMAIN,
+            _NOT_ROLE_MANAGED,
+            _VIEW_ONLY_FOR_ALL_ROLES,
+        )
+
+        covered = (
+            set(_ALL_DOMAIN)
+            | set(_VIEW_ONLY_FOR_ALL_ROLES)
+            | set(_NOT_ROLE_MANAGED)
+        )
+        cgdb_apps = [
+            "prototype",
+            "field_data",
+            "analysis",
+            "bibliography",
+            "laboratory",
+            "orchestration",
+            "geodata",
+            "raster_data",
+        ]
+        missing = [
+            f"{model._meta.app_label}.{model._meta.model_name}"
+            for label in cgdb_apps
+            for model in apps.get_app_config(label).get_models()
+            if f"{model._meta.app_label}.{model._meta.model_name}"
+            not in covered
+        ]
+        self.assertEqual(missing, [])
+
+    def test_role_groups_cover_previously_missing_models(self):
+        create_permission_groups()
+        researcher = Group.objects.get(name="Researcher")
+        perms = {
+            f"{app}.{codename}"
+            for app, codename in researcher.permissions.values_list(
+                "content_type__app_label", "codename"
+            )
+        }
+        for perm in [
+            "analysis.change_cosmogenicnuclidedating",
+            "analysis.change_pollencount",
+            "analysis.change_microxrfelementmap",
+            "field_data.change_fieldphoto",
+            "laboratory.change_accessoryparameter",
+            "raster_data.view_datasource",
+            "raster_data.change_rasterscene",
+            "raster_data.change_rasterdataset",
+        ]:
+            self.assertIn(perm, perms)
+
+    def test_landform_is_view_only_for_every_role(self):
+        create_permission_groups()
+        for name in ["Viewer", "Researcher", "Principal Investigator"]:
+            codenames = set(
+                Group.objects.get(name=name)
+                .permissions.filter(content_type__app_label="geodata")
+                .values_list("codename", flat=True)
+            )
+            self.assertEqual(codenames, {"view_landform"}, msg=name)
+
+    def test_new_domain_groups_have_correct_models(self):
+        create_permission_groups()
+        expected = {
+            "Cosmogenic Nuclides": {"cosmogenicnuclidedating"},
+            "Raster Data": {"datasource", "rasterscene", "rasterdataset"},
+        }
+        for name, models in expected.items():
+            group = Group.objects.get(name=name)
+            self.assertEqual(
+                set(
+                    group.permissions.values_list(
+                        "content_type__model", flat=True
+                    )
+                ),
+                models,
+                msg=name,
+            )
+
     def test_stdout_output_is_written(self):
         import io
 

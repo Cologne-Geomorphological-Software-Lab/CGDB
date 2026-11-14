@@ -51,19 +51,27 @@ _ALL_DOMAIN = [
     "field_data.tag",
     "field_data.sampletype",
     "field_data.exposuretype",
+    "field_data.fieldphoto",
     # Analysis
     "analysis.luminescencedating",
     "analysis.radiocarbondating",
+    "analysis.cosmogenicnuclidedating",
     "analysis.grainsize",
     "analysis.counting",
     "analysis.pollen",
+    "analysis.pollencount",
     "analysis.rawmeasurement",
     "analysis.rawprocessing",
     "analysis.genericmeasurement",
     "analysis.microxrfmeasurement",
+    "analysis.microxrfelementmap",
     "analysis.parameter",
     "analysis.algorithm",
     "analysis.measurementseries",
+    # Raster data
+    "raster_data.datasource",
+    "raster_data.rasterscene",
+    "raster_data.rasterdataset",
     # Bibliography
     "bibliography.reference",
     "bibliography.author",
@@ -71,6 +79,7 @@ _ALL_DOMAIN = [
     # Laboratory
     "laboratory.device",
     "laboratory.accessory",
+    "laboratory.accessoryparameter",
     "laboratory.calibration",
     "laboratory.firmware",
     "laboratory.method",
@@ -80,13 +89,41 @@ _ALL_DOMAIN = [
     "prototype.researchgroup",
 ]
 
+# Global reference layers maintained by superusers (e.g. via the
+# import_landforms command): every role may read them, nobody edits them.
+_VIEW_ONLY_FOR_ALL_ROLES = [
+    "geodata.landform",
+]
+
+# Models deliberately outside the role groups. Every model of a CGDB app must
+# appear in _ALL_DOMAIN, _VIEW_ONLY_FOR_ALL_ROLES or here — a test enforces it,
+# so a new model cannot silently stay invisible to every non-superuser.
+_NOT_ROLE_MANAGED = frozenset(
+    {
+        # Access is granted per project through Guardian object permissions
+        # (Project.members), not through model-level role permissions.
+        "prototype.project",
+        "prototype.projectuserobjectpermission",
+        # Maintenance runs, backups and export configuration: superuser only
+        # (orchestration/admin.py locks every permission to is_superuser).
+        "orchestration.maintenancerun",
+        "orchestration.integrityissue",
+        "orchestration.duckdbtableconfig",
+        # Administrative reference data, maintained by superusers.
+        "field_data.country",
+        "field_data.province",
+    }
+)
+
 GROUPS = {
     # ------------------------------------------------------------------
     # Academic roles — assign exactly one per user
     # ------------------------------------------------------------------
-    "Viewer": _q(*_ALL_DOMAIN, actions=["view"]),
-    "Researcher": _q(*_ALL_DOMAIN, actions=["view", "add", "change"]),
-    "Principal Investigator": _q(*_ALL_DOMAIN),
+    "Viewer": _q(*_ALL_DOMAIN, *_VIEW_ONLY_FOR_ALL_ROLES, actions=["view"]),
+    "Researcher": _q(*_ALL_DOMAIN, actions=["view", "add", "change"])
+    | _q(*_VIEW_ONLY_FOR_ALL_ROLES, actions=["view"]),
+    "Principal Investigator": _q(*_ALL_DOMAIN)
+    | _q(*_VIEW_ONLY_FOR_ALL_ROLES, actions=["view"]),
     # ------------------------------------------------------------------
     # Domain groups — stack on top of the academic role
     # ------------------------------------------------------------------
@@ -99,6 +136,7 @@ GROUPS = {
         "field_data.site",
         "field_data.transect",
         "field_data.tag",
+        "field_data.fieldphoto",
     ),
     "Luminescence": _q(
         "analysis.luminescencedating",
@@ -106,15 +144,23 @@ GROUPS = {
         "analysis.rawprocessing",
     ),
     "Radiocarbon": _q("analysis.radiocarbondating"),
+    "Cosmogenic Nuclides": _q("analysis.cosmogenicnuclidedating"),
     "Grain Size": _q("analysis.grainsize"),
     "Pollen": _q(
         "analysis.counting",
         "analysis.pollen",
+        "analysis.pollencount",
     ),
     "Geochemistry": _q(
         "analysis.genericmeasurement",
         "analysis.microxrfmeasurement",
+        "analysis.microxrfelementmap",
         "analysis.parameter",
+    ),
+    "Raster Data": _q(
+        "raster_data.datasource",
+        "raster_data.rasterscene",
+        "raster_data.rasterdataset",
     ),
     "Bibliography": _q(
         "bibliography.reference",
@@ -124,6 +170,7 @@ GROUPS = {
     "Laboratory": _q(
         "laboratory.device",
         "laboratory.accessory",
+        "laboratory.accessoryparameter",
         "laboratory.calibration",
         "laboratory.firmware",
         "laboratory.method",
