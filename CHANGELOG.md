@@ -5,8 +5,8 @@ All notable changes to CGDB are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 What counts as a major, minor or patch release, and how major releases are
-named, is described under [Versioning](CONTRIBUTING.md#versioning).
-Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
+named, is described under [Versioning](https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/blob/main/CONTRIBUTING.md#versioning).
+Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/blob/main/MIGRATING.md).
 
 ## [Unreleased]
 
@@ -27,6 +27,11 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 - The code that turns project membership into permissions moved from the
   project admin to `prototype.access.sync_member_permissions`, so other code
   can grant membership the same way. Behaviour is unchanged.
+- The documentation moved from the README to a Sphinx site in `docs/`,
+  written in Markdown (MyST): getting started, operations, development and a
+  reference with the REST API, the data model of every app, this changelog
+  and the migration guide. The README is now a short overview with links.
+  `myst-parser` is a new dependency.
 
 ## [2.0.2] - 2026-11-15 "Arica"
 
@@ -128,7 +133,7 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 > **Breaking changes.** Dependency management moved from pip to uv,
 > Node.js/npm is required to build the frontend, maintenance jobs need a
 > running `dagster-daemon`, Python 3.13+ is required, and the permission
-> system was rewritten. Follow [MIGRATING.md](MIGRATING.md#upgrading-from-1x-to-200)
+> system was rewritten. Follow [MIGRATING.md](https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/blob/main/MIGRATING.md#upgrading-from-1x-to-200)
 > before upgrading an existing deployment.
 
 ### Added

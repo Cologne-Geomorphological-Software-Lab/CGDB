@@ -956,7 +956,7 @@ class Layer(BaseModel):
 
     Methods:
         _thickness(): Calculates and returns the thickness of the layer.
-        save(*args, **kwargs): Overrides the save method to calculate thickness before saving.
+        save(): Overrides the save method to calculate thickness before saving.
     """
 
     location = models.ForeignKey(
@@ -1120,7 +1120,7 @@ class Sample(BaseModel):
 
     Methods:
         clean(): Validates the project assignment logic.
-        save(*args, **kwargs): Automatically assigns project based on location if not set.
+        save(): Automatically assigns project based on location if not set.
     """
 
     STATUS_CHOICES = [

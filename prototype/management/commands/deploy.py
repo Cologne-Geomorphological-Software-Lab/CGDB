@@ -4,8 +4,8 @@ Wraps the previously fully-manual sequence of dependency sync, a frontend
 build, `migrate`, `collectstatic`, and service restarts into one command,
 with a pre-migrate database backup and post-restart health checks built in.
 Still started by hand over SSH — no external trigger, no new credentials, no
-change to who initiates a deploy. See "Updating an existing deployment" in
-README.md for the manual step-by-step this replaces.
+change to who initiates a deploy. See "Deploying updates" in
+docs/source/operations/deployment.md.
 
 `git pull` is deliberately **not** part of this command — it's run
 separately, beforehand, by whoever has git credentials for the remote. This
@@ -267,7 +267,7 @@ class Command(BaseCommand):
         """Check whether a systemd unit is actually defined on this host.
 
         `_SERVICES` is a fixed list, but not every optional component (e.g.
-        the Dagster daemon — see README's "Data Orchestration (Optional)")
+        the Dagster daemon, see docs/source/operations/orchestration.md)
         is set up on every deployment. Restarting/health-checking a unit
         that was never installed here should be skipped, not a hard failure.
         """
