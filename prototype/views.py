@@ -97,25 +97,70 @@ def map_dashboard(request: AuthenticatedHttpRequest) -> HttpResponse:
 
 
 _WMS_WHITELIST = ["services.bgr.de"]
+# A GetFeatureInfo answer is a few kilobytes of GML; anything far larger is
+# not what the map asked for.
+_WMS_MAX_BYTES = 2 * 1024 * 1024
+# Only XML/GML is passed through: the answer is served from this site's
+# origin, so an HTML or script response must never reach the browser.
+_WMS_CONTENT_TYPES = frozenset(
+    {
+        "application/vnd.ogc.gml",
+        "application/gml+xml",
+        "application/xml",
+        "text/xml",
+    }
+)
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects: the whitelist checks only the first URL."""
+
+    def redirect_request(  # type: ignore[override]
+        self, *_args: object, **_kwargs: object
+    ) -> None:
+        """Return None, so urllib raises HTTPError instead of following."""
+        return
+
+
+_WMS_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
+def _is_whitelisted_wms_url(url: str) -> bool:
+    """Return True for http(s) URLs on a whitelisted WMS host."""
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    return parsed.scheme in ("http", "https") and any(
+        host == w or host.endswith("." + w) for w in _WMS_WHITELIST
+    )
+
+
+def _fetch_wms(url: str) -> HttpResponse:
+    """Fetch *url* and pass the answer on only if it is small XML/GML."""
+    try:
+        with _WMS_OPENER.open(url, timeout=10) as resp:  # nosec B310 — URL checked by _is_whitelisted_wms_url
+            content = resp.read(_WMS_MAX_BYTES + 1)
+            content_type = resp.headers.get("Content-Type", "text/xml")
+    except (urllib.error.URLError, OSError):
+        return HttpResponse("", status=502)
+    media_type = content_type.split(";", 1)[0].strip().lower()
+    if len(content) > _WMS_MAX_BYTES or media_type not in _WMS_CONTENT_TYPES:
+        return HttpResponse("", status=502)
+    response = HttpResponse(content, content_type=content_type)
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @require_GET
 def wms_proxy(request: HttpRequest) -> HttpResponse:
-    """Server-side proxy for WMS GetFeatureInfo to avoid browser CORS restrictions."""
+    """Server-side proxy for WMS GetFeatureInfo to avoid browser CORS restrictions.
+
+    Fetches only whitelisted hosts, follows no redirects, and passes on only
+    small XML/GML answers (see _fetch_wms); anything else is 403 or 502.
+    """
     url = request.GET.get("url", "")
-    parsed = urlparse(url)
-    host = parsed.hostname or ""
-    if parsed.scheme not in ("http", "https") or not any(
-        host == w or host.endswith("." + w) for w in _WMS_WHITELIST
-    ):
+    if not _is_whitelisted_wms_url(url):
         return HttpResponse("Forbidden", status=403)
-    try:
-        with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310  # nosec B310 — hostname validated against _WMS_WHITELIST above
-            content = resp.read()
-            ct = resp.headers.get("Content-Type", "text/xml")
-    except (urllib.error.URLError, OSError):
-        return HttpResponse("", status=502)
-    return HttpResponse(content, content_type=ct)
+    return _fetch_wms(url)
 
 
 def dashboard_callback(request: HttpRequest | None, context: dict) -> dict:

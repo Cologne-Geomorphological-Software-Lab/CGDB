@@ -45,6 +45,10 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   of 10 attempts per hour applied to each process separately and reset on
   every restart. The default cache is now a database table, created by
   `migrate`; a cache configured in `local_settings.py` takes precedence.
+- The map's WMS proxy (`/api/wms-proxy`) no longer follows redirects, which
+  could lead it away from the allowed host, and passes on only XML/GML
+  answers up to 2 MB, marked `nosniff`. Before this, it relayed any content
+  type, so an HTML answer would have run in the CGDB site's origin.
 
 ### Fixed
 
