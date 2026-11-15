@@ -25,10 +25,18 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from geodata.api_views import landform_tile
 from prototype.api_router import router
 from prototype.api_views import ThrottledObtainAuthToken
+from prototype.protected_media import protected_media_view
 from prototype.views import map_dashboard, wms_proxy
 
 urlpatterns = [
     path("map/", staff_member_required(map_dashboard), name="map_dashboard"),
+    # Protected uploads (backups, field photos, raw data, rasters): the only
+    # way they reach a browser. See prototype/protected_media.py.
+    path(
+        "files/<path:name>",
+        staff_member_required(protected_media_view),
+        name="protected_media",
+    ),
     path(
         "api/wms-proxy",
         staff_member_required(wms_proxy),

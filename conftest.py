@@ -7,9 +7,12 @@ ctypes cannot resolve transitive dependencies (WinError 127).
 pytest_configure runs before pytest-django calls django.setup(), so
 this is the right hook to place the DLL directory registration.
 
-A temporary MEDIA_ROOT is created per session so that FileField uploads
-do not accumulate inside the source tree. It is cleaned up automatically
-in pytest_sessionfinish.
+prototype/test_settings.py creates a temporary MEDIA_ROOT and
+PROTECTED_MEDIA_ROOT per session, so that FileField uploads do not
+accumulate inside the source tree; pytest_sessionfinish removes them. (The
+settings must create them: pytest-django loads the settings before this
+file's pytest_configure runs, so an environment variable set here comes too
+late.)
 """
 
 from __future__ import annotations
@@ -17,7 +20,6 @@ from __future__ import annotations
 import os
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -26,13 +28,9 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-_TEST_MEDIA_ROOT: str | None = None
-
 
 def pytest_configure(config) -> None:
-    """Register OSGeo4W DLLs and create an isolated MEDIA_ROOT before Django setup."""
-    global _TEST_MEDIA_ROOT
-
+    """Register OSGeo4W DLLs before Django setup."""
     # -- OSGeo4W DLL registration (Windows only) --
     _osgeo_bin = Path("C:/OSGeo4W/bin")
     if sys.platform == "win32" and _osgeo_bin.exists():
@@ -45,16 +43,15 @@ def pytest_configure(config) -> None:
             )
         os.environ.setdefault("PROJ_LIB", "C:/OSGeo4W/share/proj")
 
-    # -- Isolated media root --
-    # Set an env var so test_settings.py can pick it up before Django initialises.
-    _TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="cgdb_test_media_")
-    os.environ["CGDB_TEST_MEDIA_ROOT"] = _TEST_MEDIA_ROOT
-
 
 def pytest_sessionfinish(session, exitstatus) -> None:
-    """Remove the temporary MEDIA_ROOT after the test session completes."""
-    if _TEST_MEDIA_ROOT:
-        shutil.rmtree(_TEST_MEDIA_ROOT, ignore_errors=True)
+    """Remove the temporary media directories created by test_settings.py."""
+    from django.conf import settings
+
+    for name in ("MEDIA_ROOT", "PROTECTED_MEDIA_ROOT"):
+        path = str(getattr(settings, name, "") or "")
+        if Path(path).name.startswith("cgdb_test_"):
+            shutil.rmtree(path, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)

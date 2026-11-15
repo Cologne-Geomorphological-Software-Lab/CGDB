@@ -1,5 +1,6 @@
 """Test-only settings using SpatiaLite (no PostgreSQL/PostGIS needed)."""
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -29,12 +30,18 @@ DEBUG = True
 # Suppress password hashing overhead in tests
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
-import os
-
-# Static / media – uploads go to an isolated temp dir created by conftest.py
-# so that FileField test artifacts never accumulate in the source tree.
+# Static / media – uploads go to per-process temp dirs (conftest.py removes
+# them after the session) so that FileField test artifacts never accumulate
+# in the source tree. Defined here rather than in conftest.py: pytest-django
+# loads these settings before conftest's pytest_configure runs. Only the
+# paths are set; the storage creates the directories on the first upload, so
+# merely importing these settings (mypy's django-stubs plugin does) leaves
+# nothing behind. The two directories are siblings, as the protected-media
+# system check requires.
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 STATIC_ROOT = ""
-MEDIA_ROOT = os.environ.get("CGDB_TEST_MEDIA_ROOT", "")
+_TEST_TMP = Path(tempfile.gettempdir())
+MEDIA_ROOT = str(_TEST_TMP / f"cgdb_test_media_{os.getpid()}")
+PROTECTED_MEDIA_ROOT = str(_TEST_TMP / f"cgdb_test_protected_{os.getpid()}")
 STATICFILES_DIRS = []

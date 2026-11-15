@@ -362,6 +362,21 @@ ALLOWED_HOSTS: list[str] = []
 # local_settings.py if the server's actual raster corpus lives elsewhere.
 RASTER_CORPUS_ROOT = Path("/corpus")
 
+# Uploaded files that belong to project data or to maintenance runs
+# (backups, exports). They are stored here, never under MEDIA_ROOT, and only
+# reach a browser through the permission-checked view at /files/ — so they
+# stay protected whatever the web server does with /media/. Keep this
+# outside every directory a web server serves (MEDIA_ROOT, STATIC_ROOT);
+# a system check enforces that. See prototype/protected_media.py.
+PROTECTED_MEDIA_ROOT = BASE_DIR / "protected_media"
+# How the view hands a permitted file to the client:
+#   "django"           – Django streams it (works everywhere, the default)
+#   "x-sendfile"       – Apache with mod_xsendfile sends it
+#   "x-accel-redirect" – nginx sends it from an `internal` location mapped to
+#                        PROTECTED_MEDIA_ROOT at PROTECTED_MEDIA_ACCEL_PREFIX
+PROTECTED_MEDIA_SERVER = "django"
+PROTECTED_MEDIA_ACCEL_PREFIX = "/protected-media-internal/"
+
 try:
     from .local_settings import *  # noqa: F401, F403
 except ImportError:

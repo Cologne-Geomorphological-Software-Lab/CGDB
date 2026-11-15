@@ -72,6 +72,7 @@ staticfiles/
 *.sqlite3
 db.sqlite3
 media/
+protected_media/
 
 # Test file upload artifacts
 analysis/algorithms/*.txt
