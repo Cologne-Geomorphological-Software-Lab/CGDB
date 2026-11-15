@@ -10,6 +10,8 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-11-15 "Arica"
+
 ### Security
 
 - Working with project data now needs both the permission from the user's
@@ -58,6 +60,10 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   Data". Landforms can be viewed by every role. Before this, only
   superusers could open these records. Existing installations get the new
   permissions on the next `migrate` (#245).
+- `pyproject.toml` declared version "1" instead of the release version. It
+  now matches the release, and a test keeps `pyproject.toml`,
+  `CITATION.cff` and this changelog on the same version (#209).
+- Test runs no longer write uploaded files into the source tree.
 
 ## [2.0.1] - 2026-11-04 "Arica"
 
@@ -234,7 +240,8 @@ Initial release, accompanying Handy et al. (2026),
 - Admin interface based on django-unfold, object-level permissions with
   django-guardian, import/export with django-import-export.
 
-[Unreleased]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/compare/v1.0.0...v1.1.0

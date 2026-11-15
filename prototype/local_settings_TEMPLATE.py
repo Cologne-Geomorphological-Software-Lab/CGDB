@@ -38,6 +38,12 @@ STATICFILES_DIRS = []
 MEDIA_URL = ""
 MEDIA_ROOT = ""
 
+# Uploads and backups that need a permission check (see README, "Protected
+# files"). Must lie outside every directory the web server serves; the
+# default is protected_media/ in the project directory.
+# PROTECTED_MEDIA_ROOT = "/srv/cgdb/protected_media"
+# PROTECTED_MEDIA_SERVER = "django"  # or "x-sendfile" / "x-accel-redirect"
+
 
 # SECURITY WARNING: Do not set DEBUG = True in production!
 DEBUG = False

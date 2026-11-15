@@ -463,11 +463,15 @@ sudo python manage.py deploy
 pre-migrate database backup (SQLite copy or `pg_dump`, whichever is
 active), `uv sync`, `npm ci && npm run build` (compiles the map dashboard's
 frontend to `static/dist/` and exits — see "Frontend (map dashboard)"
-above), `migrate`/`collectstatic`, then restarts both services and confirms
+above), `migrate`, `move_protected_media` (moves uploads and backups left
+under `MEDIA_ROOT` by versions before 2.0.2 — see "Protected files" below),
+`collectstatic`, then restarts both services and confirms
 each is actually `active` afterward — not just that the restart command
 itself succeeded. On a failed migration, the error message names the
 backup's path so you can decide whether to restore it; nothing is rolled
-back automatically. It still requires a human at the keyboard: it asks for
+back automatically. Before the confirmation prompt it lists staff users without a
+permission group, who can't see any project data (see "Roles and
+projects" below). It still requires a human at the keyboard: it asks for
 interactive confirmation (skip with `--yes`), and there is no automatic
 trigger of any kind — no cron, no webhook, no CI. Use `--dry-run` to print
 every step without executing anything, e.g. to review before the first real
@@ -511,12 +515,59 @@ MIT License - see [LICENSE](LICENSE) file for details.
    - Set up SSL/TLS certificates
 
 3. **Additional Security:**
-   - Implement rate limiting
+   - The REST API is rate-limited (`REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]`);
+     the counters live in the database cache, so they hold across all
+     server processes
    - Set up monitoring and logging
    - Regular security updates
    - Database backups
 
-4. **Separation of OLTP & Data Orchestration:**
+4. **Roles and projects:**
+   - Access to project data needs two permissions: a role group
+     ("Viewer", "Researcher" or "Principal Investigator", plus optional
+     domain groups) for what a user may do with each kind of record, and
+     membership in the project for whose data.
+   - Assign every staff user a role group. Without one, a user can log in
+     but sees no project data.
+
+5. **Protected files:**
+   - Uploads (field photos, measurement files, rasters, analysis scripts)
+     and maintenance results (database backups, exports) are stored under
+     `PROTECTED_MEDIA_ROOT` (default: `protected_media/` in the project
+     directory), not under `MEDIA_ROOT`. They reach a browser only through
+     `/files/…`, which checks the user's role and project permission;
+     backups are for superusers only.
+   - Keep `PROTECTED_MEDIA_ROOT` outside every directory the web server
+     serves. `python manage.py check` reports an error if it lies inside
+     `MEDIA_ROOT` or `STATIC_ROOT`, and `check --deploy` warns while
+     protected files are still left under `MEDIA_ROOT`
+     (`python manage.py move_protected_media` moves them).
+   - By default Django sends the files itself. To let the web server send
+     them after Django's permission check, set `PROTECTED_MEDIA_SERVER` in
+     `local_settings.py`:
+
+     Apache with [mod_xsendfile](https://tn123.org/mod_xsendfile/):
+     ```apache
+     XSendFile On
+     XSendFilePath /srv/cgdb/protected_media
+     ```
+     ```python
+     PROTECTED_MEDIA_SERVER = "x-sendfile"
+     ```
+
+     nginx:
+     ```nginx
+     location /protected-media-internal/ {
+         internal;
+         alias /srv/cgdb/protected_media/;
+     }
+     ```
+     ```python
+     PROTECTED_MEDIA_SERVER = "x-accel-redirect"
+     PROTECTED_MEDIA_ACCEL_PREFIX = "/protected-media-internal/"
+     ```
+
+6. **Separation of OLTP & Data Orchestration:**
    - For production workloads, consider running Dagster on a separate server
    - Use read replicas or separate OLAP databases for analytics workloads
    - Avoid running heavy ETL jobs during peak operational hours

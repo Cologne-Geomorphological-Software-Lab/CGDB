@@ -9,7 +9,7 @@ module_name = "orchestration.dagster_home.repository"
 [project]
 name = "cgdb"
 requires-python = ">=3.13"
-version = "1"
+version = "2.0.2"
 dependencies = [
     "django[argon2]>=6.0.10,<6.1",
     "django-unfold>=0.99.0",
