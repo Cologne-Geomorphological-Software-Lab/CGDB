@@ -1,0 +1,32 @@
+# Allowlist: only what the demo image needs. Everything else (local
+# database, .venv, media, protected_media, the real local_settings.py,
+# drafts, .git) stays out of the build context.
+*
+
+!manage.py
+!pyproject.toml
+!uv.lock
+!analysis/
+!bibliography/
+!field_data/
+!geodata/
+!laboratory/
+!orchestration/
+!prototype/
+!raster_data/
+!templates/
+!static/
+!frontend/
+!docker/
+
+# Re-exclude local and generated files inside the allowed directories.
+**/__pycache__/
+**/*.py[cod]
+**/tests/
+prototype/local_settings.py
+frontend/node_modules/
+static/dist/
+orchestration/dagster_home/history/
+orchestration/dagster_home/schedules/
+orchestration/dagster_home/storage/
+orchestration/dagster_home/logs/

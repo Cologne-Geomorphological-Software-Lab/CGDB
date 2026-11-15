@@ -8,8 +8,6 @@ from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as DjangoGroupAdmin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import Group, Permission, User
-from django.db import transaction
-from guardian.shortcuts import assign_perm, remove_perm
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import (
     ChoicesDropdownFilter,
@@ -17,6 +15,7 @@ from unfold.contrib.filters.admin import (
 )
 from unfold.decorators import display
 
+from .access import sync_member_permissions
 from .mixins import AUDIT_READONLY_FIELDS, GuardianPermissionMixin
 from .models import (
     Project,
@@ -66,8 +65,6 @@ _PERMISSION_LABELS: dict[str, str] = {
     "change_project": "Edit data",
     "delete_project": "Delete data",
 }
-
-_MEMBER_PERMS = ["view_project", "add_project", "change_project"]
 
 
 class ProjectUserObjectPermissionInline(TabularInline):
@@ -241,31 +238,9 @@ class ProjectAdmin(PermissionBasedModelAdmin, ModelAdmin):
         """Sync Guardian object-permissions to match the current members M2M.
 
         Called after save_related so that project.members already reflects the
-        new state saved by the form. Reads the old permission state from
-        ProjectUserObjectPermission to compute the diff.
+        new state saved by the form. See prototype.access.sync_member_permissions.
         """
-        with transaction.atomic():
-            new_members = set(project.members.all())
-
-            existing_user_ids = set(
-                ProjectUserObjectPermission.objects.filter(
-                    content_object=project,
-                    permission__codename__in=_MEMBER_PERMS,
-                ).values_list("user", flat=True),
-            )
-            existing_member_users = set(
-                User.objects.filter(pk__in=existing_user_ids),
-            )
-
-            for user in new_members:
-                for perm in _MEMBER_PERMS:
-                    assign_perm(perm, user, project)
-
-            creator = project.created_by
-            for user in existing_member_users - new_members:
-                if user != creator:
-                    for perm in _MEMBER_PERMS:
-                        remove_perm(perm, user, project)
+        sync_member_permissions(project)
 
     @display(
         label={
