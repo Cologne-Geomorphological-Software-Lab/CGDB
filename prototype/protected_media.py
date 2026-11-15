@@ -70,9 +70,16 @@ class ProtectedFileRule:
     needs_project: bool = True
 
 
-# upload_to prefix (with trailing slash) -> rule. Filled in as the FileFields
-# move to the protected storage.
-RULES: dict[str, ProtectedFileRule] = {}
+# upload_to prefix (with trailing slash) -> rule, one per protected FileField.
+RULES: dict[str, ProtectedFileRule] = {
+    # Backups, DuckDB exports and integrity reports: the whole database.
+    "maintenance/": ProtectedFileRule(
+        model="orchestration.MaintenanceRun",
+        field="result_file",
+        superuser_only=True,
+        needs_project=False,
+    ),
+}
 
 
 def is_safe_name(name: str) -> bool:

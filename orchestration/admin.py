@@ -7,12 +7,11 @@ import os
 import subprocess
 import sys
 import traceback
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from django.contrib import admin, messages
 from django.db.models import Count
-from django.http import FileResponse, Http404
+from django.http import Http404
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
@@ -23,12 +22,15 @@ from prototype.mixins import (
     AUDIT_READONLY_FIELDS,
     CreatedUpdatedModelAdminMixin,
 )
+from prototype.protected_media import serve
 
 from .models import DuckDBTableConfig, IntegrityIssue, MaintenanceRun
+from .paths import maintenance_output_dir
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
     from django.forms import ModelForm
+    from django.http.response import HttpResponseBase
     from django.urls import URLPattern
 
     from prototype.mixins import AuthenticatedHttpRequest
@@ -93,7 +95,7 @@ def _submit_maintenance_run(run: MaintenanceRun) -> None:
     env = os.environ.copy()
     env.setdefault("DAGSTER_HOME", dagster_home)
 
-    output_dir = Path(settings.MEDIA_ROOT) / "maintenance"
+    output_dir = maintenance_output_dir()
     op_config: dict = {"run_id": run.pk, "output_dir": str(output_dir)}
     if run.job_type == "backup":
         op_config["dump_format"] = run.dump_format or "custom"
@@ -347,8 +349,8 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
 
     def download_result(
         self, request: AuthenticatedHttpRequest, object_id: int
-    ) -> FileResponse:
-        """Stream a maintenance run's result file, superuser-only.
+    ) -> HttpResponseBase:
+        """Send a maintenance run's result file, superuser-only.
 
         `admin_view()` already enforces staff-login; `has_view_permission`
         above restricts the changelist/changeform to superusers, but that
@@ -360,10 +362,7 @@ class MaintenanceRunAdmin(CreatedUpdatedModelAdminMixin, ModelAdmin):
         run = self.get_object(request, str(object_id))
         if run is None or not run.result_file:
             raise Http404
-        filename = run.result_file.name.rsplit("/", 1)[-1]
-        return FileResponse(
-            run.result_file.open("rb"), as_attachment=True, filename=filename
-        )
+        return serve(run.result_file)
 
     # ------------------------------------------------------------------
     # Admin action

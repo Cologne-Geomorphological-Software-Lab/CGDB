@@ -16,14 +16,16 @@ from __future__ import annotations
 import os
 import traceback
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from orchestration.paths import maintenance_output_dir
+
 if TYPE_CHECKING:
     from argparse import ArgumentParser
+    from pathlib import Path
 
 
 class Command(BaseCommand):
@@ -67,7 +69,7 @@ class Command(BaseCommand):
         run.started_at = datetime.now(UTC)
         run.save(update_fields=["status", "started_at"])
 
-        output_dir = Path(settings.MEDIA_ROOT) / "maintenance"
+        output_dir = maintenance_output_dir()
         output_dir.mkdir(parents=True, exist_ok=True)
 
         try:

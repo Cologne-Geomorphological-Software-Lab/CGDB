@@ -122,7 +122,7 @@ class RunMaintenanceJobCommandTests(TestCase):
         run = MaintenanceRun.objects.create(job_type="integrity")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Management command writes to MEDIA_ROOT/maintenance/
+            # Management command writes to PROTECTED_MEDIA_ROOT/maintenance/
             maintenance_dir = Path(tmpdir) / "maintenance"
             maintenance_dir.mkdir()
             fake_file = maintenance_dir / "integrity_20250101_120000.json"
@@ -134,7 +134,7 @@ class RunMaintenanceJobCommandTests(TestCase):
             with patch("dagster.DagsterInstance") as mock_instance_cls, patch(
                 "orchestration.dagster_home.maintenance_jobs.get_job_for_type",
                 return_value=mock_job,
-            ), patch("django.conf.settings.MEDIA_ROOT", tmpdir):
+            ), self.settings(PROTECTED_MEDIA_ROOT=tmpdir):
                 mock_instance_cls.get.return_value = MagicMock()
                 call_command(
                     "run_maintenance_job", "integrity", "--run-id", str(run.pk)

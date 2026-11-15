@@ -211,10 +211,11 @@ class Command(BaseCommand):
             _backup_sqlite,
             _is_sqlite,
         )
+        from orchestration.paths import maintenance_output_dir
 
         db = settings.DATABASES["default"]
         engine: str = db.get("ENGINE", "")
-        output_dir = Path(settings.MEDIA_ROOT) / "maintenance"
+        output_dir = maintenance_output_dir()
         timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
         if dry_run:

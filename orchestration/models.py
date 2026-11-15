@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from prototype.models import BaseModel
+from prototype.storage import get_protected_storage
 
 
 class MaintenanceRun(BaseModel):
@@ -40,8 +41,12 @@ class MaintenanceRun(BaseModel):
     )
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
+    # Protected storage: backups and exports contain the whole database.
     result_file = models.FileField(
-        upload_to="maintenance/", null=True, blank=True
+        upload_to="maintenance/",
+        storage=get_protected_storage,
+        null=True,
+        blank=True,
     )
     log = models.TextField(blank=True)
 
