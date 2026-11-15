@@ -85,6 +85,7 @@ class DeployCommandTests(TestCase):
             "backup",
             "uv sync",
             "migrate",
+            "move_protected_media",
             "collectstatic",
             "restart apache2",
             "restart cgdb-dagster-daemon",
@@ -159,6 +160,7 @@ class DeployCommandTests(TestCase):
         assert effectful_calls == []
         stdout = stdout_io.getvalue()
         assert "Would run: uv sync" in stdout
+        assert "Would run: manage.py move_protected_media" in stdout
         assert "Would run: sudo systemctl restart apache2" in stdout
         assert "Would check apache2 is active" in stdout
 

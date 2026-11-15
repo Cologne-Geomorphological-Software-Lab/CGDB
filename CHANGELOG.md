@@ -32,6 +32,10 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   role and project permission like the admin does; backups are for
   superusers only. Optionally, Apache (`X-Sendfile`) or nginx
   (`X-Accel-Redirect`) can send the files, see `PROTECTED_MEDIA_SERVER`.
+  `manage.py deploy` moves existing files over with the new command
+  `manage.py move_protected_media`, which never overwrites and stops on any
+  conflicting file. `manage.py check --deploy` warns while protected files
+  remain under `MEDIA_ROOT`.
 
 ### Fixed
 

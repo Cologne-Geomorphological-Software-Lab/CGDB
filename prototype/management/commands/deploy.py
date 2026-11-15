@@ -104,15 +104,24 @@ class Command(BaseCommand):
     def _migrate_and_collectstatic(
         self, *, dry_run: bool, backup_path: str
     ) -> None:
-        """Run migrate + collectstatic, pointing at the pre-migrate backup on failure."""
+        """Run migrate, move_protected_media and collectstatic.
+
+        Points at the pre-migrate backup on failure.
+        """
         try:
             if dry_run:
                 self.stdout.write("==> Would run: manage.py migrate --noinput")
+                self.stdout.write(
+                    "==> Would run: manage.py move_protected_media"
+                )
                 self.stdout.write(
                     "==> Would run: manage.py collectstatic --noinput"
                 )
             else:
                 call_command("migrate", "--noinput")
+                # Uploads and backups from before 2.0.2 still lie under
+                # MEDIA_ROOT; their FileFields now read PROTECTED_MEDIA_ROOT.
+                call_command("move_protected_media")
                 call_command("collectstatic", "--noinput")
         except Exception:
             self.stderr.write(

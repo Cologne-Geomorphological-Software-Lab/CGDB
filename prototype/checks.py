@@ -118,10 +118,7 @@ def check_no_protected_files_in_media_root(
         CheckWarning(
             "Protected files still lie under MEDIA_ROOT in: "
             f"{', '.join(sorted(leftovers))}.",
-            hint=(
-                "Move them to the same relative paths under "
-                "PROTECTED_MEDIA_ROOT."
-            ),
+            hint="Run `manage.py move_protected_media` to move them.",
             id="prototype.W001",
         )
     ]
