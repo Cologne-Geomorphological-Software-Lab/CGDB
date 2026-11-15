@@ -17,6 +17,7 @@ from .models import (
     SampleType,
     StudyArea,
     Transect,
+    campaign_project_mismatch,
 )
 
 
@@ -214,6 +215,22 @@ class TransectWriteSerializer(serializers.ModelSerializer):
         """Reject anything that isn't a valid MultiLineString."""
         _validate_geom_type(value, "MultiLineString")
         return value
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        """Require the campaign to belong to the study area's project.
+
+        Same rule as Transect.clean(), which DRF does not call. On a partial
+        update the unchanged side comes from the stored transect.
+        """
+        instance = self.instance
+        study_area = attrs.get(
+            "study_area", getattr(instance, "study_area", None)
+        )
+        campaign = attrs.get("campaign", getattr(instance, "campaign", None))
+        message = campaign_project_mismatch(study_area, campaign)
+        if message:
+            raise serializers.ValidationError({"campaign": message})
+        return attrs
 
 
 class LayerSerializer(serializers.ModelSerializer):

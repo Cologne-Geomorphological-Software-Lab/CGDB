@@ -466,6 +466,34 @@ class Transect(BaseModel):
         """Return the transect identifier."""
         return str(self.identifier)
 
+    def clean(self) -> None:
+        """Require the campaign to belong to the study area's project."""
+        super().clean()
+        message = campaign_project_mismatch(
+            getattr(self, "study_area", None), self.campaign
+        )
+        if message:
+            raise ValidationError({"campaign": message})
+
+
+def campaign_project_mismatch(
+    study_area: StudyArea | None, campaign: Campaign | None
+) -> str | None:
+    """Return an error message if *campaign* belongs to another project.
+
+    Shared by Transect.clean() and the API's TransectWriteSerializer (DRF
+    does not call clean()). Linking a campaign of a foreign project would
+    also show its label to users of this project on the map.
+    """
+    if study_area is None or campaign is None:
+        return None
+    # Compare the FK ids: no query for either project.
+    campaign_project = campaign.project_id  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated FK _id shadow attribute; no mypy-plugin support in basedpyright
+    area_project = study_area.project_id  # pyright: ignore[reportAttributeAccessIssue]  # Django-generated FK _id shadow attribute; no mypy-plugin support in basedpyright
+    if campaign_project == area_project:
+        return None
+    return "The campaign must belong to the study area's project."
+
 
 class ExposureType(BaseModel):
     """Model representing different types of geological exposures.

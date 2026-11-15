@@ -22,7 +22,7 @@ from rest_framework.test import APIClient
 
 from analysis.models import GrainSize, LuminescenceDating
 from bibliography.models import Author, Reference
-from field_data.models import Location, Sample, StudyArea, Transect
+from field_data.models import Campaign, Location, Sample, StudyArea, Transect
 from prototype.models import Project
 from prototype.tests.roles import give_role
 
@@ -585,3 +585,75 @@ class ReparentingSecurityTest(_WritePermissionApiTest):
         assert resp.status_code == 200
         self.transect.refresh_from_db()
         assert self.transect.study_area.pk == self.other_study_area.pk
+
+
+class TransectCampaignProjectTest(_WritePermissionApiTest):
+    """A transect's campaign must belong to its study area's project.
+
+    Otherwise a user could link a campaign of a project they cannot access,
+    and the map would then show that campaign's label to them.
+    """
+
+    other_campaign: ClassVar[Campaign]
+    own_campaign: ClassVar[Campaign]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        other_project = Project.objects.create(
+            title="Other project", label="OTHER01", status="ACTIVE"
+        )
+        cls.other_campaign = Campaign.objects.create(
+            label="FOREIGN", project=other_project
+        )
+        cls.own_campaign = Campaign.objects.create(
+            label="OWN", project=cls.project
+        )
+
+    def _create(self, campaign: Campaign) -> int:
+        resp = self._client_for(self.editor).post(
+            "/api/v1/transects/",
+            {
+                "identifier": f"T_{campaign.label}",
+                "study_area": self.study_area.pk,
+                "campaign": campaign.pk,
+                "description": "Campaign check",
+                "multiline": _NEW_MULTILINESTRING_GEOJSON,
+            },
+            format="json",
+        )
+        return resp.status_code
+
+    def test_create_with_campaign_of_another_project_is_rejected(self) -> None:
+        assert self._create(self.other_campaign) == 400
+        assert not Transect.objects.filter(identifier="T_FOREIGN").exists()
+
+    def test_create_with_campaign_of_the_same_project_succeeds(self) -> None:
+        assert self._create(self.own_campaign) == 201
+
+    def test_update_to_campaign_of_another_project_is_rejected(self) -> None:
+        resp = self._client_for(self.editor).patch(
+            f"/api/v1/transects/{self.transect.pk}/",
+            {"campaign": self.other_campaign.pk},
+            format="json",
+        )
+        assert resp.status_code == 400
+        assert "campaign" in resp.json()
+        self.transect.refresh_from_db()
+        assert self.transect.campaign is None
+
+    def test_model_validation_rejects_the_mismatch(self) -> None:
+        from django.core.exceptions import ValidationError
+
+        transect = Transect(
+            identifier="T_MODEL",
+            study_area=self.study_area,
+            campaign=self.other_campaign,
+            description="Model check",
+        )
+        try:
+            transect.full_clean()
+        except ValidationError as error:
+            assert "campaign" in error.message_dict
+        else:
+            raise AssertionError("expected a ValidationError on campaign")

@@ -36,6 +36,10 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   `manage.py move_protected_media`, which never overwrites and stops on any
   conflicting file. `manage.py check --deploy` warns while protected files
   remain under `MEDIA_ROOT`.
+- A transect's campaign must now belong to the project of its study area,
+  in the admin and the REST API. Before this, the API accepted a campaign of
+  any project, whose label the map then showed to users of the transect's
+  project. Existing transects are not changed.
 
 ### Fixed
 
