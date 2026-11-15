@@ -22,7 +22,12 @@ DATABASES = {
     },
 }
 
-SPATIALITE_LIBRARY_PATH = "C:/OSGeo4W/bin/mod_spatialite.dll"
+# On Windows, mod_spatialite comes from OSGeo4W and is not on the library
+# search path. Elsewhere (Linux CI, macOS) Django finds it by its default
+# name, so the setting must stay unset there.
+_OSGEO4W_SPATIALITE = Path("C:/OSGeo4W/bin/mod_spatialite.dll")
+if os.name == "nt" and _OSGEO4W_SPATIALITE.exists():
+    SPATIALITE_LIBRARY_PATH = str(_OSGEO4W_SPATIALITE)
 
 SECRET_KEY = "test-secret-key-not-for-production"
 DEBUG = True

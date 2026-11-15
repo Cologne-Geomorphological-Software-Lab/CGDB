@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # CGDB demo image, used by compose.demo.yml. Not a production setup: it runs
-# Django's development server with DEBUG on (see docker/local_settings.py).
+# Django's development server with DEBUG on (see docker/demo_settings.py).
 
 # --- Frontend: build the map bundle into static/dist ------------------------
 FROM node:22.14.0-bookworm-slim AS frontend
@@ -48,7 +48,7 @@ COPY --from=python-deps /opt/venv /opt/venv
 WORKDIR /app
 COPY --chown=cgdb:cgdb . .
 COPY --from=frontend --chown=cgdb:cgdb /app/static/dist ./static/dist
-COPY --chown=cgdb:cgdb docker/local_settings.py prototype/local_settings.py
+COPY --chown=cgdb:cgdb docker/demo_settings.py prototype/local_settings.py
 RUN chmod +x docker/entrypoint.sh
 
 USER cgdb
