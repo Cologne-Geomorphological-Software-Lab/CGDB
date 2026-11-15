@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 
 from prototype.models import BaseModel
+from prototype.storage import get_protected_storage
 
 if TYPE_CHECKING:
     from django.db.models.fields.related_descriptors import RelatedManager
@@ -81,9 +82,10 @@ class RasterScene(BaseModel):
     )
     file = models.FileField(
         upload_to="raster_data/scenes/",
+        storage=get_protected_storage,
         blank=True,
         help_text=(
-            "Blob stored in Django media. "
+            "Uploaded file, kept in protected storage. "
             "Leave blank if the file lives on an external filesystem."
         ),
     )

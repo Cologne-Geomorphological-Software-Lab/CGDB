@@ -79,6 +79,45 @@ RULES: dict[str, ProtectedFileRule] = {
         superuser_only=True,
         needs_project=False,
     ),
+    # Photos attach to a Location (own project) or a Layer (its location's).
+    "field_photos/": ProtectedFileRule(
+        model="field_data.FieldPhoto",
+        field="file",
+        project_paths=(
+            "content_object__project",
+            "content_object__location__project",
+        ),
+    ),
+    "analysis/raw_data/": ProtectedFileRule(
+        model="analysis.RawMeasurement",
+        field="file",
+        project_paths=("project",),
+    ),
+    "analysis/processed_data/": ProtectedFileRule(
+        model="analysis.RawProcessing",
+        field="processed_file",
+        project_paths=("raw_measurement__project",),
+    ),
+    "microxrf_raster/": ProtectedFileRule(
+        model="analysis.MicroXRFElementMap",
+        field="raster_file",
+        project_paths=(
+            "measurement__sample__project",
+            "measurement__sample__location__project",
+        ),
+    ),
+    "raster_data/scenes/": ProtectedFileRule(
+        model="raster_data.RasterScene",
+        field="file",
+        project_paths=("project",),
+    ),
+    # Analysis scripts: a shared catalogue, not project data. The role's
+    # view_algorithm permission decides.
+    "analysis/algorithms/": ProtectedFileRule(
+        model="analysis.Algorithm",
+        field="file",
+        needs_project=False,
+    ),
 }
 
 

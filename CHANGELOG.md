@@ -21,6 +21,17 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   data: assign each of them "Viewer", "Researcher" or "Principal
   Investigator" before upgrading. `manage.py deploy` names these users
   before it asks for confirmation.
+- Uploaded files (field photos, raw and processed measurement data, analysis
+  scripts, micro-XRF element maps, raster scenes) and maintenance results
+  (database backups, DuckDB exports, integrity reports) are no longer stored
+  under `MEDIA_ROOT`. Before this, a web server serving `/media/` handed them
+  out without any login, including complete database backups under a
+  guessable name. They now live under the new setting
+  `PROTECTED_MEDIA_ROOT` (default: `protected_media/` in the project
+  directory) and reach a browser only through `/files/`, which checks the
+  role and project permission like the admin does; backups are for
+  superusers only. Optionally, Apache (`X-Sendfile`) or nginx
+  (`X-Accel-Redirect`) can send the files, see `PROTECTED_MEDIA_SERVER`.
 
 ### Fixed
 

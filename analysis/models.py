@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Self, cast
 from zoneinfo import ZoneInfo
 
-from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -17,6 +16,7 @@ from bibliography.models import Reference
 from field_data.models import Sample
 from laboratory.models import Accessory, Device, Method
 from prototype.models import BaseModel, Project, Researcher
+from prototype.storage import get_protected_storage
 
 
 class Algorithm(models.Model):
@@ -37,6 +37,7 @@ class Algorithm(models.Model):
     link = models.URLField(blank=True)
     file = models.FileField(
         upload_to="analysis/algorithms/",
+        storage=get_protected_storage,
         blank=True,
         null=True,
     )
@@ -98,7 +99,9 @@ class RawMeasurement(BaseModel):
         on_delete=models.CASCADE,
         related_name="analysis_raw_data",
     )
-    file = models.FileField(upload_to="analysis/raw_data/")
+    file = models.FileField(
+        upload_to="analysis/raw_data/", storage=get_protected_storage
+    )
     description = models.TextField(blank=True)
 
     def filename(self) -> str | None:
@@ -131,7 +134,9 @@ class RawProcessing(BaseModel):
         related_name="analysis_raw_processing",
     )
 
-    processed_file = models.FileField(upload_to="analysis/processed_data/")
+    processed_file = models.FileField(
+        upload_to="analysis/processed_data/", storage=get_protected_storage
+    )
     processing_description = models.TextField(blank=True)
 
     processed_by = models.ForeignKey(
@@ -1907,6 +1912,7 @@ class MicroXRFElementMap(BaseModel):
     )
     raster_file = models.FileField(
         upload_to="microxrf_raster/",
+        storage=get_protected_storage,
         help_text="Pfad zur .tif Rasterdatei",
     )
     unit = models.CharField(
@@ -1924,4 +1930,4 @@ class MicroXRFElementMap(BaseModel):
         if not self.raster_file:
             msg = "raster_file is not set on this MicroXRFElementMap."
             raise ValueError(msg)
-        return Path(settings.MEDIA_ROOT) / cast("str", self.raster_file.name)
+        return Path(self.raster_file.path)

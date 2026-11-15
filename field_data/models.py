@@ -18,6 +18,7 @@ from django.core.validators import (
 from django.db.models import Q
 
 from prototype.models import BaseModel, Project, Researcher
+from prototype.storage import get_protected_storage
 
 
 class Country(models.Model):
@@ -1270,6 +1271,7 @@ class FieldPhoto(BaseModel):
 
     file = models.FileField(
         upload_to="field_photos/",
+        storage=get_protected_storage,
         help_text="Photo, sketch, or scanned field note.",
     )
     caption = models.CharField(

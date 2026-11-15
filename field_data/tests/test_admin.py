@@ -373,14 +373,15 @@ class ProvinceChangelistQueryCountTest(_AdminSetup):
 
 
 # ===========================================================================
-# FieldPhotoAdmin.download_file — protected download route (tech debt FD8)
+# FieldPhoto.file — protected storage, permission-checked download
 # ===========================================================================
 
 
 class FieldPhotoDownloadViewTests(TestCase):
     """FieldPhoto.file must be reachable only by users who can view the
     owning project, matching every other project-scoped resource in this
-    app -- not via the raw, unauthenticated-in-production media URL."""
+    app. The file lives in protected storage, so its URL is the
+    permission-checked view (prototype.protected_media), never /media/."""
 
     @classmethod
     def setUpTestData(cls):
@@ -418,9 +419,7 @@ class FieldPhotoDownloadViewTests(TestCase):
             "profile.jpg", SimpleUploadedFile("profile.jpg", b"photo-bytes")
         )
         self.addCleanup(lambda: self.photo.file.delete(save=False))
-        self.url = reverse(
-            "admin:field_data_fieldphoto_download", args=[self.photo.pk]
-        )
+        self.url = self.photo.file.url
 
     def test_project_member_can_download(self):
         self.client.force_login(self.member)
@@ -452,33 +451,24 @@ class FieldPhotoDownloadViewTests(TestCase):
         )
         b"".join(content)
 
-    def test_404_when_photo_has_no_file(self):
-        empty_photo = self._FieldPhoto.objects.create(
-            content_object=self.location
-        )
-        url = reverse(
-            "admin:field_data_fieldphoto_download", args=[empty_photo.pk]
-        )
-        self.client.force_login(self.member)
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
+    def test_url_is_the_protected_view(self):
+        self.assertTrue(self.url.startswith("/files/field_photos/"))
 
     def test_404_for_nonexistent_photo(self):
-        url = reverse("admin:field_data_fieldphoto_download", args=[999999])
         self.client.force_login(self.member)
-        response = self.client.get(url)
+        response = self.client.get("/files/field_photos/no-such-photo.jpg")
         self.assertEqual(response.status_code, 404)
 
     def test_hidden_from_admin_index(self):
-        """FieldPhotoAdmin exists only to host the download route."""
+        """Photos are edited through the inline only, not browsed on their own."""
         self.client.force_login(self.superuser)
         response = self.client.get(reverse("admin:index"))
         self.assertNotContains(response, "field_data/fieldphoto/")
 
 
 class FieldPhotoWidgetLinksToProtectedViewTests(TestCase):
-    """The inline's file widget must render the protected download URL,
-    not the FieldFile's raw (in production, unauthenticated) .url."""
+    """The inline's file widget must link to the protected download URL,
+    never to a /media/ path a web server could serve without any check."""
 
     @classmethod
     def setUpTestData(cls):
@@ -514,9 +504,7 @@ class FieldPhotoWidgetLinksToProtectedViewTests(TestCase):
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        protected_url = reverse(
-            "admin:field_data_fieldphoto_download", args=[self.photo.pk]
-        )
+        name = self.photo.file.name
         content = response.content.decode()
-        self.assertIn(protected_url, content)
-        self.assertNotIn(self.photo.file.url, content)
+        self.assertIn(f"/files/{name}", content)
+        self.assertNotIn(f"/media/{name}", content)
