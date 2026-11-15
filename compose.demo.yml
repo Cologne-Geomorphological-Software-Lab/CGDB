@@ -1,0 +1,67 @@
+# CGDB demo with synthetic data. Not a production setup.
+#
+#   docker compose -f compose.demo.yml up
+#
+# Then open http://localhost:8000 and log in as demo_pi (password: demo).
+# Remove everything, including the data, with:
+#
+#   docker compose -f compose.demo.yml down -v
+
+name: cgdb-demo
+
+x-app: &app
+  image: ghcr.io/cologne-geomorphological-software-lab/cgdb-demo:latest
+  build: .
+  environment:
+    CGDB_DB_HOST: db
+    CGDB_DB_PORT: "5432"
+    CGDB_DB_NAME: cgdb
+    CGDB_DB_USER: cgdb
+    CGDB_DB_PASSWORD: cgdb
+    CGDB_DEMO_PASSWORD: ${CGDB_DEMO_PASSWORD:-demo}
+  volumes:
+    - app_data:/data
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: cgdb
+      POSTGRES_USER: cgdb
+      POSTGRES_PASSWORD: cgdb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cgdb -d cgdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    <<: *app
+    command: ["web"]
+    # Bound to localhost only: the demo runs with DEBUG on and a known password.
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/login/', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  daemon:
+    <<: *app
+    command: ["daemon"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  app_data:

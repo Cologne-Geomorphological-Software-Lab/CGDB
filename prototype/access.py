@@ -13,10 +13,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
-from guardian.shortcuts import get_objects_for_user
+from django.db import transaction
+from guardian.shortcuts import assign_perm, get_objects_for_user, remove_perm
 
-from prototype.models import Project
+from prototype.models import Project, ProjectUserObjectPermission
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -30,6 +32,42 @@ if TYPE_CHECKING:
 # data_source CharField with a "literature" value — a model that merely lacks
 # a project link must not be treated as public by accident.
 LITERATURE_ELIGIBLE_MODELS = frozenset({"Location"})
+
+
+# Object permissions a project member receives. delete_project is granted
+# explicitly, never through membership.
+MEMBER_PERMS = ("view_project", "add_project", "change_project")
+
+
+def sync_member_permissions(project: Project) -> None:
+    """Make the member object permissions on *project* match project.members.
+
+    Adding a user to Project.members grants nothing by itself; this does.
+    Members get MEMBER_PERMS, former members lose them, except the project's
+    creator. Safe to call repeatedly.
+    """
+    user_model = get_user_model()
+    with transaction.atomic():
+        new_members = set(project.members.all())
+        existing_user_ids = set(
+            ProjectUserObjectPermission.objects.filter(
+                content_object=project,
+                permission__codename__in=MEMBER_PERMS,
+            ).values_list("user", flat=True),
+        )
+        existing_members = set(
+            user_model.objects.filter(pk__in=existing_user_ids)
+        )
+
+        for user in new_members:
+            for perm in MEMBER_PERMS:
+                assign_perm(perm, user, project)
+
+        creator = project.created_by
+        for user in existing_members - new_members:
+            if user != creator:
+                for perm in MEMBER_PERMS:
+                    remove_perm(perm, user, project)
 
 
 def is_superuser(user: object) -> bool:

@@ -10,6 +10,24 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
 
 ## [Unreleased]
 
+### Added
+
+- A Docker demo: `docker compose -f compose.demo.yml up` starts CGDB with
+  PostGIS, the Dagster daemon and synthetic data, without a local Python,
+  GDAL or Node setup (#279). See "Try the demo" in the README. It runs with
+  `DEBUG` on and a known password and is not meant for production. Release
+  tags publish the image to GHCR for amd64.
+- `manage.py load_demo_data` creates the demo project, the accounts
+  `demo_pi` and `demo_viewer` and six landform regions. It can run
+  repeatedly without duplicating data, `--reset` recreates everything, and
+  it refuses to run unless `DEBUG` is on.
+
+### Changed
+
+- The code that turns project membership into permissions moved from the
+  project admin to `prototype.access.sync_member_permissions`, so other code
+  can grant membership the same way. Behaviour is unchanged.
+
 ## [2.0.2] - 2026-11-15 "Arica"
 
 ### Security

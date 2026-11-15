@@ -15,7 +15,8 @@ from django.test import TestCase
 
 from guardian.shortcuts import assign_perm, get_perms
 
-from prototype.admin import ProjectAdmin, _MEMBER_PERMS
+from prototype.access import MEMBER_PERMS as _MEMBER_PERMS
+from prototype.admin import ProjectAdmin
 from prototype.models import Project
 
 
