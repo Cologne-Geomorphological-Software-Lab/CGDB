@@ -2,8 +2,8 @@
 
 This guide lists the manual steps needed to upgrade an existing CGDB
 deployment across a major version. Minor and patch releases need no steps
-beyond `manage.py deploy` (see [Deploying updates](README.md#deploying-updates)).
-What changed in each release is listed in [CHANGELOG.md](CHANGELOG.md).
+beyond `manage.py deploy` (see [Deploying updates](https://cologne-geomorphological-software-lab.github.io/CGDB/operations/deployment.html#deploying-updates)).
+What changed in each release is listed in [CHANGELOG.md](https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/blob/main/CHANGELOG.md).
 
 Before any upgrade:
 
@@ -154,7 +154,7 @@ Maintenance jobs (backup, DuckDB export, integrity check) now run through a
 persistent `dagster-daemon` instead of `dagster dev`. Replace the `dagster`
 process in your Procfile or process manager with the daemon, set
 `DAGSTER_HOME`, and install the systemd unit, following
-[Updating an existing deployment to the daemon-based setup](README.md#updating-an-existing-deployment-to-the-daemon-based-setup).
+[Updating an existing deployment to the daemon-based setup](https://cologne-geomorphological-software-lab.github.io/CGDB/operations/orchestration.html#updating-to-the-daemon-based-setup).
 
 ### 9. Behaviour changes to be aware of
 

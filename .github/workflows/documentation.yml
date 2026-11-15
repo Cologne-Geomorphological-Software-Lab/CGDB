@@ -1,41 +1,52 @@
 name: documentation
 
+# Builds the Sphinx docs on every push and PR, with warnings as errors. On
+# pushes to main the result is published to GitHub Pages; the repository's
+# Pages source must be set to "GitHub Actions".
+
 on: [push, pull_request, workflow_dispatch]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - uses: actions/setup-python@v5
         with:
-          python-version-file: "pyproject.toml"
+          python-version-file: ".python-version"
       - name: Install system packages (GDAL etc.)
         run: |
           sudo apt-get update
           sudo apt-get install -y binutils libproj-dev gdal-bin
       - name: Install dependencies
         run: uv sync
-      - name: Sphinx build
+      # conf.py calls django.setup(), which refuses to start without a
+      # SECRET_KEY; same throwaway settings as the test jobs.
+      - name: Create local_settings.py
         run: |
-          cd docs
-          uv run sphinx-apidoc -o ./source ../analysis -f
-          uv run make html
-      # Deploy to GitHub Pages is intentionally disabled: docs/source only
-      # documents the analysis app today (see TECH_DEBT_AUDIT.md X10) -
-      # auto-publishing a near-empty site as if it were the project's real
-      # docs would be misleading. The build step above still runs on every
-      # push, so breakage is caught; re-enable this step once index.rst
-      # covers all apps.
-      # - name: Deploy to GitHub Pages
-      #   uses: peaceiris/actions-gh-pages@v3
-      #   if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      #   with:
-      #     publish_branch: gh-pages
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     publish_dir: docs/build/html
-      #     force_orphan: true
+          echo 'SECRET_KEY = "ci-docs-key-not-for-production"' > prototype/local_settings.py
+          echo 'DEBUG = True' >> prototype/local_settings.py
+      - name: Sphinx build
+        run: uv run sphinx-build -b html -W --keep-going docs/source docs/build/html
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: docs/build/html
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
