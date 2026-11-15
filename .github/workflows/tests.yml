@@ -14,6 +14,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version-file: ".python-version"
+      # mypy's django-stubs plugin runs django.setup(), and GeoDjango needs
+      # the GDAL library to import.
+      - name: Install system packages (GDAL etc.)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils libproj-dev gdal-bin
       - name: Install dependencies
         run: uv sync
       - name: ruff check
