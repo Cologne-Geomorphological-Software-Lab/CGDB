@@ -40,6 +40,11 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   in the admin and the REST API. Before this, the API accepted a campaign of
   any project, whose label the map then showed to users of the transect's
   project. Existing transects are not changed.
+- The REST API's rate limits now hold across all web server processes. The
+  cache that stores their counters was kept per process, so the login limit
+  of 10 attempts per hour applied to each process separately and reset on
+  every restart. The default cache is now a database table, created by
+  `migrate`; a cache configured in `local_settings.py` takes precedence.
 
 ### Fixed
 

@@ -212,10 +212,16 @@ USE_TZ = True
 # CACHING
 # ==============================================================================
 
+# A database table, so every web server process (and every restart) shares
+# the same entries. That matters for the REST API throttle counters
+# (REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]): with a per-process cache, the
+# login limit applied per process and reset on every restart. The table is
+# created by migration prototype 0006. Override in local_settings.py, e.g.
+# with Redis, if the server has one.
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "cgdb-cache",
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cgdb_cache",
     }
 }
 

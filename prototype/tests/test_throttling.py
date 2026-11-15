@@ -40,8 +40,8 @@ _FAST_LOGIN_RATE = {**_PRODUCTION_RATES, "login": "2/min"}
 @patch.object(ScopedRateThrottle, "THROTTLE_RATES", _FAST_LOGIN_RATE)
 class LoginThrottleTest(TestCase):
     def setUp(self) -> None:
-        # Throttle counters are cache-backed (LocMemCache) and persist
-        # across tests within one process -- start each test from zero.
+        # Throttle counters live in the cache (the database cache, shared
+        # by all processes) and can outlive a test -- start from zero.
         cache.clear()
         self.client = APIClient()
         self.user = User.objects.create_user(
