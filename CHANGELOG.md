@@ -23,6 +23,11 @@ Upgrade steps for major versions are in [MIGRATING.md](MIGRATING.md).
   data: assign each of them "Viewer", "Researcher" or "Principal
   Investigator" before upgrading. `manage.py deploy` names these users
   before it asks for confirmation.
+- The admin checked raw measurements against the project of their samples,
+  which it could never reach, so only the role decided: a "Researcher" who
+  could only view a project could change and delete its raw measurements.
+  The admin now uses the measurement's own project, as the REST API does;
+  the list shows raw measurements by that project.
 - Uploaded files (field photos, raw and processed measurement data, analysis
   scripts, micro-XRF element maps, raster scenes) and maintenance results
   (database backups, DuckDB exports, integrity reports) are no longer stored

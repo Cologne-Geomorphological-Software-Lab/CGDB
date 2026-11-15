@@ -332,7 +332,11 @@ class RawMeasurementAdmin(
     change_form_show_cancel_button = True
     list_fullwidth = True
     warn_unsaved_form = True
-    project_path = "sample__location__project"
+    # The measurement's own project, as in the API and the file download.
+    # Not "sample__location__project": sample is a ManyToManyField, so that
+    # path never reached a project, and the object checks fell back to the
+    # role permission alone, letting a view-only member change and delete.
+    project_path = "project"
     list_display = [
         "device",
         "accessories",
