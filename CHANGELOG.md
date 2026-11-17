@@ -29,6 +29,14 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
 
 ### Changed
 
+- The DuckDB export writes list and dict values (`GrainSize.classes`,
+  `measured_data`) as JSON text and decimal values (`RadiocarbonDating.age`)
+  as floats. Before, lists arrived as Python reprs such as `[0.04, 0.05]`
+  and decimals as text, which no reader could parse without guesswork.
+  `Pollen`, `PollenCount` and `Parameter` are exported as dimension tables,
+  so pollen counts and the names of geochemistry parameters can be rebuilt
+  from the file; existing installations receive the three table
+  configurations on the next `migrate` (#284).
 - The code that turns project membership into permissions moved from the
   project admin to `prototype.access.sync_member_permissions`, so other code
   can grant membership the same way. Behaviour is unchanged.

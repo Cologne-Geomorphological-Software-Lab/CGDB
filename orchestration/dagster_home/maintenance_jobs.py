@@ -12,6 +12,7 @@ import os
 import subprocess
 import traceback
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -190,18 +191,28 @@ def _get_queryset(model: type[Model], cfg: DuckDBTableConfig) -> QuerySet:
     return model.objects.values()
 
 
+def _coerce_value(value: object) -> object:
+    """Return *value* in a form DuckDB can store and a reader can parse.
+
+    JSONField contents (GrainSize.classes, measured_data) become JSON text
+    instead of Python reprs, Decimal fields (RadiocarbonDating.age) become
+    floats instead of text, and anything else non-primitive (geometry WKB)
+    is stringified as before (#284).
+    """
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, (list, dict)):
+        return json.dumps(value)
+    if isinstance(value, Decimal):
+        return float(value)
+    return str(value)
+
+
 def _coerce_df_columns(df: pd.DataFrame) -> None:
-    """Coerce non-serialisable column values (e.g. geometry WKB) to strings in-place."""
+    """Coerce object columns in-place; see _coerce_value for the rules."""
     for col in df.columns:
         if df[col].dtype == object:
-            df[col] = df[col].apply(
-                lambda v: (
-                    str(v)
-                    if v is not None
-                    and not isinstance(v, (str, int, float, bool))
-                    else v
-                )
-            )
+            df[col] = df[col].apply(_coerce_value)
 
 
 _EXPORT_CHUNK_SIZE = 10_000

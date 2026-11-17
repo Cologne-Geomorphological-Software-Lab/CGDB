@@ -452,6 +452,38 @@ class TestCoerceDfColumns:
         # pandas-stubs' isna() overload can't narrow to the scalar case here.
         assert df["val"][2] is None or bool(pd.isna(df["val"][2]))
 
+    def test_lists_and_dicts_become_json(self):
+        """JSONField values are written as JSON, not Python reprs (#284)."""
+        import json
+
+        import pandas as pd
+
+        from orchestration.dagster_home.maintenance_jobs import _coerce_df_columns
+
+        df = pd.DataFrame(
+            {"classes": [[0.04, 0.05]], "meta": [{"a": None, "b": True}]}
+        )
+        _coerce_df_columns(df)
+        classes, meta = df["classes"][0], df["meta"][0]
+        assert isinstance(classes, str)
+        assert isinstance(meta, str)
+        assert classes == "[0.04, 0.05]"
+        assert json.loads(classes) == [0.04, 0.05]
+        assert json.loads(meta) == {"a": None, "b": True}
+
+    def test_decimals_become_floats(self):
+        """Decimal fields such as RadiocarbonDating.age are numeric, not text (#284)."""
+        from decimal import Decimal
+
+        import pandas as pd
+
+        from orchestration.dagster_home.maintenance_jobs import _coerce_df_columns
+
+        df = pd.DataFrame({"age": [Decimal("12.500"), None]})
+        _coerce_df_columns(df)
+        assert df["age"][0] == 12.5
+        assert isinstance(df["age"][0], float)
+
 
 # ===========================================================================
 # _export_model_table — per-table export logic

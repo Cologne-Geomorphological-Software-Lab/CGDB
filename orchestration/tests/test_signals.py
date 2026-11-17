@@ -69,6 +69,16 @@ class PopulateDefaultDuckDBConfigTests(TestCase):
         # get_or_create should not overwrite the manually set role
         self.assertEqual(cfg.role, "exclude")
 
+    def test_pollen_tables_and_parameters_are_seeded(self):
+        """Pollen, PollenCount and Parameter are exported as dimensions (#284)."""
+        DuckDBTableConfig.objects.all().delete()
+        populate_default_duckdb_config(sender=_fake_app_config("orchestration"))
+        for model_name in ("Pollen", "PollenCount", "Parameter"):
+            cfg = DuckDBTableConfig.objects.get(
+                app_label="analysis", model_name=model_name
+            )
+            self.assertEqual(cfg.role, "dim")
+
 
 class CheckDuckDBConfigModelsExistTests(TestCase):
     """tech debt O13: a renamed/removed model referenced in

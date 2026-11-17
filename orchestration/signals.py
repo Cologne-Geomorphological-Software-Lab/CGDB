@@ -19,6 +19,12 @@ _DEFAULT_DUCKDB_CONFIGS = [
     ("analysis", "GrainSize", "dim"),
     ("analysis", "GenericMeasurement", "dim"),
     ("analysis", "Counting", "dim"),
+    # Without these three, pollen counts and the names of geochemistry
+    # parameters cannot be rebuilt from the export (#284). Existing
+    # installations get them through the post_migrate handler below.
+    ("analysis", "Pollen", "dim"),
+    ("analysis", "PollenCount", "dim"),
+    ("analysis", "Parameter", "dim"),
     ("field_data", "Location", "dim"),
     ("field_data", "Layer", "dim"),
     ("field_data", "Campaign", "dim"),
