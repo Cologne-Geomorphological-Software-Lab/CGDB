@@ -4,7 +4,7 @@
 # Django's development server with DEBUG on (see docker/demo_settings.py).
 
 # --- Frontend: build the map bundle into static/dist ------------------------
-FROM node:22.14.0-bookworm-slim AS frontend
+FROM node:26.13.1-bookworm-slim AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
