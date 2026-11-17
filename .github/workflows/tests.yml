@@ -225,7 +225,6 @@ jobs:
       CGDB_DB_NAME: cgdb
       CGDB_DB_USER: cgdb
       CGDB_DB_PASSWORD: cgdb
-      CGDB_DATA_DIR: ${{ runner.temp }}/cgdb-data
       DJANGO_SECRET_KEY: ci-upgrade-key-not-for-production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -263,10 +262,13 @@ jobs:
           echo "No release tag found" >&2
           exit 1
       - name: Settings for both versions
-        # Gitignored, so it survives the checkouts below.
+        # Gitignored, so it survives the checkouts below. The data directory
+        # is set here rather than in the job's env, where the runner context
+        # is not available.
         run: |
           cp docker/demo_settings.py prototype/local_settings.py
-          mkdir -p "$CGDB_DATA_DIR/media" "$CGDB_DATA_DIR/protected_media"
+          echo "CGDB_DATA_DIR=$RUNNER_TEMP/cgdb-data" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/cgdb-data/media" "$RUNNER_TEMP/cgdb-data/protected_media"
       - name: Set up the database with the release
         run: |
           git checkout --quiet "$RELEASE_TAG"
