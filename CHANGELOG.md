@@ -33,6 +33,24 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
   and the migration guide. The README is now a short overview with links.
   `myst-parser` is a new dependency.
 
+### Fixed
+
+- The radiocarbon dating API now returns `data_quality` and `quality_note`,
+  which the admin and the import already had (#283).
+- "Save" on a measurement form shows the success message again and returns
+  to the sample's tab for that analysis, where the new record is listed.
+  Before, it landed on the sample's own tab with no message, as if nothing
+  had been saved (#242).
+- A `.$av` grain size upload that cannot be parsed is reported as an error
+  on the file field and nothing is saved. Before, the admin answered with a
+  server error and the form was lost. The file is now parsed while the form
+  is validated and no longer passes through a temporary file (#241).
+- A location whose coordinates PROJ cannot transform to WGS 84 is reported
+  as an error on the coordinate fields instead of a server error. On
+  Windows, the OSGeo4W setup now sets `PROJ_DATA` as well as `PROJ_LIB`, so
+  a `PROJ_DATA` inherited from another program no longer breaks every
+  transform, and a system check tries one UTM transform at startup (#249).
+
 ## [2.0.2] - 2026-11-15 "Arica"
 
 ### Security

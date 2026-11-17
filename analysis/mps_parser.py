@@ -80,6 +80,21 @@ def parse_mps_lines(lines: Sequence[str]) -> dict:
     }
 
 
+def mean_concentration(parsed: dict) -> float:
+    """Return the mean sample concentration of a parsed file.
+
+    Raises:
+        ValueError: The file has no ``Obs`` values in its ``[Size0..2]``
+            blocks. Arbitrary text parses to exactly this, so it doubles as
+            the check that an upload is a Sympatec export at all.
+    """
+    concentration = parsed["concentration"]
+    if not concentration:
+        msg = "No concentration data found in the file."
+        raise ValueError(msg)
+    return sum(concentration) / len(concentration)
+
+
 def read_mps_file(file_path: str | Path) -> dict:
     """Read and parse a .mps instrument file into a structured data dict."""
     with Path(file_path).open(encoding="latin-1", errors="ignore") as file:

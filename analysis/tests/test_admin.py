@@ -11,7 +11,12 @@ Sample URL hierarchy:
 from typing import TYPE_CHECKING, cast
 
 from django.contrib import admin as django_admin
+from django.contrib import messages
 from django.contrib.auth.models import User
+from django.contrib.messages import get_messages
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.contrib.sessions.middleware import SessionMiddleware
+from django.http import HttpResponse, HttpResponseRedirect
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
@@ -271,3 +276,80 @@ class RawMeasurementAdminOrderingTest(TestCase):
         self.assertEqual(
             response.context_data["cl"].result_count, 1
         )
+
+
+# ===========================================================================
+# "Save" returns to the sample's analysis tab, with the success message (#242)
+# ===========================================================================
+
+
+class SaveRedirectTest(_AdminSetup):
+    """A plain "Save" keeps Django's success message and lands on the tab.
+
+    The mixin used to intercept response_add/response_change before Django
+    added the message, so the user saw the sample form with no feedback.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.measurement = GenericMeasurement.objects.create(
+            sample=cls.sample,
+            method=cls.method,
+            parameter=cls.parameter,
+            value=1.0,
+        )
+
+    @property
+    def admin_instance(self):
+        # Not a setUpTestData attribute: Django deep-copies those per test,
+        # and a ModelAdmin instance cannot be copied.
+        return django_admin.site._registry[GenericMeasurement]
+
+    def _post_request(self, button: str) -> "AuthenticatedHttpRequest":
+        """A POST as the admin's change form sends it, with message storage."""
+        request = RequestFactory().post("/", {button: "1"})
+        request.user = self.superuser
+        SessionMiddleware(lambda _r: HttpResponse()).process_request(request)
+        # The messages framework reads this private attribute; outside the
+        # middleware stack it has to be attached by hand.
+        setattr(request, "_messages", FallbackStorage(request))  # noqa: B010
+        return cast("AuthenticatedHttpRequest", request)
+
+    def _assert_tab_redirect_with_message(
+        self,
+        request: "AuthenticatedHttpRequest",
+        response: HttpResponse,
+        verb: str,
+    ) -> None:
+        assert isinstance(response, HttpResponseRedirect)
+        self.assertEqual(
+            response.url,
+            reverse(
+                "admin:field_data_sample_genericmeasurement",
+                args=[self.sample.pk],
+            ),
+        )
+        stored = list(get_messages(request))
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(stored[0].level, messages.SUCCESS)
+        self.assertIn(f"was {verb} successfully", str(stored[0]))
+
+    def test_add_redirects_to_tab_with_message(self):
+        request = self._post_request("_save")
+        response = self.admin_instance.response_add(request, self.measurement)
+        self._assert_tab_redirect_with_message(request, response, "added")
+
+    def test_change_redirects_to_tab_with_message(self):
+        request = self._post_request("_save")
+        response = self.admin_instance.response_change(
+            request, self.measurement
+        )
+        self._assert_tab_redirect_with_message(request, response, "changed")
+
+    def test_save_and_continue_is_left_to_django(self):
+        response = self.admin_instance.response_change(
+            self._post_request("_continue"), self.measurement
+        )
+        assert isinstance(response, HttpResponseRedirect)
+        self.assertNotIn("/field_data/sample/", response.url)
