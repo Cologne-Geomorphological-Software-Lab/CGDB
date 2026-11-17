@@ -12,8 +12,7 @@ import matplotlib.pyplot as plt
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
+from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from django.urls import NoReverseMatch, reverse
 from django.utils.safestring import mark_safe
@@ -49,6 +48,7 @@ from .models import (
     RawMeasurement,
     RawProcessing,
 )
+from .mps_parser import mean_concentration, parse_mps_lines
 from .resources import (
     GrainSizeResource,
     LuminescenceDatingResource,
@@ -56,7 +56,6 @@ from .resources import (
 )
 
 if TYPE_CHECKING:
-    from django.core.files.uploadedfile import UploadedFile
     from django.db.models import QuerySet
     from django.http import HttpResponse
 
@@ -202,39 +201,49 @@ class SampleContextMixin(_SampleContextBase):
                     initial["sample"] = pk_list[0]
         return initial
 
-    def _redirect_to_sample(
-        self,
-        request: AuthenticatedHttpRequest,
-        obj: object,
-    ) -> HttpResponse | None:
+    def _redirect_to_sample(self, obj: object) -> HttpResponseRedirect | None:
+        """Redirect to the sample's tab for this analysis, if obj has a sample.
+
+        Falls back to the sample's change form for models without a
+        registered sub-view (SampleAdmin._ANALYSIS_REGISTRY).
+        """
         sample_id = getattr(obj, "sample_id", None)
-        if "_save" in request.POST and sample_id:
-            return redirect(
-                reverse(
-                    "admin:field_data_sample_change",
-                    args=[sample_id],
-                ),
+        if not sample_id:
+            return None
+        model_name = self.model._meta.model_name
+        try:
+            url = reverse(
+                f"admin:field_data_sample_{model_name}", args=[sample_id]
             )
-        return None
+        except NoReverseMatch:
+            url = reverse("admin:field_data_sample_change", args=[sample_id])
+        return HttpResponseRedirect(url)
 
-    def response_add(
+    # Django calls these two hooks only for a plain "Save", after it has
+    # added the success message. Overriding response_add/response_change
+    # instead, as this mixin used to, returned before the message existed,
+    # so the user saw the sample form with no sign that anything had been
+    # saved (#242).
+
+    def response_post_save_add(
         self,
         request: AuthenticatedHttpRequest,
         obj: object,
-        post_url_continue: str | None = None,
-    ) -> HttpResponse:
-        """Return to the parent Sample form after a successful add."""
-        r = self._redirect_to_sample(request, obj)
-        return r or super().response_add(request, obj, post_url_continue)
+    ) -> HttpResponseRedirect:
+        """Return to the parent sample's analysis tab after a successful add."""
+        return self._redirect_to_sample(obj) or super().response_post_save_add(
+            request, obj
+        )
 
-    def response_change(
+    def response_post_save_change(
         self,
         request: AuthenticatedHttpRequest,
         obj: object,
-    ) -> HttpResponse:
-        """Return to the parent Sample form after a successful change."""
-        r = self._redirect_to_sample(request, obj)
-        return r or super().response_change(request, obj)
+    ) -> HttpResponseRedirect:
+        """Return to the parent sample's analysis tab after a successful change."""
+        return self._redirect_to_sample(
+            obj
+        ) or super().response_post_save_change(request, obj)
 
 
 # ======================
@@ -835,13 +844,29 @@ class GrainSizeImportForm(forms.ModelForm):
 
         try:
             file.seek(0)
-            first_chunk = file.read(1024)
+            content = file.read()
             file.seek(0)
-
-            if len(first_chunk) == 0:
-                raise ValidationError(_("File is empty or corrupted."))
-        except Exception as e:
+        except OSError as e:
             raise ValidationError(_("Unable to read file: %s") % e) from None
+        if not content:
+            raise ValidationError(_("File is empty or corrupted."))
+
+        # Parse here rather than in save_model: at that point the form is
+        # already valid and a parse error can only surface as a 500 (#241).
+        # The result is kept for GrainSizeAdmin.process_file.
+        parsed = parse_mps_lines(
+            content.decode("latin-1", errors="ignore").splitlines()
+        )
+        try:
+            mean_concentration(parsed)
+        except ValueError:
+            raise ValidationError(
+                _(
+                    "This file contains no concentration data. "
+                    "Is it a Sympatec .$av export?"
+                ),
+            ) from None
+        self.parsed_av = parsed
 
         return file
 
@@ -1035,10 +1060,9 @@ class GrainSizeAdmin(
         form: Any,
         change: bool,
     ) -> None:
-        """Parse and import an uploaded .av file before delegating to super."""
-        file = form.cleaned_data.get("file")
-        if file:
-            self.process_file(file, obj)
+        """Import the .$av file parsed by the form before delegating to super."""
+        if form.cleaned_data.get("file"):
+            self.process_file(form.parsed_av, obj)
             obj.source = "file"
             self.message_user(
                 request,
@@ -1047,16 +1071,10 @@ class GrainSizeAdmin(
             )
         super().save_model(request, obj, form, change)
 
-    def process_file(self, file: UploadedFile, obj: GrainSize) -> None:
-        """Save the uploaded file to temp storage, parse it, and populate obj fields."""
-        file_path = default_storage.save(
-            f"tmp/{file.name}",
-            ContentFile(file.read()),
-        )
-        tmp_file = default_storage.path(file_path)
-
-        grain_size_instance = GrainSize.from_file(
-            tmp_file,
+    def process_file(self, parsed: dict, obj: GrainSize) -> None:
+        """Populate obj from the parsed file (GrainSizeImportForm.clean_file)."""
+        grain_size_instance = GrainSize.from_parsed(
+            parsed,
             obj.sample,
             obj.method,
         )
@@ -1075,7 +1093,6 @@ class GrainSizeAdmin(
         obj.fwskew = grain_size_instance.fwskew
         obj.fwkurt = grain_size_instance.fwkurt
         obj.sample_concentration = grain_size_instance.sample_concentration
-        default_storage.delete(file_path)
 
     def plot(self, obj: GrainSize) -> str:
         """Render a log-scale grain size distribution chart as an inline base64 PNG."""

@@ -16,7 +16,14 @@ from django.test import Client, TestCase
 from guardian.shortcuts import assign_perm
 from rest_framework.test import APIClient
 
-from analysis.models import Algorithm, Counting, GrainSize, Pollen, PollenCount
+from analysis.models import (
+    Algorithm,
+    Counting,
+    GrainSize,
+    Pollen,
+    PollenCount,
+    RadiocarbonDating,
+)
 from field_data.models import Location, Sample
 from prototype.models import Project
 from prototype.tests.roles import give_role
@@ -109,6 +116,41 @@ class GrainSizeViewSetTest(_BaseApiTest):
         client = _make_client()
         resp = client.get("/api/v1/grain-sizes/")
         assert resp.status_code in (401, 403)
+
+
+class RadiocarbonDatingViewSetTest(_BaseApiTest):
+    """The serializer exposes the quality assessment (#283)."""
+
+    dating: ClassVar[RadiocarbonDating]
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        cls.dating = RadiocarbonDating.objects.create(
+            sample=cls.sample,
+            lab="Poznań",
+            lab_id="Poz-283",
+            data_quality="rejected",
+            quality_note="Contaminated by modern carbon.",
+        )
+
+    def test_detail_includes_data_quality_fields(self) -> None:
+        resp = self.client.get(
+            f"/api/v1/radiocarbon-datings/{self.dating.pk}/"
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["data_quality"] == "rejected"
+        assert body["quality_note"] == "Contaminated by modern carbon."
+
+    def test_list_includes_data_quality_fields(self) -> None:
+        resp = self.client.get("/api/v1/radiocarbon-datings/")
+        assert resp.status_code == 200
+        (item,) = [
+            r for r in resp.json()["results"] if r["id"] == self.dating.pk
+        ]
+        assert item["data_quality"] == "rejected"
+        assert "quality_note" in item
 
 
 class AlgorithmViewSetTest(_BaseApiTest):

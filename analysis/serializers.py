@@ -162,6 +162,8 @@ class RadiocarbonDatingSerializer(serializers.ModelSerializer):
             "lab",
             "lab_id",
             "age",
+            "data_quality",
+            "quality_note",
             "created_at",
             "modified_at",
         ]

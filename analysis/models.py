@@ -11,7 +11,11 @@ from zoneinfo import ZoneInfo
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from analysis.mps_parser import STATS_KEY_MAP, read_mps_file
+from analysis.mps_parser import (
+    STATS_KEY_MAP,
+    mean_concentration,
+    read_mps_file,
+)
 from bibliography.models import Reference
 from field_data.models import Sample
 from laboratory.models import Accessory, Device, Method
@@ -1770,23 +1774,31 @@ class GrainSize(BaseModel):
         sample: Sample,
         method: Method,
     ) -> Self:
-        """Create a GrainSize instance by parsing a .mps instrument file."""
-        parsed = read_mps_file(file_path)
+        """Create a GrainSize instance by parsing a .$av instrument file.
 
-        try:
-            sample_concentration = sum(parsed["concentration"]) / len(
-                parsed["concentration"],
-            )
-        except (ZeroDivisionError, TypeError):
-            msg = "No concentration data found in the file."
-            raise ValueError(msg) from None
+        Raises:
+            ValueError: The file holds no concentration data.
+        """
+        return cls.from_parsed(read_mps_file(file_path), sample, method)
 
+    @classmethod
+    def from_parsed(
+        cls,
+        parsed: dict,
+        sample: Sample,
+        method: Method,
+    ) -> Self:
+        """Create an unsaved instance from ``parse_mps_lines()`` output.
+
+        Raises:
+            ValueError: The file holds no concentration data.
+        """
         return cls(
             sample=sample,
             method=method,
             classes=parsed["classes"],
             measured_data=parsed["measured_data"],
-            sample_concentration=sample_concentration,
+            sample_concentration=mean_concentration(parsed),
             **{k: parsed[k] for k in STATS_KEY_MAP.values()},
         )
 

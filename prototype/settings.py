@@ -48,6 +48,11 @@ if os.name == "nt" and _osgeo_bin.exists():
         )
     GDAL_LIBRARY_PATH = str(_osgeo_bin / "gdal311.dll")
     GEOS_LIBRARY_PATH = str(_osgeo_bin / "geos_c.dll")
+    # PROJ reads PROJ_DATA first and falls back to the older PROJ_LIB. Set
+    # both, because a PROJ_DATA inherited from another program's environment
+    # (rasterio, QGIS) would otherwise win and break every transform from a
+    # non-WGS 84 CRS (#249).
+    os.environ["PROJ_DATA"] = "C:/OSGeo4W/share/proj"
     os.environ["PROJ_LIB"] = "C:/OSGeo4W/share/proj"
     import ctypes as _ctypes
 

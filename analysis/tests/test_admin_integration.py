@@ -80,6 +80,27 @@ class GrainSizeAdminUploadTest(TestCase):
         self.assertEqual(gs.median, 14.0)
         self.assertEqual(gs.fwkurt, 2.9)
 
+    def test_unparseable_file_is_a_form_error_not_a_500(self):
+        """Arbitrary text named .$av is rejected at the file field (#241)."""
+        upload = SimpleUploadedFile(
+            "x.$av", b"not a Sympatec export\n", content_type="text/plain"
+        )
+        url = reverse("admin:analysis_grainsize_add")
+        response = self.client.post(
+            url,
+            data={
+                "sample": self.sample.pk,
+                "method": "L",
+                "file": upload,
+                "_save": "Save",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        errors = response.context["adminform"].form.errors
+        self.assertIn("file", errors)
+        self.assertIn("no concentration data", errors["file"][0])
+        self.assertFalse(GrainSize.objects.filter(sample=self.sample).exists())
+
 
 class MicroXRFPreviewTest(TestCase):
     """Render preview() against a small, real TIFF."""
