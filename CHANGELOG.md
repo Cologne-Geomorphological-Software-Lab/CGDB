@@ -48,6 +48,13 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
 
 ### Fixed
 
+- A page the user may not open shows a styled "Access denied" page inside
+  the admin layout, with the sidebar, a way back and a note on what access
+  needs (a role group and project membership). Before, it was a bare
+  "403 Forbidden" on a white page. The other dead ends from the same
+  report, "Delete selected" offered to Viewers and a sidebar link to Data
+  Sources that Viewers could not open, were closed by the role groups in
+  2.0.2; tests now pin both (#245).
 - The radiocarbon dating API now returns `data_quality` and `quality_note`,
   which the admin and the import already had (#283).
 - "Save" on a measurement form shows the success message again and returns

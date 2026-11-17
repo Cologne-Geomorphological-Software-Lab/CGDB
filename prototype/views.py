@@ -501,3 +501,19 @@ def _build_monthly_performance(
         [f"{MONTH_NAMES[month - 1]} {year}", counts[(year, month)]]
         for year, month in months
     ]
+
+
+def permission_denied(
+    request: HttpRequest, exception: Exception | None = None
+) -> HttpResponse:
+    """Render the 403 page inside the admin layout (handler403, #245).
+
+    Django's default handler answers with a bare "403 Forbidden". This one
+    keeps the sidebar and offers a way back, and says what the permission
+    model expects: a role group and membership of the project.
+    """
+    from django.contrib import admin as _admin
+
+    context = dict(_admin.site.each_context(request))
+    context["exception"] = str(exception) if exception else ""
+    return render(request, "403.html", context, status=403)
