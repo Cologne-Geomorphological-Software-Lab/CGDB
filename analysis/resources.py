@@ -234,6 +234,10 @@ class GrainSizeResource(ProjectScopedResourceMixin, resources.ModelResource):
         model = GrainSize
         fields = ("id", *GRAIN_SIZE_INPUT_FIELDS, *GRAIN_SIZE_STATS_FIELDS)
         export_order = fields
+        # Runs GrainSize.clean() per imported row, so a distribution that
+        # the admin form would reject is reported in the import preview
+        # instead of being saved with truncated fractions (#282).
+        clean_model_instances = True
 
     def before_save_instance(
         self,

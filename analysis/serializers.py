@@ -8,6 +8,7 @@ from .models import (
     Algorithm,
     CosmogenicNuclideDating,
     Counting,
+    DistributionError,
     GenericMeasurement,
     GrainSize,
     LuminescenceDating,
@@ -21,6 +22,7 @@ from .models import (
     RawMeasurement,
     RawProcessing,
     samples_outside_project,
+    validate_distribution,
 )
 
 
@@ -255,6 +257,21 @@ class GenericMeasurementSerializer(serializers.ModelSerializer):
 
 class GrainSizeSerializer(serializers.ModelSerializer):
     """Serializer for GrainSize records."""
+
+    def validate(self, attrs: dict) -> dict:
+        """Check the distribution lists like the admin form does (#282)."""
+        classes = attrs.get("classes", getattr(self.instance, "classes", None))
+        measured = attrs.get(
+            "measured_data", getattr(self.instance, "measured_data", None)
+        )
+        if classes is not None and measured is not None:
+            try:
+                validate_distribution(classes, measured)
+            except DistributionError as exc:
+                raise serializers.ValidationError(
+                    {exc.field: str(exc)}
+                ) from exc
+        return attrs
 
     class Meta:
         """Serializer metadata."""

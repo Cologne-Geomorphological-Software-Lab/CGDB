@@ -16,9 +16,14 @@ Boundary thresholds (µm):
 
 import json
 
+from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 
-from analysis.models import GrainSize
+from analysis.models import (
+    DistributionError,
+    GrainSize,
+    validate_distribution,
+)
 
 
 def _make_grain_size(classes: list, measured_data: object):
@@ -217,3 +222,71 @@ class ReclassifyZeroTotalTest(SimpleTestCase):
         gs = _make_grain_size([1.0], [1.0])
         gs._reclassify()  # Must not raise
         self.assertAlmostEqual(gs.clay, 100.0)
+
+
+class ValidateDistributionTest(SimpleTestCase):
+    """validate_distribution() names the field and the rule that failed (#282)."""
+
+    def test_valid_distribution_passes(self):
+        validate_distribution([1.0, 4.0, 10.0], [20, 50.0, 30])
+
+    def test_mismatched_lengths_are_rejected(self):
+        """The case from #282: the extra value used to be truncated silently."""
+        with self.assertRaises(DistributionError) as cm:
+            validate_distribution([1.0, 100.0], [40.0, 60.0, 100.0])
+        self.assertEqual(cm.exception.field, "measured_data")
+        self.assertIn("3 values for 2 classes", str(cm.exception))
+
+    def test_classes_must_increase(self):
+        with self.assertRaises(DistributionError) as cm:
+            validate_distribution([1.0, 1.0, 4.0], [1.0, 1.0, 1.0])
+        self.assertEqual(cm.exception.field, "classes")
+
+    def test_classes_must_be_positive(self):
+        with self.assertRaises(DistributionError) as cm:
+            validate_distribution([0.0, 4.0], [1.0, 1.0])
+        self.assertEqual(cm.exception.field, "classes")
+
+    def test_negative_values_are_rejected(self):
+        with self.assertRaises(DistributionError) as cm:
+            validate_distribution([1.0, 4.0], [10.0, -1.0])
+        self.assertEqual(cm.exception.field, "measured_data")
+
+    def test_non_numeric_entries_are_rejected(self):
+        with self.assertRaises(DistributionError):
+            validate_distribution([1.0, "4"], [1.0, 1.0])
+        with self.assertRaises(DistributionError):
+            validate_distribution([1.0, 4.0], [1.0, True])
+
+    def test_empty_lists_are_rejected(self):
+        with self.assertRaises(DistributionError):
+            validate_distribution([], [])
+
+
+class ReclassifyValidationTest(SimpleTestCase):
+    """_reclassify() refuses mismatched lists instead of truncating them."""
+
+    def test_mismatched_lists_raise_instead_of_truncating(self):
+        gs = _make_grain_size([1.0, 100.0], [40.0, 60.0, 100.0])
+        with self.assertRaises(ValueError):
+            gs._reclassify()
+
+
+class GrainSizeCleanTest(SimpleTestCase):
+    """GrainSize.clean() turns a DistributionError into a field error."""
+
+    def test_clean_reports_the_offending_field(self):
+        gs = _make_grain_size([1.0, 100.0], [40.0, 60.0, 100.0])
+        with self.assertRaises(ValidationError) as cm:
+            gs.clean()
+        self.assertIn("measured_data", cm.exception.error_dict)
+
+    def test_clean_reports_invalid_json(self):
+        gs = _make_grain_size([1.0], "[not json")
+        with self.assertRaises(ValidationError) as cm:
+            gs.clean()
+        self.assertIn("measured_data", cm.exception.error_dict)
+
+    def test_clean_skips_when_no_data(self):
+        gs = _make_grain_size([1.0], None)
+        gs.clean()

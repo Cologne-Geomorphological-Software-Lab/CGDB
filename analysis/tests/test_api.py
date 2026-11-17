@@ -157,6 +157,37 @@ class RawMeasurementSerializerTest(_BaseApiTest):
         assert "AAP_S_B" in errors
 
 
+class GrainSizeSerializerTest(_BaseApiTest):
+    """The serializer rejects a distribution the admin would reject (#282)."""
+
+    def test_mismatched_distribution_is_rejected(self) -> None:
+        from analysis.serializers import GrainSizeSerializer
+
+        serializer = GrainSizeSerializer(
+            data={
+                "sample": self.sample.pk,
+                "method": "L",
+                "classes": [1.0, 100.0],
+                "measured_data": [40.0, 60.0, 100.0],
+            }
+        )
+        assert not serializer.is_valid()
+        assert "measured_data" in serializer.errors
+
+    def test_matching_distribution_is_accepted(self) -> None:
+        from analysis.serializers import GrainSizeSerializer
+
+        serializer = GrainSizeSerializer(
+            data={
+                "sample": self.sample.pk,
+                "method": "L",
+                "classes": [1.0, 100.0],
+                "measured_data": [40.0, 60.0],
+            }
+        )
+        assert serializer.is_valid(), serializer.errors
+
+
 class RadiocarbonDatingViewSetTest(_BaseApiTest):
     """The serializer exposes the quality assessment (#283)."""
 

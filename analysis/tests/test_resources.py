@@ -74,3 +74,20 @@ class GrainSizeResourceImportTest(TestCase):
             [self.sample.identifier, "C"],
         )
         self.assertEqual(gs.source, "file")
+
+    def test_mismatched_distribution_is_rejected_in_the_preview(self):
+        """clean_model_instances runs GrainSize.clean() per row (#282)."""
+        import tablib
+
+        dataset = tablib.Dataset(
+            headers=["sample", "method", "classes", "measured_data"]
+        )
+        dataset.append(
+            [self.sample.identifier, "L", "[1.0, 100.0]", "[40.0, 60.0, 100.0]"]
+        )
+        result = GrainSizeResource().import_data(dataset, raise_errors=False)
+        self.assertTrue(result.has_validation_errors())
+        self.assertIn(
+            "measured_data", str(result.invalid_rows[0].error_dict)
+        )
+        self.assertFalse(GrainSize.objects.filter(sample=self.sample).exists())
