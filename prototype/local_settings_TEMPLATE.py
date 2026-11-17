@@ -31,12 +31,14 @@ DATABASES = {
 # STATIC FILES & MEDIA
 # ==============================================================================
 
-STATIC_URL = ""
-STATIC_ROOT = ""
-STATICFILES_DIRS = []
-
-MEDIA_URL = ""
-MEDIA_ROOT = ""
+# settings.py already serves a development checkout: STATIC_URL "/static/",
+# the project's static/ directory in STATICFILES_DIRS, uploads under media/.
+# In production, point STATIC_ROOT (the collectstatic target) and MEDIA_ROOT
+# at the directories the web server serves. Keep static/ in
+# STATICFILES_DIRS: it holds the logo and the stylesheet that gives the
+# geometry widget its height.
+# STATIC_ROOT = "/srv/cgdb/staticfiles"
+# MEDIA_ROOT = "/srv/cgdb/media"
 
 # Uploads and backups that need a permission check (see
 # docs/source/operations/protected-files.md). Must lie outside every
