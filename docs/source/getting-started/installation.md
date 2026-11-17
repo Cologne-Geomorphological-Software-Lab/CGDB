@@ -40,7 +40,7 @@ Copy `prototype/local_settings_TEMPLATE.py` to `prototype/local_settings.py`:
 cp prototype/local_settings_TEMPLATE.py prototype/local_settings.py
 ```
 
-Edit `local_settings.py` following the Django documentation, especially the [GeoDjango installation guide](https://docs.djangoproject.com/en/stable/ref/contrib/gis/install/). SpatiaLite is the simplest database to start with. Set `DEBUG = True`, and set `STATIC_URL` and `MEDIA_URL` to suitable values, for example:
+Edit `local_settings.py` following the Django documentation, especially the [GeoDjango installation guide](https://docs.djangoproject.com/en/stable/ref/contrib/gis/install/). SpatiaLite is the simplest database to start with. Set `DEBUG = True` and the database, for example:
 
 ```python
 DATABASES = {
@@ -49,9 +49,9 @@ DATABASES = {
         "NAME": "db.sqlite3",
     }
 }
-STATIC_URL = "/static/"
-MEDIA_URL = "/media/"
 ```
+
+Static files and uploads need no settings for development: `settings.py` serves the project's `static/` directory at `/static/` and stores uploads under `media/`. Production deployments set `STATIC_ROOT` and `MEDIA_ROOT` in `local_settings.py`, as the template shows. Keep `static/` in `STATICFILES_DIRS` in every setup; it holds the logo and the stylesheet that gives the geometry widget its height.
 
 Install the geospatial libraries and SpatiaLite:
 

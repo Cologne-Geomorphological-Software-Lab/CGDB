@@ -373,6 +373,18 @@ ALLOWED_HOSTS: list[str] = []
 # local_settings.py if the server's actual raster corpus lives elsewhere.
 RASTER_CORPUS_ROOT = Path("/corpus")
 
+# Static files and uploads. These defaults serve a development checkout;
+# production sets STATIC_ROOT and MEDIA_ROOT in local_settings.py. static/
+# must stay in STATICFILES_DIRS wherever CGDB runs: it holds the logo and
+# dj_map.css, which gives GeoDjango's map widget its height. Without it the
+# Geometry field of study areas, transects and landforms collapses to a
+# bare "Delete all Features" and nothing can be drawn (#253, #212).
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # Uploaded files that belong to project data or to maintenance runs
 # (backups, exports). They are stored here, never under MEDIA_ROOT, and only
 # reach a browser through the permission-checked view at /files/ — so they

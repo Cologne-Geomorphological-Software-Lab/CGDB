@@ -113,6 +113,7 @@ CodeQL runs through GitHub's default setup, configured in the repository setting
 | `prototype` | `prototype/tests/test_middleware.py` | `CurrentUserMiddleware` thread-local request-user tracking |
 | `prototype` | `prototype/tests/test_admin.py` | `ProjectAdmin` member sync through `prototype.access.sync_member_permissions()` |
 | `prototype` | `prototype/tests/test_admin_project_scoping.py` | Regression tests for admin base-class MRO ordering across project-scoped admins |
+| `prototype` | `prototype/tests/test_admin_tabs.py` | The sample tab bar: hidden without a sample context, sample-scoped links with one |
 | `prototype` | `prototype/tests/test_permission_groups.py` | `create_permission_groups()` |
 | `prototype` | `prototype/tests/test_signals.py` | `assign_permissions_to_creator` post_save signal |
 | `prototype` | `prototype/tests/test_deploy_command.py` | `deploy` management command (step order, `--dry-run`, `--yes`, dirty-tree abort, migration-failure and backup-path reporting, post-restart health checks) |
