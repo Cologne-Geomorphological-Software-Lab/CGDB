@@ -226,6 +226,10 @@ jobs:
       CGDB_DB_USER: cgdb
       CGDB_DB_PASSWORD: cgdb
       DJANGO_SECRET_KEY: ci-upgrade-key-not-for-production
+      # demo_settings.py runs with DEBUG on, which makes django-vite point
+      # at the Vite dev server. Serve the built bundle instead, like the
+      # demo image does.
+      VITE_DEV_MODE: "false"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
