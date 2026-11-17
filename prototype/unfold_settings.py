@@ -36,6 +36,18 @@ def _sample_pk_from_request(request: HttpRequest) -> str | None:
     return result
 
 
+def _has_sample_context(request: HttpRequest) -> bool:
+    """Whether the request belongs to one sample; used as the tabs' permission.
+
+    Without a sample, every link function below falls back to a global
+    list. On the sample add form that sent users who wanted to add a
+    measurement to the new sample to the list of all measurements, and the
+    form's entries were lost on the way (#271). Unfold hides tab items whose
+    permission callback returns False.
+    """
+    return _sample_pk_from_request(request) is not None
+
+
 def _compute_sample_pk(request: HttpRequest) -> str | None:
     m = re.search(r"/field_data/sample/(\d+)/", request.path)
     if m:
@@ -482,6 +494,7 @@ UNFOLD = {
                 {
                     "title": _("Sample"),
                     "link": _sample_link,
+                    "permission": _has_sample_context,
                     # Match only /field_data/sample/<pk>/change/ — not measurement sub-paths
                     "active": lambda request: bool(
                         re.search(
@@ -493,6 +506,7 @@ UNFOLD = {
                 {
                     "title": _("Generic Measurements"),
                     "link": _generic_measurement_link,
+                    "permission": _has_sample_context,
                     "active": lambda request: (
                         "/genericmeasurement/" in request.path
                     ),
@@ -500,11 +514,13 @@ UNFOLD = {
                 {
                     "title": _("Grain Size"),
                     "link": _grainsize_link,
+                    "permission": _has_sample_context,
                     "active": lambda request: "/grainsize/" in request.path,
                 },
                 {
                     "title": _("Luminescence Dating"),
                     "link": _luminescence_link,
+                    "permission": _has_sample_context,
                     "active": lambda request: (
                         "/luminescencedating/" in request.path
                     ),
@@ -512,6 +528,7 @@ UNFOLD = {
                 {
                     "title": _("Radiocarbon Dating"),
                     "link": _radiocarbon_link,
+                    "permission": _has_sample_context,
                     "active": lambda request: (
                         "/radiocarbondating/" in request.path
                     ),
@@ -519,11 +536,13 @@ UNFOLD = {
                 {
                     "title": _("Pollen"),
                     "link": _counting_link,
+                    "permission": _has_sample_context,
                     "active": lambda request: "/counting/" in request.path,
                 },
                 {
                     "title": _("MicroXRF"),
                     "link": _microxrf_link,
+                    "permission": _has_sample_context,
                     "active": lambda request: (
                         "/microxrfmeasurement/" in request.path
                     ),
@@ -531,6 +550,7 @@ UNFOLD = {
                 {
                     "title": _("Cosmogenic Nuclides"),
                     "link": _cosmogenic_link,
+                    "permission": _has_sample_context,
                     "active": lambda request: (
                         "/cosmogenicnuclidedating/" in request.path
                     ),
