@@ -847,6 +847,7 @@ class RadiocarbonDating(BaseModel):
         lab (CharField): Laboratory name.
         lab_id (CharField): Laboratory identifier for the sample.
         age (DecimalField): Age in kiloannum.
+        age_error (DecimalField): Uncertainty of the age in kiloannum.
         data_quality (CharField): Internal data quality assessment.
         quality_note (TextField): Notes explaining the quality assessment.
     """
@@ -877,6 +878,16 @@ class RadiocarbonDating(BaseModel):
         blank=True,
         null=True,
     )
+    # Stopgap until the radiocarbon model is restructured after Millard
+    # (2014) in 3.0 (#197): a date without its uncertainty cannot be
+    # calibrated, compared or published (#194).
+    age_error = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        help_text="ka, uncertainty of the age as reported by the laboratory",
+        blank=True,
+        null=True,
+    )
     data_quality = models.CharField(
         max_length=15,
         choices=QUALITY_CHOICES,
@@ -886,7 +897,12 @@ class RadiocarbonDating(BaseModel):
 
     def __str__(self) -> str:
         """Return a label with lab ID and age."""
-        age_str = f"{self.age} ka" if self.age is not None else "undated"
+        if self.age is None:
+            age_str = "undated"
+        elif self.age_error is None:
+            age_str = f"{self.age} ka"
+        else:
+            age_str = f"{self.age} ± {self.age_error} ka"
         return f"{self.lab_id} ({age_str})"
 
 

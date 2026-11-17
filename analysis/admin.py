@@ -634,7 +634,7 @@ class RadiocarbonDatingAdmin(
     project_path = "sample__location__project"
     raw_id_fields = ["sample"]
     list_fullwidth = True
-    list_display = ["lab_id", "lab", "age", "data_quality"]
+    list_display = ["lab_id", "lab", "age", "age_error", "data_quality"]
     ordering = ["-id"]
 
 

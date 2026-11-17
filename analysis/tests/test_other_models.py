@@ -93,6 +93,24 @@ class RadiocarbonDatingStrTest(_AnalysisExtSetup):
         self.assertIn("Poz-99999", result)
         self.assertIn("undated", result)
 
+    def test_str_with_age_error(self):
+        """The uncertainty is shown next to the age (#194)."""
+        dating = RadiocarbonDating.objects.create(
+            sample=self.sample,
+            lab="Poznań",
+            lab_id="Poz-194",
+            age=Decimal("12.500"),
+            age_error=Decimal("0.050"),
+        )
+        self.assertEqual(str(dating), "Poz-194 (12.500 ± 0.050 ka)")
+
+    def test_age_error_is_optional(self):
+        dating = RadiocarbonDating.objects.create(
+            sample=self.sample, lab="Poznań", lab_id="Poz-195"
+        )
+        dating.refresh_from_db()
+        self.assertIsNone(dating.age_error)
+
 
 class RadiocarbonDatingQualityTest(_AnalysisExtSetup):
 

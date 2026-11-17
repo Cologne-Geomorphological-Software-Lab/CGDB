@@ -9,6 +9,7 @@ viewsets (see F4 in the architecture-audit plan):
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import TYPE_CHECKING, ClassVar, cast
 
 from django.contrib.auth.models import User
@@ -130,6 +131,8 @@ class RadiocarbonDatingViewSetTest(_BaseApiTest):
             sample=cls.sample,
             lab="Poznań",
             lab_id="Poz-283",
+            age=Decimal("12.500"),
+            age_error=Decimal("0.050"),
             data_quality="rejected",
             quality_note="Contaminated by modern carbon.",
         )
@@ -142,6 +145,15 @@ class RadiocarbonDatingViewSetTest(_BaseApiTest):
         body = resp.json()
         assert body["data_quality"] == "rejected"
         assert body["quality_note"] == "Contaminated by modern carbon."
+
+    def test_detail_includes_age_error(self) -> None:
+        """The uncertainty travels with the age (#194)."""
+        resp = self.client.get(
+            f"/api/v1/radiocarbon-datings/{self.dating.pk}/"
+        )
+        body = resp.json()
+        assert Decimal(str(body["age"])) == Decimal("12.500")
+        assert Decimal(str(body["age_error"])) == Decimal("0.050")
 
     def test_list_includes_data_quality_fields(self) -> None:
         resp = self.client.get("/api/v1/radiocarbon-datings/")
