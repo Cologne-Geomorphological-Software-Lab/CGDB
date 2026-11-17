@@ -10,6 +10,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import RestrictedError
 from django.test import SimpleTestCase, TestCase
@@ -405,3 +406,64 @@ class SampleDeletionProtectionTest(_AnalysisExtSetup):
         MicroXRFMeasurement.objects.create(sample=s)
         with self.assertRaises(RestrictedError):
             s.delete()
+
+
+# ===========================================================================
+# PollenCount: one row per taxon and counting (#285, validation stopgap)
+# ===========================================================================
+
+
+class PollenCountDuplicateTaxonTest(_AnalysisExtSetup):
+    def setUp(self):
+        self.counting = Counting.objects.create(
+            sample=self.sample, type="Absolute numbers"
+        )
+        self.pollen = Pollen.objects.create(name="Pinus", token="PIN")
+        PollenCount.objects.create(
+            counting=self.counting, pollen=self.pollen, number=10
+        )
+
+    def test_second_count_of_the_same_taxon_fails_validation(self):
+        duplicate = PollenCount(
+            counting=self.counting, pollen=self.pollen, number=11
+        )
+        with self.assertRaises(ValidationError) as cm:
+            duplicate.full_clean()
+        self.assertIn("pollen", cm.exception.error_dict)
+
+    def test_editing_the_existing_row_passes(self):
+        existing = PollenCount.objects.get(
+            counting=self.counting, pollen=self.pollen
+        )
+        existing.number = 12
+        existing.full_clean()
+
+    def test_inline_formset_rejects_the_same_taxon_twice(self):
+        from django.forms.models import inlineformset_factory
+
+        from analysis.admin import PollenCountInlineFormSet
+
+        formset_class = inlineformset_factory(
+            Counting,
+            PollenCount,
+            formset=PollenCountInlineFormSet,
+            fields=["pollen", "number"],
+            extra=2,
+        )
+        other = Pollen.objects.create(name="Quercus", token="QUE")
+        prefix = "analysis_pollen_counts"
+        data = {
+            f"{prefix}-TOTAL_FORMS": "2",
+            f"{prefix}-INITIAL_FORMS": "0",
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+            f"{prefix}-0-pollen": str(other.pk),
+            f"{prefix}-0-number": "1",
+            f"{prefix}-1-pollen": str(other.pk),
+            f"{prefix}-1-number": "2",
+        }
+        formset = formset_class(
+            data, instance=self.counting, prefix=prefix
+        )
+        self.assertFalse(formset.is_valid())
+        self.assertIn("pollen", formset.forms[1].errors)

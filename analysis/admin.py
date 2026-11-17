@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.forms.models import BaseInlineFormSet
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from django.urls import NoReverseMatch, reverse
@@ -24,6 +25,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.filters.admin import RelatedDropdownFilter
 from unfold.decorators import display
 
+from field_data.models import Sample
 from prototype.mixins import (
     CreatedUpdatedModelAdminMixin,
     NestedProjectPermissionMixin,
@@ -47,6 +49,7 @@ from .models import (
     RadiocarbonDating,
     RawMeasurement,
     RawProcessing,
+    samples_outside_project,
 )
 from .mps_parser import mean_concentration, parse_mps_lines
 from .resources import (
@@ -56,7 +59,8 @@ from .resources import (
 )
 
 if TYPE_CHECKING:
-    from django.db.models import QuerySet
+    from django.db.models import ManyToManyField, QuerySet
+    from django.forms import ModelMultipleChoiceField
     from django.http import HttpResponse
 
     from prototype.mixins import AuthenticatedHttpRequest
@@ -331,6 +335,38 @@ class AlgorithmAdmin(ExportMixin, ModelAdmin):
     ordering = ["name", "version"]
 
 
+class RawMeasurementAdminForm(forms.ModelForm):
+    """ModelForm for RawMeasurement: every sample must belong to its project.
+
+    Sample.clean() enforces the same rule between a sample and its location;
+    this relation is a ManyToManyField, which Model.clean() cannot see, so
+    the check lives on the form and on the serializer (#244).
+    """
+
+    class Meta:
+        """Form metadata."""
+
+        model = RawMeasurement
+        fields = "__all__"  # noqa: DJ007 — admin form; fieldsets control visibility
+
+    def clean(self) -> dict | None:
+        """Reject samples of other projects, naming them."""
+        cleaned = super().clean()
+        if cleaned is None:
+            return None
+        project = cleaned.get("project")
+        samples = cleaned.get("sample")
+        if project is not None and samples is not None:
+            foreign = samples_outside_project(samples, project)
+            if foreign:
+                self.add_error(
+                    "sample",
+                    f"These samples do not belong to project {project}: "
+                    f"{', '.join(foreign)}.",
+                )
+        return cleaned
+
+
 class RawMeasurementAdmin(
     ExportMixin,
     NestedProjectPermissionMixin,
@@ -338,6 +374,7 @@ class RawMeasurementAdmin(
 ):
     """Admin for the RawMeasurement model."""
 
+    form = RawMeasurementAdminForm
     change_form_show_cancel_button = True
     list_fullwidth = True
     warn_unsaved_form = True
@@ -395,6 +432,36 @@ class RawMeasurementAdmin(
             .select_related("device", "accessories", "researcher")
         )
 
+    def formfield_for_manytomany(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
+        self,
+        db_field: ManyToManyField[Any, Any],
+        request: AuthenticatedHttpRequest,
+        **kwargs: object,
+    ) -> ModelMultipleChoiceField[Any] | None:
+        """On the change form, offer only the samples of the record's project.
+
+        The add form does not know the project before it is chosen, so it
+        keeps the full list; the form's clean() still rejects a mismatch.
+        """
+        if db_field.name == "sample":
+            object_id = (
+                request.resolver_match.kwargs.get("object_id")
+                if request.resolver_match
+                else None
+            )
+            if object_id:
+                try:
+                    project_id = RawMeasurement.objects.values_list(
+                        "project_id", flat=True
+                    ).get(pk=object_id)
+                except (RawMeasurement.DoesNotExist, ValueError):
+                    project_id = None
+                if project_id:
+                    kwargs["queryset"] = Sample.objects.filter(
+                        project_id=project_id
+                    )
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
 
 class RawProcessingAdmin(
     ExportMixin,
@@ -421,10 +488,36 @@ class RawProcessingAdmin(
 # ======================
 
 
+class PollenCountInlineFormSet(BaseInlineFormSet):
+    """Reject the same taxon twice within one submitted counting.
+
+    PollenCount.clean() catches a duplicate of a row already in the
+    database; two new rows for the same taxon in one submission only meet
+    here (#285).
+    """
+
+    def clean(self) -> None:
+        """Add an error to every form that repeats an earlier form's taxon."""
+        super().clean()
+        seen: set[int] = set()
+        for form in self.forms:
+            if not form.is_valid() or form.cleaned_data.get("DELETE"):
+                continue
+            pollen = form.cleaned_data.get("pollen")
+            if pollen is None:
+                continue
+            if pollen.pk in seen:
+                form.add_error(
+                    "pollen", "This taxon appears twice in this counting."
+                )
+            seen.add(pollen.pk)
+
+
 class PollenCountInline(TabularInline):
     """Inline for PollenCount entries within a Counting change form."""
 
     model = PollenCount
+    formset = PollenCountInlineFormSet
     extra = 0
 
 

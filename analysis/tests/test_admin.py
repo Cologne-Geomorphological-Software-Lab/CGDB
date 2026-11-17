@@ -17,8 +17,11 @@ from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpResponse, HttpResponseRedirect
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.forms import ModelMultipleChoiceField
 from django.test import RequestFactory, TestCase
-from django.urls import reverse
+from django.urls import resolve, reverse
+from django.utils.datastructures import MultiValueDict
 
 from analysis.models import GenericMeasurement, Parameter
 from field_data.models import Location, Sample
@@ -353,3 +356,94 @@ class SaveRedirectTest(_AdminSetup):
         )
         assert isinstance(response, HttpResponseRedirect)
         self.assertNotIn("/field_data/sample/", response.url)
+
+
+# ===========================================================================
+# RawMeasurement: every sample must belong to the measurement's project (#244)
+# ===========================================================================
+
+
+class RawMeasurementProjectMatchTest(TestCase):
+    """The admin form rejects samples of other projects and names them."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from analysis.models import RawMeasurement
+        from laboratory.models import Device
+
+        cls.superuser = User.objects.create_superuser(
+            "rmp_admin", "rmp@test.com", "pw"
+        )
+        cls.project_a = Project.objects.create(
+            title="RMP Project A", label="RMP01", status="ACTIVE"
+        )
+        cls.project_b = Project.objects.create(
+            title="RMP Project B", label="RMP02", status="ACTIVE"
+        )
+        location_a = Location.objects.create(
+            identifier="RMP_LOC_A", data_source="internal", project=cls.project_a
+        )
+        location_b = Location.objects.create(
+            identifier="RMP_LOC_B", data_source="internal", project=cls.project_b
+        )
+        cls.sample_a = Sample.objects.create(
+            identifier="RMP_S_A", project=cls.project_a, location=location_a
+        )
+        cls.sample_b = Sample.objects.create(
+            identifier="RMP_S_B", project=cls.project_b, location=location_b
+        )
+        cls.device = Device.objects.create(name="RMP Device")
+        cls.researcher = Researcher.objects.create(
+            user=User.objects.create_user(username="rmp_researcher"),
+            academic_rank="D",
+            position="WiMa",
+        )
+        cls.measurement = RawMeasurement.objects.create(
+            project=cls.project_a,
+            device=cls.device,
+            researcher=cls.researcher,
+            file=SimpleUploadedFile("rmp_a.txt", b"data"),
+        )
+        cls.measurement.sample.set([cls.sample_a])
+
+    def _form(self, samples):
+        from analysis.admin import RawMeasurementAdminForm
+
+        return RawMeasurementAdminForm(
+            data={
+                "project": self.project_a.pk,
+                "sample": [s.pk for s in samples],
+                "device": self.device.pk,
+                "researcher": self.researcher.pk,
+            },
+            files=MultiValueDict(
+                {"file": [SimpleUploadedFile("rmp.txt", b"data")]}
+            ),
+        )
+
+    def test_samples_of_the_own_project_are_accepted(self):
+        form = self._form([self.sample_a])
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_sample_of_another_project_is_rejected_by_name(self):
+        form = self._form([self.sample_a, self.sample_b])
+        self.assertFalse(form.is_valid())
+        self.assertIn("RMP_S_B", form.errors["sample"][0])
+        self.assertNotIn("RMP_S_A", form.errors["sample"][0])
+
+    def test_change_form_offers_only_samples_of_the_project(self):
+        from analysis.models import RawMeasurement
+
+        admin_instance = django_admin.site._registry[RawMeasurement]
+        url = reverse(
+            "admin:analysis_rawmeasurement_change", args=[self.measurement.pk]
+        )
+        request = RequestFactory().get(url)
+        request.user = self.superuser
+        request.resolver_match = resolve(url)
+        field = admin_instance.get_form(cast("AuthenticatedHttpRequest", request))().fields["sample"]
+        assert isinstance(field, ModelMultipleChoiceField)
+        assert field.queryset is not None
+        offered = list(field.queryset)
+        self.assertIn(self.sample_a, offered)
+        self.assertNotIn(self.sample_b, offered)

@@ -119,6 +119,44 @@ class GrainSizeViewSetTest(_BaseApiTest):
         assert resp.status_code in (401, 403)
 
 
+class RawMeasurementSerializerTest(_BaseApiTest):
+    """The serializer rejects samples of another project (#244)."""
+
+    def test_sample_of_another_project_is_rejected(self) -> None:
+        from analysis.serializers import RawMeasurementSerializer
+        from laboratory.models import Device
+        from prototype.models import Researcher
+
+        other_location = Location.objects.create(
+            identifier="AAP_LOC_B",
+            data_source="internal",
+            project=self.other_project,
+        )
+        other_sample = Sample.objects.create(
+            identifier="AAP_S_B",
+            project=self.other_project,
+            location=other_location,
+        )
+        device = Device.objects.create(name="AAP Device")
+        researcher = Researcher.objects.create(
+            user=User.objects.create_user(username="aap_researcher"),
+            academic_rank="D",
+            position="WiMa",
+        )
+        serializer = RawMeasurementSerializer(
+            data={
+                "project": self.project.pk,
+                "sample": [self.sample.pk, other_sample.pk],
+                "device": device.pk,
+                "researcher": researcher.pk,
+            }
+        )
+        assert not serializer.is_valid()
+        errors = str(serializer.errors)
+        assert "sample" in errors
+        assert "AAP_S_B" in errors
+
+
 class RadiocarbonDatingViewSetTest(_BaseApiTest):
     """The serializer exposes the quality assessment (#283)."""
 

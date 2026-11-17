@@ -20,6 +20,7 @@ from .models import (
     RadiocarbonDating,
     RawMeasurement,
     RawProcessing,
+    samples_outside_project,
 )
 
 
@@ -42,6 +43,23 @@ class AlgorithmSerializer(serializers.ModelSerializer):
 
 class RawMeasurementSerializer(serializers.ModelSerializer):
     """Serializer for RawMeasurement records."""
+
+    def validate(self, attrs: dict) -> dict:
+        """Every sample must belong to the measurement's project (#244)."""
+        project = attrs.get("project", getattr(self.instance, "project", None))
+        samples = attrs.get("sample")
+        if project is not None and samples:
+            foreign = samples_outside_project(samples, project)
+            if foreign:
+                raise serializers.ValidationError(
+                    {
+                        "sample": (
+                            "These samples do not belong to project "
+                            f"{project}: {', '.join(foreign)}."
+                        )
+                    }
+                )
+        return attrs
 
     class Meta:
         """Serializer metadata."""
