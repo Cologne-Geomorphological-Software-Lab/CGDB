@@ -140,6 +140,10 @@ omit = [
 precision = 1
 show_missing = true
 skip_covered = false
+# Coverage floor, enforced by `pytest --cov` (CI: the spatialite job). It is
+# a ratchet: set to the measured value when it was introduced (91.7% on
+# 2026-11-15), raised when coverage grows, never lowered to get a PR green.
+fail_under = 91.5
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",

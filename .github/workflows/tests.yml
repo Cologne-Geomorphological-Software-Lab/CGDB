@@ -1,25 +1,42 @@
 name: tests
 
+# Pull-request gate. Every job here is meant to finish in a few minutes; the
+# slow checks (full suite on PostGIS, arm64 image, dependency audits) run in
+# nightly.yml instead. Actions are pinned to commit hashes; Dependabot
+# (.github/dependabot.yml) keeps the pins current.
+
 on: [push, pull_request, workflow_dispatch]
 
 permissions:
   contents: read
 
+# A new push to the same branch supersedes the running checks. Runs on main
+# are left to finish so that every merge commit keeps a complete result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: ".python-version"
-      # mypy's django-stubs plugin runs django.setup(), and GeoDjango needs
-      # the GDAL library to import.
-      - name: Install system packages (GDAL etc.)
+      # mypy's django-stubs plugin and makemigrations both run django.setup(),
+      # and GeoDjango needs GDAL to import; makemigrations also opens the
+      # (in-memory SpatiaLite) database to check the migration history.
+      - name: Install system packages (GDAL, SpatiaLite)
         run: |
           sudo apt-get update
-          sudo apt-get install -y binutils libproj-dev gdal-bin
+          sudo apt-get install -y binutils libproj-dev gdal-bin libsqlite3-mod-spatialite
       - name: Install dependencies
         run: uv sync
       - name: ruff check
@@ -27,31 +44,60 @@ jobs:
       - name: ruff format --check
         run: uv run ruff format --check .
       - name: Write throwaway local_settings.py
-        # Gitignored, never committed — mypy's django-stubs plugin loads
-        # prototype.test_settings, which chains through prototype.settings,
-        # which requires a local_settings.py to exist (SECRET_KEY etc.).
-        # test_settings.py overrides SECRET_KEY/DEBUG itself; these values
-        # only need to satisfy settings.py's own load-time checks.
+        # Gitignored, never committed — prototype.test_settings chains
+        # through prototype.settings, which requires a local_settings.py to
+        # exist (SECRET_KEY etc.). test_settings.py overrides the values that
+        # matter; these only satisfy settings.py's own load-time checks.
         run: |
           echo 'SECRET_KEY = "ci-test-key-not-for-production"' > prototype/local_settings.py
           echo 'DEBUG = True' >> prototype/local_settings.py
+      - name: Missing migrations
+        # A model change without its migration passes every test (the test
+        # database is built from the models) and fails on deploy. This fails
+        # the PR instead.
+        env:
+          DJANGO_SETTINGS_MODULE: prototype.test_settings
+        run: uv run python manage.py makemigrations --check --dry-run
       - name: mypy
         run: uv run mypy .
-      # basedpyright is intentionally not run here yet: unlike mypy/ruff, it
-      # has never been run repo-wide before (pre-commit's own basedpyright
-      # hook only checks field_data/admin.py + field_data/models.py) and
-      # reports 348 pre-existing errors across 41 files when run at full
-      # scope. Fixing that is its own dedicated pass (see TECH_DEBT_AUDIT.md
-      # X7) - add it here once that's done, not before.
+      # The three checks below mirror the pre-commit hooks in scripts/
+      # (run-basedpyright.cmd, run-bandit.cmd, run-xenon.cmd), so that a
+      # commit made with --no-verify still has to pass them here.
+      - name: basedpyright
+        run: uv run basedpyright analysis bibliography field_data geodata laboratory orchestration prototype raster_data
+      - name: bandit
+        run: uv run bandit -q -c pyproject.toml -r analysis bibliography field_data geodata laboratory orchestration prototype raster_data
+      - name: xenon (complexity gate)
+        run: uv run xenon --max-absolute B --max-modules B --max-average A -e "*/migrations/*" analysis bibliography field_data geodata laboratory orchestration prototype raster_data
+      - name: zizmor (workflow security)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uvx zizmor==1.32.0 .github/workflows
 
   spatialite:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # requires-python = ">=3.13": the pinned development version and the
+        # newest release, so that a dependency that drops or breaks on the
+        # newer interpreter is noticed before a server runs it.
+        python-version: ["3.13", "3.14"]
+    env:
+      # Overrides .python-version so that uv builds the environment for the
+      # matrix interpreter instead of recreating it for 3.13 on every run.
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          python-version-file: ".python-version"
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Install system packages (GDAL, SpatiaLite)
         run: |
           sudo apt-get update
@@ -59,19 +105,29 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Write throwaway local_settings.py
-        # Gitignored, never committed — prototype.test_settings chains
-        # through prototype.settings, which requires a local_settings.py to
-        # exist. test_settings.py overrides SECRET_KEY/DEBUG/DATABASES
-        # itself; these values only need to satisfy settings.py's own
-        # load-time checks.
+        # See the lint job. test_settings.py overrides SECRET_KEY, DEBUG and
+        # DATABASES itself.
         run: |
           echo 'SECRET_KEY = "ci-test-key-not-for-production"' > prototype/local_settings.py
           echo 'DEBUG = True' >> prototype/local_settings.py
       - name: Run test suite (SpatiaLite)
-        run: uv run pytest -m "not postgis_only" --cov=. --cov-report=term-missing
+        # Fails below the coverage floor in pyproject.toml
+        # ([tool.coverage.report] fail_under). The floor only ever goes up:
+        # raise it when coverage has grown, never lower it to get a PR green.
+        run: uv run pytest -m "not postgis_only" --cov=. --cov-report=term-missing --cov-report=xml
+      - name: Coverage summary
+        if: always()
+        run: uv run coverage report --format=markdown --fail-under=0 >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: coverage-py${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 14
 
   postgis:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgis:
         image: postgis/postgis:16-3.4
@@ -87,9 +143,13 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: ".python-version"
       - name: Install system packages (GDAL)
@@ -99,15 +159,147 @@ jobs:
       - name: Install dependencies
         run: uv sync
       - name: Write throwaway local_settings.py
-        # Gitignored, never committed — prototype.test_settings_postgis
-        # chains through prototype.test_settings and prototype.settings,
-        # which requires a local_settings.py to exist. Downstream settings
-        # modules override SECRET_KEY/DEBUG/DATABASES themselves; these
-        # values only need to satisfy settings.py's own load-time checks.
+        # See the lint job. test_settings_postgis.py overrides DATABASES.
         run: |
           echo 'SECRET_KEY = "ci-test-key-not-for-production"' > prototype/local_settings.py
           echo 'DEBUG = True' >> prototype/local_settings.py
       - name: Run GIS-marked tests against PostGIS
+        # The whole suite runs against PostGIS every night (nightly.yml); the
+        # PR gate runs only the tests whose authors marked them as
+        # backend-sensitive.
         env:
           DJANGO_SETTINGS_MODULE: prototype.test_settings_postgis
         run: uv run pytest -m "gis or postgis_only"
+
+  frontend:
+    # The demo image builds the frontend too, but only for PRs that touch
+    # Docker files, and only after a multi-minute image build. This reports
+    # a broken Vite build on every PR in about a minute.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+      - name: npm run build
+        working-directory: frontend
+        run: npm run build
+
+  upgrade-path:
+    # Upgrades a database from the latest release to this commit, the way a
+    # deployment does: the release's own code and lockfile set up the schema
+    # (and, from the first release that ships it, the demo data), then this
+    # commit runs migrate, move_protected_media and load_demo_data on top,
+    # and docker/smoke_test.sh exercises the result. A migration that only
+    # works on an empty database, or a MIGRATING.md step that is missing,
+    # fails here instead of on a server with real data.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: cgdb
+          POSTGRES_USER: cgdb
+          POSTGRES_PASSWORD: cgdb
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U cgdb -d cgdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # docker/demo_settings.py serves as local_settings.py for both
+      # versions; it reads the connection and data directory from these.
+      CGDB_DB_HOST: localhost
+      CGDB_DB_PORT: "5433"
+      CGDB_DB_NAME: cgdb
+      CGDB_DB_USER: cgdb
+      CGDB_DB_PASSWORD: cgdb
+      CGDB_DATA_DIR: ${{ runner.temp }}/cgdb-data
+      DJANGO_SECRET_KEY: ci-upgrade-key-not-for-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: ".python-version"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install system packages (GDAL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils libproj-dev gdal-bin
+      - name: Pick the latest release tag
+        # The newest vX.Y.Z tag that is not this very commit, so that a run
+        # on a release tag upgrades from the previous release.
+        run: |
+          head=$(git rev-parse HEAD)
+          for tag in $(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$'); do
+            if [ "$(git rev-parse "$tag^{commit}")" != "$head" ]; then
+              echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+              echo "HEAD_SHA=$head" >> "$GITHUB_ENV"
+              echo "Upgrading from $tag to $head"
+              exit 0
+            fi
+          done
+          echo "No release tag found" >&2
+          exit 1
+      - name: Settings for both versions
+        # Gitignored, so it survives the checkouts below.
+        run: |
+          cp docker/demo_settings.py prototype/local_settings.py
+          mkdir -p "$CGDB_DATA_DIR/media" "$CGDB_DATA_DIR/protected_media"
+      - name: Set up the database with the release
+        run: |
+          git checkout --quiet "$RELEASE_TAG"
+          uv sync --frozen
+          uv run python manage.py migrate --noinput
+          if [ -f prototype/management/commands/load_demo_data.py ]; then
+            uv run python manage.py load_demo_data
+          else
+            echo "::notice::$RELEASE_TAG has no load_demo_data; upgrading an empty schema only"
+          fi
+      - name: Upgrade to this commit
+        run: |
+          git checkout --quiet "$HEAD_SHA"
+          uv sync --frozen
+          uv run python manage.py migrate --noinput
+          uv run python manage.py move_protected_media
+          uv run python manage.py migrate --check
+          uv run python manage.py check
+          uv run python manage.py load_demo_data
+      - name: Build the frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Smoke test the upgraded database
+        run: |
+          uv run python manage.py runserver 127.0.0.1:8000 --noreload > "$RUNNER_TEMP/runserver.log" 2>&1 &
+          for _ in $(seq 1 45); do
+            curl -sf -o /dev/null http://127.0.0.1:8000/login/ && break
+            sleep 2
+          done
+          curl -sf -o /dev/null http://127.0.0.1:8000/login/ || { echo "runserver did not come up" >&2; exit 1; }
+          bash docker/smoke_test.sh
+      - name: Server log
+        if: failure()
+        run: cat "$RUNNER_TEMP/runserver.log" || true

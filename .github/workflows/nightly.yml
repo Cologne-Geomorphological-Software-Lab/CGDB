@@ -1,0 +1,119 @@
+name: nightly
+
+# The checks that are too slow or too noisy for the pull-request gate
+# (tests.yml). Runs against main every night and on demand.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  postgis-full:
+    # The PR gate runs only tests marked gis/postgis_only against PostGIS;
+    # the marker is the author's claim that nothing else is backend-specific.
+    # Running the whole suite against PostGIS checks that claim and finds
+    # unmarked tests that quietly depend on SpatiaLite behaviour.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: cgdb_test
+          POSTGRES_USER: cgdb
+          POSTGRES_PASSWORD: cgdb
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U cgdb -d cgdb_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: ".python-version"
+      - name: Install system packages (GDAL)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils libproj-dev gdal-bin
+      - name: Install dependencies
+        run: uv sync
+      - name: Write throwaway local_settings.py
+        run: |
+          echo 'SECRET_KEY = "ci-test-key-not-for-production"' > prototype/local_settings.py
+          echo 'DEBUG = True' >> prototype/local_settings.py
+      - name: Run the whole suite against PostGIS
+        env:
+          DJANGO_SETTINGS_MODULE: prototype.test_settings_postgis
+        run: uv run pytest
+
+  dependency-audit:
+    # Known vulnerabilities in the locked Python and npm dependencies. Nightly
+    # rather than per PR, because a new advisory would otherwise turn every
+    # unrelated PR red; Dependabot opens the update PR either way.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: ".python-version"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: pip-audit (uv.lock, runtime dependencies)
+        # --no-deps audits exactly the pinned versions from the lockfile
+        # instead of resolving them again. pip-audit is deliberately not
+        # pinned: its findings come from the advisory database, not from its
+        # own version.
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit --strict --no-deps -r "$RUNNER_TEMP/requirements.txt"
+      - name: npm audit (frontend/package-lock.json)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  arm64-image:
+    # demo-image.yml publishes amd64 only. This builds the same image for
+    # arm64 under QEMU (too slow for every PR) and checks that GeoDjango can
+    # load GDAL inside it. Once this is reliably green, demo-image.yml can
+    # publish a multi-arch image.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          load: true
+          tags: cgdb-demo:arm64-nightly
+      - name: GeoDjango loads GDAL on arm64
+        run: |
+          docker run --rm --platform linux/arm64 cgdb-demo:arm64-nightly \
+            python -c "from django.contrib.gis import gdal; print('GDAL', gdal.gdal_version().decode())"

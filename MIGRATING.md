@@ -5,6 +5,14 @@ deployment across a major version. Minor and patch releases need no steps
 beyond `manage.py deploy` (see [Deploying updates](https://cologne-geomorphological-software-lab.github.io/CGDB/operations/deployment.html#deploying-updates)).
 What changed in each release is listed in [CHANGELOG.md](https://github.com/Cologne-Geomorphological-Software-Lab/CGDB/blob/main/CHANGELOG.md).
 
+Every pull request upgrades a database from the latest release tag to the
+proposed code (the `upgrade-path` job in `.github/workflows/tests.yml`):
+the release's own code creates the schema and the demo data, the new code
+runs `migrate`, `move_protected_media` and `load_demo_data` on top, and the
+demo smoke test runs against the result. A migration that only works on an
+empty database fails there, not on a server. The job cannot perform the
+manual steps listed below, so those remain the operator's job.
+
 Before any upgrade:
 
 - Back up the database and the `media/` directory.
