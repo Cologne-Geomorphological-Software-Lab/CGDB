@@ -183,7 +183,10 @@ class RasterSceneWriteSerializer(serializers.ModelSerializer):
         try:
             geom = GEOSGeometry(value, srid=4326)
         except (GEOSException, ValueError) as exc:
-            raise serializers.ValidationError(str(exc)) from exc
+            msg = (
+                "Invalid spatial_bbox_wkt. Provide a valid WGS-84 POLYGON WKT."
+            )
+            raise serializers.ValidationError(msg) from exc
         if geom.geom_type != "Polygon":
             msg = "spatial_bbox_wkt must be a POLYGON."
             raise serializers.ValidationError(msg)
