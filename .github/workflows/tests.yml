@@ -4,8 +4,19 @@ name: tests
 # slow checks (full suite on PostGIS, arm64 image, dependency audits) run in
 # nightly.yml instead. Actions are pinned to commit hashes; Dependabot
 # (.github/dependabot.yml) keeps the pins current.
+#
+# Pull requests are checked as their merge commit with main; a push to a
+# feature branch is not checked again on its own. Pushes to main run
+# everything, so that each merge has a result. Release tags are not a
+# trigger: they point at a main commit that has already been checked, and
+# zizmor flags tag-triggered workflows that use caches as open to cache
+# poisoning.
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read

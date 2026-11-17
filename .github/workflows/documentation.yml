@@ -1,10 +1,14 @@
 name: documentation
 
-# Builds the Sphinx docs on every push and PR, with warnings as errors. On
-# pushes to main the result is published to GitHub Pages; the repository's
-# Pages source must be set to "GitHub Actions".
+# Builds the Sphinx docs for every pull request and push to main, with
+# warnings as errors. On pushes to main the result is published to GitHub
+# Pages; the repository's Pages source must be set to "GitHub Actions".
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
