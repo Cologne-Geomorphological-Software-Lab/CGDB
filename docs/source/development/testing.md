@@ -123,6 +123,7 @@ CodeQL runs through GitHub's default setup, configured in the repository setting
 | `field_data` | `field_data/tests/test_filters.py` | FilterSet definitions |
 | `field_data` | `field_data/tests/test_forms.py` | Forms |
 | `field_data` | `field_data/tests/test_utils.py` | Utility functions (no DB) |
+| `field_data` | `field_data/tests/test_checks.py` | The startup check that PROJ can transform a UTM point to WGS 84 |
 | `bibliography` | `bibliography/tests/test_models.py` | `Author`, `ReferenceKeyword`, `Reference` str, ordering, relations |
 | `bibliography` | `bibliography/tests/test_api.py` | Read-only API for all 3 models; `Reference` visible without project membership (shared catalog) |
 | `laboratory` | `laboratory/tests/test_models.py` | `Manufacturer`, `Device`, `Accessory`, `Method`, `Calibration`, `Firmware`, `AccessoryParameter` |

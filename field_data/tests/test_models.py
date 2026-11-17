@@ -4,7 +4,11 @@ Covers: Location (clean, save, PointField), Sample (clean, save, auto-project, d
 Layer (thickness), Campaign (unique constraints).
 """
 
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
+from django.contrib.gis.gdal import GDALException
+from django.contrib.gis.geos import Point
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
@@ -196,6 +200,41 @@ class LocationSaveTest(_BaseSetup):
         assert loc.location is not None
         self.assertAlmostEqual(loc.location.x, 8.0)
         self.assertAlmostEqual(loc.location.y, 51.0)
+
+    def test_utm_coordinates_are_transformed_to_wgs84(self):
+        loc = Location.objects.create(
+            identifier="UTM01",
+            data_source="internal",
+            project=self.project,
+            easting=500000,
+            northing=5200000,
+            srid=32634,
+        )
+        assert loc.location is not None
+        self.assertEqual(loc.location.srid, 4326)
+        self.assertAlmostEqual(loc.location.x, 21.0, places=3)
+        self.assertAlmostEqual(loc.location.y, 46.95, places=2)
+
+    def test_failed_transform_is_a_validation_error(self):
+        """A PROJ failure lands on the coordinate fields, not as a 500 (#249)."""
+        with (
+            patch.object(
+                Point, "transform", side_effect=GDALException("OGR failure.")
+            ),
+            self.assertRaises(ValidationError) as cm,
+        ):
+            Location.objects.create(
+                identifier="UTM02",
+                data_source="internal",
+                project=self.project,
+                easting=500000,
+                northing=5200000,
+                srid=32634,
+            )
+        self.assertIn("easting", cm.exception.error_dict)
+        self.assertIn("northing", cm.exception.error_dict)
+        self.assertIn("EPSG:32634", str(cm.exception))
+        self.assertFalse(Location.objects.filter(identifier="UTM02").exists())
 
 
 # ===========================================================================

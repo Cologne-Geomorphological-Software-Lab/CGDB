@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+
 from django.contrib.contenttypes.fields import (
     GenericForeignKey,
     GenericRelation,
 )
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db import models
+from django.contrib.gis.gdal import GDALException
 from django.contrib.gis.geos import Point
 from django.core.exceptions import ValidationError
 from django.core.validators import (
@@ -19,6 +22,8 @@ from django.db.models import Q
 
 from prototype.models import BaseModel, Project, Researcher
 from prototype.storage import get_protected_storage
+
+logger = logging.getLogger(__name__)
 
 
 class Country(models.Model):
@@ -581,6 +586,36 @@ def _validate_coord_bounds(
             )
 
 
+def _wgs84_point(easting: float, northing: float, srid: int) -> Point:
+    """Return the coordinates as a WGS 84 point.
+
+    Raises:
+        ValidationError: PROJ cannot transform from ``srid``. Raised on the
+            coordinate fields so that forms show it there instead of the
+            admin answering with a server error (#249).
+    """
+    pt = Point(easting, northing, srid=srid)
+    if srid == _SRID_WGS84:
+        return pt
+    try:
+        pt.transform(_SRID_WGS84)
+    except GDALException as exc:
+        logger.warning(
+            "Transforming %s/%s from EPSG:%s to WGS 84 failed: %s",
+            easting,
+            northing,
+            srid,
+            exc,
+        )
+        msg = (
+            f"The coordinates could not be transformed from EPSG:{srid} to "
+            f"WGS 84 ({exc}). Check the CRS; if it is right, the PROJ "
+            "installation on the server needs attention."
+        )
+        raise ValidationError({"easting": msg, "northing": msg}) from exc
+    return pt
+
+
 class Location(BaseModel):
     """Geographical location associated with either a project (internal) or a reference (literature).
 
@@ -911,14 +946,16 @@ class Location(BaseModel):
             )
             if errors:
                 raise ValidationError(errors)
+            # Validates the transform too, so a PROJ failure is a form
+            # error rather than a server error from save() (#249).
+            _wgs84_point(self.easting, self.northing, self.srid)
 
     def save(self, *args: object, **kwargs: object) -> None:
         """Compute the location point from easting/northing before saving."""
         if self.easting is not None and self.northing is not None:
-            pt = Point(self.easting, self.northing, srid=self.srid)
-            if self.srid != _SRID_WGS84:
-                pt.transform(_SRID_WGS84)
-            self.location = pt
+            self.location = _wgs84_point(
+                self.easting, self.northing, self.srid
+            )
         else:
             self.location = None
         # full_clean() (not just clean()) so field-level validators (e.g.

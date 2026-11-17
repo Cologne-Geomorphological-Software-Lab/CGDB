@@ -8,3 +8,9 @@ class FieldDataConfig(AppConfig):
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "field_data"
+
+    def ready(self) -> None:
+        """Register system checks on startup."""
+        from field_data.checks import register_checks
+
+        register_checks()
