@@ -50,6 +50,19 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
   Windows, the OSGeo4W setup now sets `PROJ_DATA` as well as `PROJ_LIB`, so
   a `PROJ_DATA` inherited from another program no longer breaks every
   transform, and a system check tries one UTM transform at startup (#249).
+- The analysis tabs (Grain Size, Radiocarbon Dating and so on) appear only
+  on pages that belong to one sample. On the sample add form they linked to
+  the global measurement lists, and following one discarded the unsaved
+  sample (#271).
+- `settings.py` now serves the project's `static/` directory and stores
+  uploads under `media/` by default, so a `local_settings.py` written after
+  the installation guide no longer loses the logo and the stylesheet of the
+  geometry widget, which left study areas, transects and landforms without
+  a map to draw on (#253, #212). Production settings still override
+  `STATIC_ROOT` and `MEDIA_ROOT`.
+- The grain size fractions are labelled as what they are, the DIN EN ISO
+  14688-1 classes (2 / 6.3 / 20 / 63 / 200 / 630 / 2000 µm), instead of
+  "Wentworth". Values are unchanged (#193).
 
 ## [2.0.2] - 2026-11-15 "Arica"
 

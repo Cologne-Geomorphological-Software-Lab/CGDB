@@ -889,7 +889,7 @@ class GrainSizeAdmin(
     NestedProjectPermissionMixin,
     ModelAdmin,
 ):
-    """Admin for GrainSize with file import, Wentworth fraction display, and a plot tab."""
+    """Admin for GrainSize with file import, ISO 14688-1 fraction display, and a plot tab."""
 
     resource_classes = [GrainSizeResource]
     change_form_show_cancel_button = True
@@ -960,6 +960,12 @@ class GrainSizeAdmin(
             "Fractions",
             {
                 "classes": ["tab"],
+                "description": (
+                    "Volume percentages per class after DIN EN ISO 14688-1: "
+                    "clay < 2 µm, silt 2 to 63 µm and sand 63 to 2000 µm, "
+                    "each split into fine, medium and coarse at 6.3 / 20 µm "
+                    "and 200 / 630 µm; gravel above 2000 µm."
+                ),
                 "fields": (
                     ("clay", "fine_silt", "medium_silt", "coarse_silt"),
                     ("fine_sand", "medium_sand", "coarse_sand", "gravel"),

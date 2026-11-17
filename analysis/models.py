@@ -1471,30 +1471,34 @@ class GenericMeasurement(BaseModel):
         return f"{self.sample} - {self.method} - {self.parameter}"
 
 
-# Wentworth grain size class boundaries in µm (Wentworth 1922 / Folk & Ward)
-_W_CLAY = 2
-_W_FINE_SILT = 6.3
-_W_MEDIUM_SILT = 20
-_W_COARSE_SILT = 63
-_W_FINE_SAND = 200
-_W_MEDIUM_SAND = 630
-_W_COARSE_SAND = 2000
+# Grain size class boundaries in µm after DIN EN ISO 14688-1 (the DIN 4022
+# subdivision of silt and sand into fine, medium and coarse). These are not
+# the Udden-Wentworth boundaries (3.9 / 7.8 / 15.6 / 31 / 63 / 125 / 250 /
+# 500 / 1000 / 2000 µm with very fine to very coarse classes), although the
+# code called them that until #193.
+_ISO_CLAY = 2
+_ISO_FINE_SILT = 6.3
+_ISO_MEDIUM_SILT = 20
+_ISO_COARSE_SILT = 63
+_ISO_FINE_SAND = 200
+_ISO_MEDIUM_SAND = 630
+_ISO_COARSE_SAND = 2000
 
 # Ordered lookup: (upper boundary µm, field name). "gravel" has no upper bound.
-_WENTWORTH_FRACTIONS: list[tuple[float, str]] = [
-    (_W_CLAY, "clay"),
-    (_W_FINE_SILT, "fine_silt"),
-    (_W_MEDIUM_SILT, "medium_silt"),
-    (_W_COARSE_SILT, "coarse_silt"),
-    (_W_FINE_SAND, "fine_sand"),
-    (_W_MEDIUM_SAND, "medium_sand"),
-    (_W_COARSE_SAND, "coarse_sand"),
+_ISO_14688_FRACTIONS: list[tuple[float, str]] = [
+    (_ISO_CLAY, "clay"),
+    (_ISO_FINE_SILT, "fine_silt"),
+    (_ISO_MEDIUM_SILT, "medium_silt"),
+    (_ISO_COARSE_SILT, "coarse_silt"),
+    (_ISO_FINE_SAND, "fine_sand"),
+    (_ISO_MEDIUM_SAND, "medium_sand"),
+    (_ISO_COARSE_SAND, "coarse_sand"),
 ]
 
 
 def _classify_fraction(class_value: float) -> str:
-    """Return the Wentworth fraction name for a given grain size in µm."""
-    for boundary, name in _WENTWORTH_FRACTIONS:
+    """Return the DIN EN ISO 14688-1 fraction name for a grain size in µm."""
+    for boundary, name in _ISO_14688_FRACTIONS:
         if class_value < boundary:
             return name
     return "gravel"
@@ -1714,7 +1718,7 @@ class GrainSize(BaseModel):
             msg = "Measured data must be a string or a list."
             raise TypeError(msg)
 
-        fraction_names = [name for _, name in _WENTWORTH_FRACTIONS] + [
+        fraction_names = [name for _, name in _ISO_14688_FRACTIONS] + [
             "gravel",
         ]
         sums: dict[str, float] = dict.fromkeys(fraction_names, 0.0)
@@ -1745,7 +1749,7 @@ class GrainSize(BaseModel):
         )
 
     def save(self, *args: object, **kwargs: object) -> None:
-        """Recompute Wentworth fractions from raw data before saving."""
+        """Recompute the DIN EN ISO 14688-1 fractions from raw data before saving."""
         if self.classes is not None and self.measured_data is not None:
             (
                 self.fine_silt,
