@@ -12,7 +12,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # --- Python dependencies from uv.lock ----------------------------------------
-FROM python:3.13-slim-trixie AS python-deps
+FROM python:3.15-slim-trixie AS python-deps
 COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -22,7 +22,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # --- Runtime ----------------------------------------------------------------
-FROM python:3.13-slim-trixie
+FROM python:3.15-slim-trixie
 
 # GDAL/GEOS/PROJ for GeoDjango, libpq for psycopg, and a PostgreSQL client
 # new enough to back up the PostGIS 16 server (Debian trixie ships 17).
