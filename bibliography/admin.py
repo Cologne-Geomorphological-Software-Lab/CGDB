@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django import forms
 from django.contrib import admin
 from django.http import HttpResponse
 from import_export.admin import ExportMixin
@@ -75,6 +76,36 @@ class ReferenceKeywordAdmin(ModelAdmin):
     ordering = ["keyword"]
 
 
+class ReferenceAdminForm(forms.ModelForm):
+    """ModelForm for Reference: the lead author cannot be a second author too.
+
+    Before second_author became optional (#243), the only way to enter a
+    single-author publication was to list the lead author twice. This check
+    stops that from happening again; a many-to-many field cannot be checked
+    in Model.clean(), so it lives on the form.
+    """
+
+    class Meta:
+        """Form metadata."""
+
+        model = Reference
+        fields = "__all__"  # noqa: DJ007 — admin form; fieldsets control visibility
+
+    def clean(self) -> dict | None:
+        """Reject a lead author who is also listed as a second author."""
+        cleaned = super().clean()
+        if cleaned is None:
+            return None
+        lead = cleaned.get("lead_author")
+        seconds = cleaned.get("second_author")
+        if lead is not None and seconds is not None and lead in seconds:
+            self.add_error(
+                "second_author",
+                "The lead author cannot be listed as a second author as well.",
+            )
+        return cleaned
+
+
 class ReferenceAdmin(CreatorScopedEditMixin, ExportMixin, ModelAdmin):
     """Admin for the Reference model with tabbed fieldsets and custom list display.
 
@@ -88,6 +119,7 @@ class ReferenceAdmin(CreatorScopedEditMixin, ExportMixin, ModelAdmin):
     """
 
     resource_classes = [ReferenceResource]
+    form = ReferenceAdminForm
     change_form_show_cancel_button = True
     list_fullwidth = True
     fieldsets = [

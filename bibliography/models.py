@@ -90,13 +90,14 @@ class Reference(BaseModel):
     second_author = models.ManyToManyField(
         Author,
         related_name="second_author",
+        blank=True,
     )
     supervisor = models.ManyToManyField(
         Author,
         related_name="supervisor",
         blank=True,
     )
-    abstract = models.TextField()
+    abstract = models.TextField(blank=True)
     journal = models.CharField(
         max_length=250,
         blank=True,
