@@ -496,8 +496,13 @@ class CampaignTest(_BaseSetup):
                 campaign=campaign,
             )
 
-    def test_same_identifier_allowed_in_different_campaigns(self):
-        """Same location identifier is valid across different campaigns."""
+    def test_same_identifier_in_different_campaigns_is_rejected(self):
+        """An identifier is unique per project, campaigns do not separate it.
+
+        Until #256 the opposite held: unique_together on (campaign,
+        identifier) let two campaigns of one project reuse an identifier,
+        which made references by identifier ambiguous.
+        """
         campaign_a = Campaign.objects.create(
             label="CAMP_A01", project=self.project
         )
@@ -510,13 +515,14 @@ class CampaignTest(_BaseSetup):
             project=self.project,
             campaign=campaign_a,
         )
-        loc_b = Location.objects.create(
-            identifier="SHARED_ID",
-            data_source="internal",
-            project=self.project,
-            campaign=campaign_b,
-        )
-        self.assertIsNotNone(loc_b.pk)
+        with self.assertRaises(ValidationError) as cm:
+            Location.objects.create(
+                identifier="SHARED_ID",
+                data_source="internal",
+                project=self.project,
+                campaign=campaign_b,
+            )
+        self.assertIn("identifier", cm.exception.error_dict)
 
 
 # ===========================================================================
@@ -572,3 +578,45 @@ class FieldPhotoTest(_BaseSetup):
             file=self._make_file("notes.pdf"),
         )
         self.assertIn("notes", str(uncaptioned))
+
+
+# ===========================================================================
+# Location identifier unique within a project (#256, validation stopgap)
+# ===========================================================================
+
+
+class LocationIdentifierUniqueTest(_BaseSetup):
+    """The same identifier is rejected within a project, allowed across projects."""
+
+    def test_duplicate_identifier_in_project_is_rejected(self):
+        Location.objects.create(
+            identifier="UNIQ-01", data_source="internal", project=self.project
+        )
+        with self.assertRaises(ValidationError) as cm:
+            Location.objects.create(
+                identifier="UNIQ-01",
+                data_source="internal",
+                project=self.project,
+            )
+        self.assertIn("identifier", cm.exception.error_dict)
+
+    def test_same_identifier_in_another_project_is_allowed(self):
+        other = Project.objects.create(
+            title="Other Project", label="UNIQ02", status="ACTIVE"
+        )
+        Location.objects.create(
+            identifier="UNIQ-02", data_source="internal", project=self.project
+        )
+        Location.objects.create(
+            identifier="UNIQ-02", data_source="internal", project=other
+        )
+        self.assertEqual(
+            Location.objects.filter(identifier="UNIQ-02").count(), 2
+        )
+
+    def test_saving_an_existing_location_again_passes(self):
+        location = Location.objects.create(
+            identifier="UNIQ-03", data_source="internal", project=self.project
+        )
+        location.altitude = 12.0
+        location.save()

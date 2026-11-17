@@ -77,6 +77,22 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
   form offers and accepts only tags of the layer content type. Before, a
   layer could not be saved without a tag, and tags made for samples were
   accepted (#251).
+- A raw measurement only accepts samples of its own project; the error
+  names the samples that belong elsewhere, and the change form offers only
+  the project's samples. Existing records are not changed: list them with
+  `RawMeasurement.objects.exclude(sample__project=F("project"))` (#244).
+- A location identifier must be unique within its project, as the form
+  always claimed. Until now only (campaign, identifier) was enforced, so
+  locations without a campaign could share an identifier and references
+  to it became ambiguous. The rule is validated on every save path, in the
+  admin, the table import and scripts; the database constraint follows in
+  3.0 (#256).
+- A pollen counting accepts each taxon once; a second row for the same
+  taxon is rejected in the admin and on save. The constraint and the
+  decimal `number` field follow in 3.0 (#285).
+- `manage.py check_duplicates` lists the locations and pollen counts that
+  already violate these two rules, so they can be resolved before the
+  upgrade to 3.0.
 
 ## [2.0.2] - 2026-11-15 "Arica"
 

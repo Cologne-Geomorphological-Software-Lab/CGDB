@@ -716,7 +716,7 @@ class Location(BaseModel):
     )
     identifier = models.CharField(
         max_length=80,
-        help_text="Add a unique identifier to your location.",
+        help_text="Identifier of the location, unique within its project.",
         db_index=True,
     )
     project = models.ForeignKey(
@@ -939,16 +939,48 @@ class Location(BaseModel):
                 msg = "Literature data source requires a reference assignment."
                 raise ValidationError(msg)
 
-        if self.easting is not None and self.northing is not None:
-            errors: dict[str, str] = {}
-            _validate_coord_bounds(
-                errors, self.easting, self.northing, self.srid
+        self._validate_coordinates()
+        self._validate_identifier_unique_in_project()
+
+    def _validate_coordinates(self) -> None:
+        """Check the coordinate ranges and that PROJ can transform them."""
+        if self.easting is None or self.northing is None:
+            return
+        errors: dict[str, str] = {}
+        _validate_coord_bounds(errors, self.easting, self.northing, self.srid)
+        if errors:
+            raise ValidationError(errors)
+        # Validates the transform too, so a PROJ failure is a form error
+        # rather than a server error from save() (#249).
+        _wgs84_point(self.easting, self.northing, self.srid)
+
+    def _validate_identifier_unique_in_project(self) -> None:
+        """Reject an identifier another location of the project already has.
+
+        Stopgap for #256 until 3.0 adds UniqueConstraint(project,
+        identifier): unique_together covers (campaign, identifier) only,
+        and locations without a campaign never conflict there. save() runs
+        full_clean(), so the form, the table import and scripts all pass
+        through here. `manage.py check_duplicates` lists existing offenders.
+        """
+        if not self.project or not self.identifier:
+            return
+        clash = (
+            Location.objects.filter(
+                project=self.project, identifier=self.identifier
             )
-            if errors:
-                raise ValidationError(errors)
-            # Validates the transform too, so a PROJ failure is a form
-            # error rather than a server error from save() (#249).
-            _wgs84_point(self.easting, self.northing, self.srid)
+            .exclude(pk=self.pk)
+            .exists()
+        )
+        if clash:
+            raise ValidationError(
+                {
+                    "identifier": (
+                        f"A location with the identifier "
+                        f"{self.identifier!r} already exists in this project."
+                    )
+                }
+            )
 
     def save(self, *args: object, **kwargs: object) -> None:
         """Compute the location point from easting/northing before saving."""
