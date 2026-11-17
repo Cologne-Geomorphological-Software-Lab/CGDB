@@ -407,7 +407,15 @@ class BulkTagActionMixin(_AdminBase):
 
 
 class TagFilterMixin(_AdminBase):
-    """Restrict the tags M2M dropdown to the current model's content type and project."""
+    """Restrict the tags M2M dropdown to the current model's content type and project.
+
+    The restricted queryset is also what the form validates against, so a
+    crafted POST with a tag of another model is rejected server-side, not
+    only hidden in the dropdown (#251). The project is read through the
+    admin's ``project_path`` (``"project"`` when the admin sets none), so
+    models that reach their project through a relation, such as Layer via
+    its location, work too.
+    """
 
     def formfield_for_manytomany(  # type: ignore[override]  # narrowed request param — see AuthenticatedHttpRequest's docstring (prototype/mixins.py) for why this is safe here
         self,
@@ -427,7 +435,7 @@ class TagFilterMixin(_AdminBase):
             if object_id:
                 try:
                     project = self.model.objects.values_list(
-                        "project",
+                        getattr(self, "project_path", "project"),
                         flat=True,
                     ).get(pk=object_id)
                     if project:
@@ -909,7 +917,12 @@ class LayerAdminForm(django_forms.ModelForm):  # type: ignore[type-arg]
         ].help_text = "Chroma/saturation (0–12, step 0.5); e.g. 6."
 
 
-class LayerAdmin(ExportMixin, NestedProjectPermissionMixin, ModelAdmin):
+class LayerAdmin(
+    TagFilterMixin,
+    ExportMixin,
+    NestedProjectPermissionMixin,
+    ModelAdmin,
+):
     """Admin interface for Layer records with nested project permissions."""
 
     form = LayerAdminForm

@@ -21,6 +21,11 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
   `demo_pi` and `demo_viewer` and six landform regions. It can run
   repeatedly without duplicating data, `--reset` recreates everything, and
   it refuses to run unless `DEBUG` is on.
+- Radiocarbon datings have an `age_error` field for the uncertainty the
+  laboratory reports, in the same unit as `age`. It is optional, appears in
+  the admin, the API, the table import and export, and existing datings
+  keep an empty value. A date without its uncertainty could not be
+  calibrated or published (#194).
 
 ### Changed
 
@@ -63,6 +68,15 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
 - The grain size fractions are labelled as what they are, the DIN EN ISO
   14688-1 classes (2 / 6.3 / 20 / 63 / 200 / 630 / 2000 µm), instead of
   "Wentworth". Values are unchanged (#193).
+- A reference can be saved with a single author and without an abstract;
+  "Second author" and "Abstract" are optional. The form rejects a lead
+  author who is also listed as second author, the workaround the old rule
+  forced. Existing references may carry that workaround: list them with
+  `Reference.objects.filter(second_author=F("lead_author"))` (#243).
+- Tags are optional on layers, as on locations and samples, and the layer
+  form offers and accepts only tags of the layer content type. Before, a
+  layer could not be saved without a tag, and tags made for samples were
+  accepted (#251).
 
 ## [2.0.2] - 2026-11-15 "Arica"
 

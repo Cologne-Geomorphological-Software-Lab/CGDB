@@ -1115,6 +1115,7 @@ class Layer(BaseModel):
     )
     tags = models.ManyToManyField(
         Tag,
+        blank=True,
     )
     field_photos = GenericRelation(
         "FieldPhoto",
