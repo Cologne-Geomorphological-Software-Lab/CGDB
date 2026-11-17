@@ -186,9 +186,6 @@ class RasterSceneWriteSerializer(serializers.ModelSerializer):
             msg = (
                 "Invalid spatial_bbox_wkt. Provide a valid WGS-84 POLYGON WKT."
             )
-            msg = (
-                "Invalid spatial_bbox_wkt. Provide a valid WGS-84 POLYGON WKT."
-            )
             raise serializers.ValidationError(msg) from exc
         if geom.geom_type != "Polygon":
             msg = "spatial_bbox_wkt must be a POLYGON."
