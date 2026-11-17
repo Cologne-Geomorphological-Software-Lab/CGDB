@@ -59,6 +59,8 @@ pytest -k "grainsize"
 pytest --cov=. --cov-report=term-missing
 ```
 
+`pytest --cov` fails below the coverage floor in `pyproject.toml` (`[tool.coverage.report] fail_under`). The floor is a ratchet: it was set to the measured value when it was introduced and is raised when coverage grows. Do not lower it to get a pull request green; add tests instead.
+
 ## Testing against PostGIS
 
 Production runs PostGIS, not SpatiaLite. A few endpoints use GIS-specific SQL (raw queries, vendor-specific ORM functions) that can behave differently on the two backends. Tests for that code are marked `@pytest.mark.gis` and run against both backends. Some features, for example the landform vector tiles (`ST_AsMVT`), have no SpatiaLite equivalent; their tests are marked `@pytest.mark.postgis_only` and are left out of the default run.
@@ -76,6 +78,28 @@ DJANGO_SETTINGS_MODULE=prototype.test_settings_postgis pytest -m "gis or postgis
 ```
 
 `prototype/test_settings_postgis.py` reads the connection from the environment variables `CGDB_TEST_PG_HOST`, `_PORT`, `_NAME`, `_USER` and `_PASSWORD`, which default to the compose service. On Windows, GeoDjango loads GDAL and GEOS at `django.setup()` whatever database is used, so the OSGeo4W setup above is needed for PostGIS tests too.
+
+## Continuous integration
+
+Three workflows in `.github/workflows/` run on GitHub Actions. All actions are pinned to commit hashes, and Dependabot (`.github/dependabot.yml`) keeps those pins, `uv.lock`, `frontend/package-lock.json` and the Dockerfile base images current with one grouped pull request per ecosystem and week.
+
+`tests.yml` is the pull-request gate and runs on every push and pull request:
+
+| Job | What it checks |
+|---|---|
+| `lint` | ruff, ruff format, `makemigrations --check` (a model change without its migration), mypy, basedpyright, bandit, xenon and zizmor (the workflows themselves). The last four mirror the pre-commit hooks in `scripts/`, so a commit made with `--no-verify` still has to pass them. |
+| `spatialite` | The suite without `postgis_only` tests, on Python 3.13 and 3.14, with the coverage floor described above. The coverage report appears in the job summary, and `coverage.xml` is kept as an artifact for two weeks. |
+| `postgis` | The `gis` and `postgis_only` tests against PostGIS 16. |
+| `frontend` | `npm ci && npm run build`, so a broken Vite build is reported in a minute rather than after the Docker build. |
+| `upgrade-path` | Checks out the latest release tag, lets its own code and lockfile create the schema (and the demo data, once a release ships `load_demo_data`), then switches to the commit under test and runs `migrate`, `move_protected_media`, `load_demo_data` and `docker/smoke_test.sh` against a running `runserver`. This is the check behind [MIGRATING.md](../reference/migrating.md). |
+
+`demo-image.yml` builds and smoke-tests the Docker demo for pull requests that touch it, scans the image with Trivy (fixable CRITICAL and HIGH findings fail the job) and publishes it to GHCR on release tags.
+
+`nightly.yml` runs against `main` every night and on demand, for the checks that are too slow or too noisy for every pull request: the whole suite against PostGIS (to find tests that depend on a backend without being marked), `pip-audit` and `npm audit` over the lockfiles, and an arm64 build of the demo image under QEMU.
+
+`documentation.yml` builds this site with warnings as errors and publishes it on pushes to `main`.
+
+CodeQL runs through GitHub's default setup, configured in the repository settings rather than in a workflow file.
 
 ## Test structure
 

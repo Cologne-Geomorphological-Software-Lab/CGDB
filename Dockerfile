@@ -34,6 +34,12 @@ RUN apt-get update \
         postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
+# The app runs from /opt/venv, which uv builds without pip. The base image's
+# own pip (with the urllib3 and msgpack it vendors) and setuptools are not
+# used by anything here, but they are what Trivy keeps flagging, so remove
+# them instead of chasing the base image's release cycle.
+RUN python -m pip uninstall -y pip setuptools wheel
+
 RUN useradd --create-home --uid 1000 cgdb \
     && mkdir -p /data \
     && chown cgdb:cgdb /data

@@ -1,8 +1,9 @@
 name: demo image
 
 # Builds the Docker demo, starts it and runs docker/smoke_test.sh, including
-# a restart that must not duplicate the demo data. On release tags the tested
-# image is published to GHCR (amd64 only until arm64 has been tested).
+# a restart that must not duplicate the demo data, then scans the image with
+# Trivy. On release tags the tested image is published to GHCR (amd64 only;
+# nightly.yml builds arm64 under QEMU to find out whether it works there).
 
 on:
   pull_request:
@@ -24,14 +25,21 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 env:
   IMAGE: ghcr.io/cologne-geomorphological-software-lab/cgdb-demo
 
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Build and start the demo
         run: docker compose -f compose.demo.yml up -d --build --wait --wait-timeout 300
@@ -54,33 +62,49 @@ jobs:
         if: always()
         run: docker compose -f compose.demo.yml down -v
 
+      # Scans the image compose just built (OS packages and the Python
+      # packages in /opt/venv). Runs after the functional checks so that a
+      # vulnerability report never hides a broken demo, and before publish,
+      # so that no known fixable CRITICAL/HIGH finding reaches GHCR.
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:latest
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
   publish:
     needs: smoke-test
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.IMAGE }}
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64
