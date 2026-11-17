@@ -118,6 +118,7 @@ CodeQL runs through GitHub's default setup, configured in the repository setting
 | `prototype` | `prototype/tests/test_signals.py` | `assign_permissions_to_creator` post_save signal |
 | `prototype` | `prototype/tests/test_deploy_command.py` | `deploy` management command (step order, `--dry-run`, `--yes`, dirty-tree abort, migration-failure and backup-path reporting, post-restart health checks) |
 | `prototype` | `prototype/tests/test_load_demo_data.py` | `load_demo_data` command (idempotence, demo account permissions, `--reset`, refusal without `DEBUG`, demo landform tile on PostGIS) |
+| `prototype` | `prototype/tests/test_check_duplicates.py` | `check_duplicates` command: lists locations sharing an identifier within a project and pollen counts that repeat a taxon |
 | `field_data` | `field_data/tests/test_models.py` | `Location`, `Sample`, `StudyArea`, `Transect`, and related models |
 | `field_data` | `field_data/tests/test_api.py` | `StudyAreaViewSet.map`/`TransectViewSet.map` GeoJSON actions |
 | `field_data` | `field_data/tests/test_admin.py` | `SampleAdmin`'s analysis sub-views |

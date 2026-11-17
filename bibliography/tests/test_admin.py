@@ -15,7 +15,7 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 from guardian.shortcuts import assign_perm
 
-from bibliography.admin import ReferenceAdmin
+from bibliography.admin import ReferenceAdmin, ReferenceAdminForm
 from bibliography.models import Author, Reference
 
 if TYPE_CHECKING:
@@ -26,6 +26,32 @@ def _make_request(user: User) -> AuthenticatedHttpRequest:
     request = RequestFactory().get("/")
     request.user = user
     return cast("AuthenticatedHttpRequest", request)
+
+
+class ReferenceAdminFormTest(TestCase):
+    """Single-author references save; the lead author is not a second author (#243)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.author = Author.objects.create(first_name="A", last_name="Uthor")
+
+    def _form(self, **overrides) -> ReferenceAdminForm:
+        data = {
+            "title": "Single author, no abstract",
+            "lead_author": self.author.pk,
+            "type": "Paper",
+            **overrides,
+        }
+        return ReferenceAdminForm(data=data)
+
+    def test_single_author_without_abstract_is_valid(self):
+        form = self._form()
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_lead_author_cannot_be_second_author(self):
+        form = self._form(second_author=[self.author.pk])
+        self.assertFalse(form.is_valid())
+        self.assertIn("second_author", form.errors)
 
 
 class ReferenceAdminDeletePermissionTest(TestCase):

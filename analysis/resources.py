@@ -178,6 +178,7 @@ class RadiocarbonDatingResource(
             "lab",
             "lab_id",
             "age",
+            "age_error",
             "data_quality",
             "quality_note",
         )
@@ -187,6 +188,7 @@ class RadiocarbonDatingResource(
             "lab",
             "lab_id",
             "age",
+            "age_error",
             "data_quality",
             "quality_note",
         )

@@ -8,12 +8,15 @@ Tests cover:
 - preserved_filters is set so the back-button points to the right URL
 """
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qs, unquote
 
+from django.contrib import admin as django_admin
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection
-from django.test import TestCase
+from django.forms import ModelMultipleChoiceField
+from django.test import RequestFactory, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -25,11 +28,13 @@ if TYPE_CHECKING:
 from field_data.admin import SiteAdmin
 from field_data.models import (
     Country,
+    Layer,
     Location,
     Province,
     Sample,
     Site,
     StudyArea,
+    Tag,
     Transect,
 )
 from prototype.models import Project
@@ -508,3 +513,55 @@ class FieldPhotoWidgetLinksToProtectedViewTests(TestCase):
         content = response.content.decode()
         self.assertIn(f"/files/{name}", content)
         self.assertNotIn(f"/media/{name}", content)
+
+
+# ===========================================================================
+# Layer tags: optional, and only tags of the layer content type (#251)
+# ===========================================================================
+
+
+class LayerTagsTest(_AdminSetup):
+    """LayerAdmin offers and accepts only layer tags; tags are optional."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.layer_tag = Tag.objects.create(
+            content_type=ContentType.objects.get_for_model(Layer),
+            word="layer-tag",
+        )
+        cls.sample_tag = Tag.objects.create(
+            content_type=ContentType.objects.get_for_model(Sample),
+            word="sample-tag",
+        )
+
+    def _layer_form(self, data=None):
+        admin_instance = django_admin.site._registry[Layer]
+        request = RequestFactory().get(reverse("admin:field_data_layer_add"))
+        request.user = self.superuser
+        return admin_instance.get_form(cast("Any", request))(data=data)
+
+    def test_add_form_offers_only_layer_tags(self):
+        field = self._layer_form().fields["tags"]
+        assert isinstance(field, ModelMultipleChoiceField)
+        assert field.queryset is not None
+        offered = list(field.queryset)
+        self.assertIn(self.layer_tag, offered)
+        self.assertNotIn(self.sample_tag, offered)
+
+    def test_layer_without_tags_is_valid(self):
+        form = self._layer_form(
+            {"location": self.location.pk, "identifier": 7}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_tag_of_another_model_is_rejected(self):
+        form = self._layer_form(
+            {
+                "location": self.location.pk,
+                "identifier": 8,
+                "tags": [self.sample_tag.pk],
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("tags", form.errors)

@@ -183,6 +183,16 @@ class ReferenceIssnTest(_BibliographySetup):
 
 class ReferenceRelationsTest(_BibliographySetup):
 
+    def test_single_author_without_abstract_validates(self):
+        """second_author and abstract are optional (#243)."""
+        reference = Reference(
+            title="Monograph", lead_author=self.author, type="Monography"
+        )
+        reference.full_clean()
+        reference.save()
+        self.assertEqual(reference.second_author.count(), 0)
+        self.assertEqual(reference.abstract, "")
+
     def test_parent_publication_self_reference(self):
         book = Reference.objects.create(
             title="Sammelband",

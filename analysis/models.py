@@ -5,9 +5,10 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
-from typing import Self, cast
+from typing import TYPE_CHECKING, Self, cast
 from zoneinfo import ZoneInfo
 
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -20,6 +21,9 @@ from bibliography.models import Reference
 from field_data.models import Sample
 from laboratory.models import Accessory, Device, Method
 from prototype.models import BaseModel, Project, Researcher
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 from prototype.storage import get_protected_storage
 
 
@@ -65,6 +69,21 @@ class Algorithm(models.Model):
     def __str__(self) -> str:
         """Return the algorithm name."""
         return self.name
+
+
+def samples_outside_project(
+    samples: Iterable[Sample], project: Project
+) -> list[str]:
+    """Return the identifiers of *samples* that belong to another project.
+
+    RawMeasurement.sample is a ManyToManyField, which Model.clean() cannot
+    see, so the admin form and the serializer run this check (#244).
+    """
+    return sorted(
+        Sample.objects.filter(pk__in=[s.pk for s in samples])
+        .exclude(project=project)
+        .values_list("identifier", flat=True)
+    )
 
 
 class RawMeasurement(BaseModel):
@@ -299,6 +318,30 @@ class PollenCount(BaseModel):
         related_name="analysis_pollen_counts",
     )
     number = models.IntegerField()
+
+    def clean(self) -> None:
+        """Reject a second count of the same taxon within one counting.
+
+        Stopgap for #285 until 3.0 adds UniqueConstraint(counting, pollen):
+        a constraint can fail on existing data, a validation only affects
+        new input. `manage.py check_duplicates` lists the existing rows.
+        """
+        super().clean()
+        try:
+            counting, pollen = self.counting, self.pollen
+        except ObjectDoesNotExist:
+            return
+        if counting.pk is None:
+            return
+        duplicate = (
+            PollenCount.objects.filter(counting=counting, pollen=pollen)
+            .exclude(pk=self.pk)
+            .exists()
+        )
+        if duplicate:
+            raise ValidationError(
+                {"pollen": "This taxon is already counted in this counting."}
+            )
 
     class Meta(BaseModel.Meta):
         """Django metadata for PollenCount."""
@@ -847,6 +890,7 @@ class RadiocarbonDating(BaseModel):
         lab (CharField): Laboratory name.
         lab_id (CharField): Laboratory identifier for the sample.
         age (DecimalField): Age in kiloannum.
+        age_error (DecimalField): Uncertainty of the age in kiloannum.
         data_quality (CharField): Internal data quality assessment.
         quality_note (TextField): Notes explaining the quality assessment.
     """
@@ -877,6 +921,16 @@ class RadiocarbonDating(BaseModel):
         blank=True,
         null=True,
     )
+    # Stopgap until the radiocarbon model is restructured after Millard
+    # (2014) in 3.0 (#197): a date without its uncertainty cannot be
+    # calibrated, compared or published (#194).
+    age_error = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        help_text="ka, uncertainty of the age as reported by the laboratory",
+        blank=True,
+        null=True,
+    )
     data_quality = models.CharField(
         max_length=15,
         choices=QUALITY_CHOICES,
@@ -886,7 +940,12 @@ class RadiocarbonDating(BaseModel):
 
     def __str__(self) -> str:
         """Return a label with lab ID and age."""
-        age_str = f"{self.age} ka" if self.age is not None else "undated"
+        if self.age is None:
+            age_str = "undated"
+        elif self.age_error is None:
+            age_str = f"{self.age} ka"
+        else:
+            age_str = f"{self.age} ± {self.age_error} ka"
         return f"{self.lab_id} ({age_str})"
 
 
