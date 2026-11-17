@@ -28,6 +28,9 @@ from prototype.api_views import ThrottledObtainAuthToken
 from prototype.protected_media import protected_media_view
 from prototype.views import map_dashboard, wms_proxy
 
+# A styled 403 inside the admin layout instead of Django's bare page (#245).
+handler403 = "prototype.views.permission_denied"
+
 urlpatterns = [
     path("map/", staff_member_required(map_dashboard), name="map_dashboard"),
     # Protected uploads (backups, field photos, raw data, rasters): the only

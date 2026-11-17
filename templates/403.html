@@ -1,0 +1,45 @@
+{% extends 'admin/base.html' %}
+{% load i18n unfold %}
+{# Rendered by prototype.views.permission_denied for every PermissionDenied,
+   inside the admin layout so that the sidebar and the way back stay in
+   reach (#245). #}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block title %}{% trans 'Access denied' %} | {{ site_title|default:_('CGDB') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+{% include "unfold/helpers/messages.html" %}
+{% component "unfold/components/container.html" %}
+    <div class="max-w-2xl">
+        <h1 class="font-semibold mb-4 text-2xl text-font-important-light dark:text-font-important-dark">
+            {% trans 'Access denied' %}
+        </h1>
+        <p class="mb-4">
+            {% blocktrans trimmed %}
+            You do not have permission for this page. Access to project data
+            needs two things: a role group that allows the action, and
+            membership of the project the data belongs to.
+            {% endblocktrans %}
+        </p>
+        <p class="mb-6">
+            {% blocktrans trimmed %}
+            A principal investigator of the project can add you as a member;
+            an administrator assigns role groups.
+            {% endblocktrans %}
+        </p>
+        <p class="flex gap-4">
+            <a href="javascript:history.back()" class="text-primary-600 dark:text-primary-500 underline">
+                {% trans 'Go back' %}
+            </a>
+            <a href="{% url 'admin:index' %}" class="text-primary-600 dark:text-primary-500 underline">
+                {% trans 'Dashboard' %}
+            </a>
+        </p>
+    </div>
+{% endcomponent %}
+{% endblock %}
