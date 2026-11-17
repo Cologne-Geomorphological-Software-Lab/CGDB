@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
+from itertools import pairwise
 from pathlib import Path
 from typing import TYPE_CHECKING, Self, cast
 from zoneinfo import ZoneInfo
@@ -1563,6 +1564,67 @@ def _classify_fraction(class_value: float) -> str:
     return "gravel"
 
 
+class DistributionError(ValueError):
+    """A grain size distribution breaks a rule of validate_distribution().
+
+    Carries the name of the offending field so that forms and serializers
+    can attach the message to it.
+    """
+
+    def __init__(self, message: str, *, field: str) -> None:
+        """Store the message and the name of the field it belongs to."""
+        super().__init__(message)
+        self.field = field
+
+
+def _as_number_list(field: str, value: object) -> list[float]:
+    if not isinstance(value, list) or not value:
+        msg = f"{field} must be a non-empty list."
+        raise DistributionError(msg, field=field)
+    numbers: list[float] = []
+    for item in value:
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            msg = f"{field} must contain numbers only."
+            raise DistributionError(msg, field=field)
+        numbers.append(float(item))
+    return numbers
+
+
+def validate_distribution(classes: object, measured_data: object) -> None:
+    """Check a grain size distribution before fractions are derived from it.
+
+    Rules (#282): both are non-empty lists of numbers of the same length,
+    one measured value per class, the point semantics the Sympatec parser
+    produces (bin boundaries are #195); classes are positive and strictly
+    increasing; measured values are not negative and do not all equal zero.
+    Before this check, lists of different length were truncated silently
+    while the percentages were still divided by the sum of the full list.
+
+    Raises:
+        DistributionError: Names the field and the rule that failed.
+    """
+    class_values = _as_number_list("classes", classes)
+    data_values = _as_number_list("measured_data", measured_data)
+    if len(class_values) != len(data_values):
+        msg = (
+            f"measured_data has {len(data_values)} values for "
+            f"{len(class_values)} classes; one value per class is required."
+        )
+        raise DistributionError(msg, field="measured_data")
+    if class_values[0] <= 0:
+        msg = "classes must be positive grain sizes in µm."
+        raise DistributionError(msg, field="classes")
+    if any(b <= a for a, b in pairwise(class_values)):
+        msg = "classes must be strictly increasing."
+        raise DistributionError(msg, field="classes")
+    if any(v < 0 for v in data_values):
+        msg = "measured_data must not contain negative values."
+        raise DistributionError(msg, field="measured_data")
+    if sum(data_values) == 0:
+        msg = "measured_data must not sum to zero."
+        raise DistributionError(msg, field="measured_data")
+
+
 # Shared between GrainSizeImportForm (admin.py), GrainSizeResource
 # (resources.py), and GrainSizeSerializer (serializers.py) so the three
 # field lists can't silently drift apart.
@@ -1768,6 +1830,30 @@ class GrainSize(BaseModel):
         verbose_name="Folk & Ward Kurtosis",
     )
 
+    def clean(self) -> None:
+        """Validate the distribution lists before fractions are derived (#282).
+
+        Runs for the admin form, the table import (clean_model_instances)
+        and full_clean(); the serializer calls validate_distribution() too.
+        """
+        super().clean()
+        if self.classes is None or self.measured_data is None:
+            return
+        measured = self.measured_data
+        if isinstance(measured, str):
+            try:
+                measured = json.loads(measured)
+            except json.JSONDecodeError as exc:
+                raise ValidationError(
+                    {
+                        "measured_data": f"measured_data is not valid JSON: {exc}"
+                    }
+                ) from exc
+        try:
+            validate_distribution(self.classes, measured)
+        except DistributionError as exc:
+            raise ValidationError({exc.field: str(exc)}) from exc
+
     def _reclassify(
         self,
     ) -> tuple[float, float, float, float, float, float, float]:
@@ -1777,6 +1863,10 @@ class GrainSize(BaseModel):
             msg = "Measured data must be a string or a list."
             raise TypeError(msg)
 
+        # Raises DistributionError (a ValueError) instead of truncating
+        # mismatched lists or dividing by zero (#282).
+        validate_distribution(self.classes, self.measured_data)
+
         fraction_names = [name for _, name in _ISO_14688_FRACTIONS] + [
             "gravel",
         ]
@@ -1785,14 +1875,11 @@ class GrainSize(BaseModel):
         for class_value, data_value in zip(
             self.classes,
             self.measured_data,
-            strict=False,
+            strict=True,
         ):
             sums[_classify_fraction(class_value)] += data_value
 
         total = sum(self.measured_data)
-        if total == 0:
-            msg = "measured_data must not sum to zero."
-            raise ValueError(msg)
 
         for attr, value in sums.items():
             setattr(self, attr, value / total * 100)

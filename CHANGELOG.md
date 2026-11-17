@@ -93,6 +93,14 @@ Upgrade steps for major versions are in [MIGRATING.md](https://github.com/Cologn
 - `manage.py check_duplicates` lists the locations and pollen counts that
   already violate these two rules, so they can be resolved before the
   upgrade to 3.0.
+- A grain size distribution is checked before the fractions are computed
+  from it, in the admin, the API and the table import: `classes` and
+  `measured_data` must be lists of numbers of the same length, the classes
+  positive and increasing, the values not negative and not all zero.
+  Before, lists of different length were truncated silently while the
+  percentages were still divided by the sum of the full list, so the
+  stored fractions did not add up. One value per class remains the rule
+  until #195 settles bin boundaries (#282).
 
 ## [2.0.2] - 2026-11-15 "Arica"
 
