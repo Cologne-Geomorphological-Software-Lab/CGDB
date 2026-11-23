@@ -1,0 +1,16 @@
+name: Bug report
+description: Wrong model behaviour, data-integrity issues, admin or import/export failures
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened, what did you expect?
+      description: File and line, if known.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How to reproduce
+      description: Model field values, URL, admin action or import file.
+    validations:
+      required: true

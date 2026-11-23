@@ -1,0 +1,9 @@
+name: Maintenance
+description: Tests, CI, tooling, dependencies
+labels: [chore]
+body:
+  - type: textarea
+    attributes:
+      label: What and why
+    validations:
+      required: true

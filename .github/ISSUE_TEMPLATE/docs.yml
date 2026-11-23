@@ -1,0 +1,10 @@
+name: Documentation
+description: README, CONTRIBUTING, docstrings, Sphinx docs
+labels: [documentation]
+body:
+  - type: textarea
+    attributes:
+      label: What is missing, wrong or unclear?
+      description: File or function, if known.
+    validations:
+      required: true
