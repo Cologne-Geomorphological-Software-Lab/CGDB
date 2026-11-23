@@ -28,7 +28,7 @@ At this time, we do not accept:
 ## Ground rules
 
 * Be respectful in all written communication — issues, pull requests, and commit messages.
-* Open an issue before starting significant work so the approach can be agreed on.
+* Every change starts with an issue (see *Issues and branches*), so the approach can be agreed on.
 * One logical change per pull request. Do not bundle unrelated fixes.
 * All new behaviour must be covered by tests.
 
@@ -165,36 +165,58 @@ When filing a feature request:
 
 ## Contribution workflow
 
-### Branch creation
+### Issues and branches
 
-Branches follow the pattern `<type>/<short-description>`:
+Every change starts with an issue, filed through one of the issue forms. Branch from
+the current `main` and name the branch `<type>/<issue-number>-<short-description>`,
+using the commit types below:
 
-* `bug/fix-researcher-str` for bug fixes
-* `feat/grain-size-classification` for features
-* `test/sample-admin-coverage` for test-only changes
-* `chore/remove-morphogrid` for cleanup
+* `fix/42-researcher-str` for bug fixes
+* `feat/57-grain-size-classification` for features
+* `test/63-sample-admin-coverage` for test-only changes
+* `chore/71-remove-morphogrid` for cleanup
+
+Never push or merge directly to `main`.
 
 ### Commit messages
 
-Write commit messages in the imperative mood, present tense:
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+`type: summary`, without a scope:
 
 ```
-Fix GrainSizeAdmin redirect on POST
+fix: redirect GrainSizeAdmin after POST
 
-Add search_fields to RawMeasurementAdmin to enable autocomplete
+Saving a measurement left the user on an empty form instead of the sample.
+
+Closes #42
 ```
 
-* First line: 50 characters max, no trailing period.
-* Optional body: explain *why*, not *what*. Reference issue numbers (`Closes BUG-05`).
-* Do not amend published commits.
+* Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`,
+  `chore`, `revert`.
+* Summary: lowercase, imperative mood, 50 characters max, no trailing period.
+* Body: explains *why*, not *what*.
+* `Closes #<nr>` only in the commit that resolves the issue, otherwise `Refs #<nr>`.
+* One logical step per commit.
+* Tidy up the branch before the merge with `git rebase -i` and
+  `git push --force-with-lease`. Never rewrite `main`.
 
 ### Pull requests
 
 * Open against `main`.
-* Title mirrors the commit message style.
-* Description must state: what changed, why, and how it was tested.
-* Link the corresponding issue (`Closes #XX`).
-* At least one approving review is required before merging.
+* Create the pull request from the commits with `gh pr create --fill-verbose`; with
+  more than one commit, also pass `--title` in commit message style.
+* Add to the description how the change was tested: the relevant test classes or the
+  manual steps in the admin. "pytest passed" is not enough.
+* Before requesting a review, check that:
+  * a model change comes with its migration
+  * `CHANGELOG.md` is updated, and `MIGRATING.md` for a breaking change
+  * new behaviour is covered by tests
+  * pre-existing test failures are named in the description
+  * no broad `except Exception` and no commented-out code is left behind
+* At least one approving review is required before merging. Maintainers may merge
+  their own pull requests without one when no reviewer is available.
+* Pull requests are squash-merged. The squash commit carries the commit messages, so
+  they are the documentation in the history. The branch is deleted after the merge.
 
 ### Tests
 
