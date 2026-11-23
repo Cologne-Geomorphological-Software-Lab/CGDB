@@ -1,0 +1,16 @@
+name: Feature request
+description: A new feature or an improvement to the admin
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: Problem
+      description: The problem it solves, not just the desired solution.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposal
+      description: >-
+        At the level of model fields, admin classes or URL routes. Schema changes
+        need a migration and a discussion first.
